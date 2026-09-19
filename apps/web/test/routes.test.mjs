@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { createServer } from 'vite';
 
 const server = await createServer({
-  server: { middlewareMode: true },
+  server: { middlewareMode: true, hmr: false, ws: false },
   optimizeDeps: { noDiscovery: true, include: [] },
 });
 after(() => server.close());
@@ -20,10 +20,10 @@ function render(path) {
 
 test('Home renders and marks only Home as current', () => {
   const html = render('/');
-  assert.match(html, /Welcome to SwapCircle/);
+  assert.match(html, /Less stuff\./);
   assert.match(html, /aria-current="page"[^>]*href="\/"/);
   assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1);
-  assert.match(html, /href="\/browse"[^>]*>Explore Browse/);
+  assert.match(html, /href="\/browse"[^>]*>Browse items/);
 });
 
 test('Browse renders on a direct URL and marks Browse as current', () => {
