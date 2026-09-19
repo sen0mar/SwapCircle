@@ -1,0 +1,15 @@
+/extra/
+node_modules/
+dist/
+coverage/
+.vite/
+.pnpm-store/
+.env
+.env.*
+!.env.example
+*.local
+*.log
+*.tsbuildinfo
+.DS_Store
+playwright-report/
+test-results/
