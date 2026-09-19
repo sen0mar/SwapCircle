@@ -1,0 +1,6 @@
+extra/
+context/
+AGENTS.md
+pnpm-lock.yaml
+node_modules/
+dist/
