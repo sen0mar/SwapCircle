@@ -1,6 +1,11 @@
+import { lazy, Suspense } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { Home } from './features/home/Home';
 import { Header } from './components/layout/Header';
+
+const ApiStatus = import.meta.env.DEV
+  ? lazy(() => import('./features/development/ApiStatus'))
+  : null;
 
 export function App() {
   return (
@@ -11,6 +16,16 @@ export function App() {
       <Header />
       <main id="main" className="page-container" tabIndex={-1}>
         <Routes>
+          {ApiStatus && (
+            <Route
+              path="/dev/api-status"
+              element={
+                <Suspense fallback={<p role="status">Loading API status…</p>}>
+                  <ApiStatus />
+                </Suspense>
+              }
+            />
+          )}
           <Route path="/" element={<Home />} />
           <Route
             path="/browse"

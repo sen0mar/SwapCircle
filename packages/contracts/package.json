@@ -12,5 +12,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
   }
 }
