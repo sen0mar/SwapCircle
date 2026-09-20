@@ -6,6 +6,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'pnpm dev --port 4173 --strictPort',
+      env: { VITE_API_URL: 'http://127.0.0.1:4311' },
       url: 'http://127.0.0.1:4173',
       reuseExistingServer: false,
       cwd: new URL('..', import.meta.url).pathname,

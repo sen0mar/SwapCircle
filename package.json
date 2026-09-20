@@ -7,12 +7,12 @@
     "pnpm": "11.5.3"
   },
   "scripts": {
-    "dev": "pnpm --filter @swapcircle/web dev",
-    "typecheck": "pnpm -r typecheck",
+    "dev": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/web dev",
+    "typecheck": "pnpm --filter @swapcircle/contracts build && pnpm -r typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm --filter @swapcircle/contracts build && pnpm -r --if-present test",
     "build": "pnpm -r build"
   },
   "devDependencies": {

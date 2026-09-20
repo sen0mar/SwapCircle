@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc"
+    "build": "tsc",
+    "dev": "pnpm build && node --env-file-if-exists=.env --watch dist/server.js",
+    "start": "node --env-file-if-exists=.env dist/server.js",
+    "test": "pnpm build && node --test test/*.test.mjs"
   },
   "exports": {
     ".": {
@@ -14,5 +17,17 @@
         "import": "./dist/index.js"
       }
     }
+  },
+  "dependencies": {
+    "@swapcircle/contracts": "workspace:*",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "24.13.5"
   }
 }

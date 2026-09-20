@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import backpack from '../../assets/backpack.jpg';
 import camera from '../../assets/camera.jpg';
@@ -68,6 +69,7 @@ export default function DevelopmentHome() {
   return (
     <>
       <div className="development-preview">
+        <Link to="/dev/api-status">Development API status</Link>
         <label htmlFor="home-preview">Development homepage preview</label>
         <select
           id="home-preview"
