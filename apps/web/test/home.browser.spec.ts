@@ -19,7 +19,12 @@ for (const theme of ['light', 'dark']) {
         await page
           .locator('img')
           .evaluateAll((images) =>
-            images.every((image) => image.complete && image.naturalWidth > 0),
+            images.every(
+              (image) =>
+                image instanceof HTMLImageElement &&
+                image.complete &&
+                image.naturalWidth > 0,
+            ),
           ),
       ).toBe(true);
       expect(
