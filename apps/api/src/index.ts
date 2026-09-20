@@ -1,2 +1,1 @@
-// Reserved for Express application code.
-export {};
+export { createApp } from './app.js';
