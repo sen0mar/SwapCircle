@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.test.json",
     "build": "tsc",
     "dev": "pnpm build && node --env-file-if-exists=.env --watch dist/server.js",
     "start": "node --env-file-if-exists=.env dist/server.js",
-    "test": "pnpm build && node --test test/*.test.mjs"
+    "test": "vitest run"
   },
   "exports": {
     ".": {
@@ -28,6 +28,9 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "24.13.5"
+    "@types/node": "24.13.5",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.2.2",
+    "vitest": "^5.0.1"
   }
 }
