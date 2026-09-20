@@ -1,6 +1,9 @@
 import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: '.',
+  forbidOnly: !!process.env.CI,
+  workers: process.env.CI ? 2 : '50%',
+  reporter: 'list',
   testMatch: '*.browser.spec.ts',
   use: { baseURL: 'http://127.0.0.1:4173', browserName: 'chromium' },
   webServer: [
