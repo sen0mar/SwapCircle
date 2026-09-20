@@ -17,8 +17,18 @@ test('production is signed out and contains no profile fixture', async ({
   ).toHaveCount(0);
   for (const file of await readdir('dist/assets')) {
     expect(await readFile(`dist/assets/${file}`, 'utf8')).not.toMatch(
-      /Alex Example|Development-only profile fixture|Synthetic profile for development previews|Open development account preview/,
+      /Alex Example|Development-only profile fixture|Synthetic profile for development previews|Open development account preview|Jamie Demo|Priya Demo|This is a sample conversation, not a real message.|Development homepage preview|Sample content/,
     );
+  }
+  await expect(page.getByText('Listings are not available yet.')).toBeVisible();
+  await expect(page.getByLabel('Development homepage preview')).toHaveCount(0);
+  await expect(page.locator('.listing-card')).toHaveCount(0);
+  for (const theme of ['light', 'dark']) {
+    await page.getByLabel('Theme').selectOption(theme);
+    await page.screenshot({
+      path: `test-results/production-${theme}.png`,
+      fullPage: true,
+    });
   }
   expect(errors).toEqual([]);
 });
