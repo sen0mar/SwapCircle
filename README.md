@@ -20,7 +20,14 @@ pnpm test
 pnpm build
 ```
 
-The focused route tests use Node's test runner and Vite's TypeScript transform. Browser navigation should also be checked against the running development server.
+CI runs the commands above in that order, followed by:
+
+```sh
+pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
+pnpm test:browser
+```
+
+Vitest runs typed Supertest API tests and React Testing Library component tests with MSW network handlers. Existing Node regression tests remain alongside them. MSW runs only in tests; its optional worker installation script is disabled. Playwright covers the Home/theme/navigation/drawer smoke, accessibility, production exclusions, and real Express stop/restart recovery. Tests use synthetic data and local services; no database or credentials are required. GitHub Actions runs on pushes and pull requests with read-only repository permission and no deployments.
 
 - `apps/web`: browser UI; only browser-safe dependencies belong here.
 - `apps/api`: Express app factory and separate listening process.
