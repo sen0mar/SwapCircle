@@ -1,6 +1,11 @@
+import { lazy, Suspense } from 'react';
 import { ArrowRightLeft, Bell, Search, UserRound } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
 import { ThemePicker } from './ThemePicker';
+
+const DevelopmentAccount = import.meta.env.DEV
+  ? lazy(() => import('../../features/account/DevelopmentAccount'))
+  : null;
 
 export function Header() {
   return (
@@ -49,14 +54,21 @@ export function Header() {
           >
             <Bell size={20} aria-hidden="true" />
           </button>
-          <button
-            className="account-button"
-            disabled
-            title="Sign-in is not available yet"
-          >
-            <UserRound size={20} aria-hidden="true" />
-            <span>Sign-in soon</span>
-          </button>
+          {DevelopmentAccount ? (
+            <Suspense>
+              <DevelopmentAccount />
+            </Suspense>
+          ) : (
+            <button
+              aria-label="Sign-in — not available yet"
+              className="account-button"
+              disabled
+              title="Sign-in is not available yet"
+            >
+              <UserRound size={20} aria-hidden="true" />
+              <span>Sign-in soon</span>
+            </button>
+          )}
           <ThemePicker />
         </div>
       </div>
