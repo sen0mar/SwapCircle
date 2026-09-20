@@ -17,6 +17,15 @@ export function ThemePicker() {
   });
 
   useEffect(() => {
+    const syncPreference = () => {
+      const value = document.documentElement.dataset.themePreference;
+      if (isThemePreference(value)) setPreference(value);
+    };
+    window.addEventListener('swapcircle:theme', syncPreference);
+    return () => window.removeEventListener('swapcircle:theme', syncPreference);
+  }, []);
+
+  useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     return watchSystemTheme(preference, media);
   }, [preference]);
@@ -35,6 +44,7 @@ export function ThemePicker() {
             );
             saveTheme(value);
             setPreference(value);
+            window.dispatchEvent(new Event('swapcircle:theme'));
           }
         }}
       >

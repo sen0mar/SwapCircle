@@ -514,3 +514,137 @@
     }
   }
 }
+
+@layer components {
+  .ui-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 16px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .ui-button:hover:not(:disabled) {
+    background: var(--bg-subtle);
+  }
+  .ui-button-primary {
+    background: var(--accent-primary);
+    color: var(--text-on-brand);
+    border-color: transparent;
+  }
+  .ui-button-primary:hover:not(:disabled) {
+    background: var(--accent-primary-hover);
+  }
+  .ui-button-primary:active:not(:disabled) {
+    background: var(--accent-primary-active);
+  }
+  .ui-button-ghost {
+    background: transparent;
+    border-color: transparent;
+  }
+  .ui-button:disabled {
+    color: var(--text-faint);
+    cursor: not-allowed;
+  }
+  .ui-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+  }
+  .ui-input[aria-invalid='true'] {
+    border-color: var(--state-error);
+  }
+  .ui-card {
+    padding: 20px;
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-card);
+  }
+  .ui-feedback {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .ui-feedback-error {
+    color: var(--state-error);
+  }
+  .ui-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: var(--bg-overlay);
+  }
+  .ui-modal {
+    position: fixed;
+    z-index: 51;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    padding: 24px;
+    box-shadow: var(--shadow-soft);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .ui-modal h2 {
+    font-size: 24px;
+    font-weight: 600;
+    padding-right: 44px;
+  }
+  .ui-modal h3 {
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .ui-modal p {
+    color: var(--text-secondary);
+  }
+  .ui-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 8px;
+  }
+  .ui-dialog {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(480px, calc(100% - 32px));
+    max-height: calc(100dvh - 32px);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+  }
+  .ui-sheet {
+    inset: 0 0 0 auto;
+    width: min(400px, 100%);
+    border-left: 1px solid var(--border-default);
+  }
+  .ui-sheet .theme-picker {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ui-sheet .theme-picker > span {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
+    overflow: visible;
+  }
+  .account-links {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
