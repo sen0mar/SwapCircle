@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { initializeTheme } from './src/theme/theme';
 
 export default defineConfig({
+  optimizeDeps: { include: ['@radix-ui/react-dialog', '@radix-ui/react-slot'] },
   plugins: [
     {
       name: 'theme-before-paint',

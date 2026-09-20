@@ -12,6 +12,7 @@ for (const theme of ['light', 'dark']) {
     });
     const dialog = page.getByRole('dialog', { name: 'Account' });
     await expect(dialog).toHaveCount(0);
+    await expect(page.getByLabel('Development homepage preview')).toBeVisible();
     const main = await page.locator('main').boundingBox();
     await trigger.focus();
     await page.keyboard.press('Enter');
