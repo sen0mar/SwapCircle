@@ -16,6 +16,11 @@
 - Use semantic UI tokens and existing shadcn primitives; do not hardcode colors or weaken keyboard/focus behavior. Render user content as plain text.
 - Add focused tests with behavior changes, especially for authorization, transactions, retries, concurrency, and failure states. Run the relevant lint, typecheck, test, and build commands before marking work complete.
 
+## Commit messages
+
+- Every commit, including merge commits, must have a short title followed by a blank line and a brief description of what changed and why.
+- Describe the actual change; do not mention "step" or implementation-plan step numbers in commit titles or descriptions.
+
 ## Safety and dangerous operations
 
 - **Drizzle migrations are the only schema history. Never use schema push commands** (for example `drizzle-kit push` or `db push`) or make undocumented Supabase dashboard schema changes.
