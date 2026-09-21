@@ -3,6 +3,7 @@ import { expect, type Page } from '@playwright/test';
 export async function signInFixture(page: Page, destination = '/account') {
   const id = 'a8ded912-c170-4988-8750-9747558e8a87';
   const now = Math.floor(Date.now() / 1000);
+
   const token =
     [
       { alg: 'HS256', typ: 'JWT' },
@@ -16,11 +17,15 @@ export async function signInFixture(page: Page, destination = '/account') {
     ]
       .map((value) => Buffer.from(JSON.stringify(value)).toString('base64url'))
       .join('.') + '.synthetic';
+
   await page.route('http://127.0.0.1:55439/auth/v1/**', async (route) => {
     const url = new URL(route.request().url());
+
     if (url.pathname.endsWith('/authorize')) {
       const callback = new URL(url.searchParams.get('redirect_to')!);
+
       callback.searchParams.set('code', 'synthetic-test-code');
+
       await route.fulfill({
         status: 302,
         headers: { location: callback.href },
@@ -44,11 +49,14 @@ export async function signInFixture(page: Page, destination = '/account') {
       });
     } else await route.fulfill({ status: 204 });
   });
+
   await page.route('**/api/v1/identity', (route) =>
     route.fulfill({ json: { userId: id } }),
   );
+
   await page.goto(destination);
   await page.getByRole('button', { name: 'Continue with Google' }).click();
+
   await expect(
     page.getByText('Your session is verified.', { exact: false }),
   ).toBeVisible();

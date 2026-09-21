@@ -16,12 +16,16 @@ export function authenticate(
 > {
   return async (request, response, next) => {
     response.setHeader('Cache-Control', 'no-store');
+
     const match = /^Bearer ([^\s]+)$/i.exec(
       request.headers.authorization ?? '',
     );
+
     const userId = match?.[1] ? await verifyToken(match[1]) : null;
+
     if (!userId) {
       response.setHeader('WWW-Authenticate', 'Bearer');
+
       response
         .status(401)
         .json(
@@ -31,8 +35,10 @@ export function authenticate(
             response.getHeader('X-Request-Id'),
           ),
         );
+
       return;
     }
+
     response.locals.identity = { userId };
     next();
   };

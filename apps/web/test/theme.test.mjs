@@ -7,7 +7,9 @@ const server = await createServer({
   server: { middlewareMode: true, hmr: false, ws: false },
   optimizeDeps: { noDiscovery: true, include: [] },
 });
+
 after(() => server.close());
+
 const {
   initializeTheme,
   applyTheme,
@@ -26,7 +28,9 @@ function environment(saved, systemDark, blocked = false) {
     style: {},
     dataset: {},
   };
+
   const writes = [];
+
   return {
     root,
     writes,
@@ -35,11 +39,14 @@ function environment(saved, systemDark, blocked = false) {
     localStorage: {
       getItem(key) {
         assert.equal(key, 'swapcircle-theme');
+
         if (blocked) throw new Error('blocked');
+
         return saved;
       },
       setItem(...args) {
         if (blocked) throw new Error('blocked');
+
         writes.push(args);
       },
     },
@@ -57,6 +64,7 @@ for (const [saved, systemDark, dark, preference] of [
 ]) {
   test(`prepaint resolves ${saved} with system dark=${systemDark}`, () => {
     const env = environment(saved, systemDark);
+
     runInNewContext(`(${initializeTheme.toString()})()`, env);
     assert.equal(env.root.classList.dark, dark);
     assert.equal(env.root.style.colorScheme, dark ? 'dark' : 'light');
@@ -67,8 +75,10 @@ for (const [saved, systemDark, dark, preference] of [
 
 test('blocked storage still resolves system without throwing', () => {
   const env = environment(null, true, true);
+
   runInNewContext(`(${initializeTheme.toString()})()`, env);
   assert.equal(env.root.classList.dark, true);
+
   assert.doesNotThrow(() =>
     runInNewContext(
       `const storageKey = 'swapcircle-theme'; (${saveTheme.toString()})('light')`,
@@ -79,6 +89,7 @@ test('blocked storage still resolves system without throwing', () => {
 
 test('runtime system changes update appearance; explicit choice ignores system', () => {
   const env = environment(null, false);
+
   for (const [preference, systemDark, expected] of [
     ['system', true, true],
     ['system', false, false],
@@ -89,6 +100,7 @@ test('runtime system changes update appearance; explicit choice ignores system',
       `(${applyTheme.toString()})('${preference}', ${systemDark})`,
       env,
     );
+
     assert.equal(env.root.classList.dark, expected);
   }
 });
@@ -96,13 +108,17 @@ test('runtime system changes update appearance; explicit choice ignores system',
 test('only valid theme preferences are accepted and only the preference is saved', () => {
   assert.equal(isThemePreference('sepia'), false);
   assert.equal(isThemePreference(null), false);
+
   for (const choice of ['light', 'dark', 'system']) {
     assert.equal(isThemePreference(choice), true);
+
     const env = environment(null, false);
+
     runInNewContext(
       `const storageKey = 'swapcircle-theme'; (${saveTheme.toString()})('${choice}')`,
       env,
     );
+
     assert.deepEqual(env.writes, [['swapcircle-theme', choice]]);
   }
 });
@@ -112,10 +128,14 @@ test('Vite places the executable bootstrap before application assets', async () 
     '/',
     '<html><head></head><body><script type="module" src="/src/main.tsx"></script></body></html>',
   );
+
   const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+
   assert.ok(script);
   assert.ok(html.indexOf(script) < html.indexOf('/src/main.tsx'));
+
   const env = environment('dark', false);
+
   runInNewContext(script, env);
   assert.equal(env.root.classList.dark, true);
 });
@@ -123,6 +143,7 @@ test('Vite places the executable bootstrap before application assets', async () 
 test('system subscription follows live changes and removes its listener', () => {
   const env = environment(null, false);
   let listener;
+
   const media = {
     matches: false,
     addEventListener(name, callback) {
@@ -135,10 +156,12 @@ test('system subscription follows live changes and removes its listener', () => 
       listener = undefined;
     },
   };
+
   const stop = runInNewContext(
     `const applyTheme = ${applyTheme.toString()}; (${watchSystemTheme.toString()})('system', media)`,
     { ...env, media },
   );
+
   assert.equal(env.root.classList.dark, false);
   media.matches = true;
   listener();

@@ -9,8 +9,11 @@ export function SignInPage() {
   const [params] = useSearchParams();
   const destination = safeDestination(params.get('next'));
   const { configured, error, pending, signIn } = useGoogleSignIn(destination);
+
   if (loading) return <p role="status">Restoring your session…</p>;
+
   if (session) return <Navigate to={destination} replace />;
+
   return (
     <section
       className="panel route-panel auth-panel"

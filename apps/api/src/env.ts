@@ -5,12 +5,14 @@ const origin = z
   .url()
   .refine((value) => {
     const url = URL.parse(value);
+
     return (
       url !== null &&
       ['http:', 'https:'].includes(url.protocol) &&
       url.origin === value
     );
   });
+
 const environmentSchema = z.object({
   SUPABASE_URL: origin,
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
@@ -20,16 +22,20 @@ const environmentSchema = z.object({
     .transform((value) => value.split(',').map((item) => item.trim()))
     .pipe(z.array(origin).min(1)),
 });
+
 export function readEnvironment(
   environment: Record<string, string | undefined>,
 ) {
   const result = environmentSchema.safeParse(environment);
+
   if (!result.success) {
     const fields = [
       ...new Set(result.error.issues.map((issue) => issue.path[0])),
     ];
+
     throw new Error(`Invalid server configuration: ${fields.join(', ')}`);
   }
+
   return {
     port: result.data.PORT,
     allowedOrigins: result.data.CORS_ORIGINS,

@@ -9,6 +9,7 @@
 ## Code standards
 
 - Use strict TypeScript and the existing pnpm workspace scripts. Keep browser and server dependencies separated.
+- Use blank lines to separate functions, declarations, and logical steps inside functions; keep closely related variables together.
 - Preserve repository boundaries: web UI in `apps/web`, Express features in `apps/api`, shared Zod/API contracts in `packages/contracts`, and schema/migrations in `packages/database`.
 - In the API, keep routes thin and place business rules in services and persistence in repositories. Validate untrusted input at the server boundary with shared Zod schemas.
 - Express owns all application writes. Supabase client access is limited to authentication and explicitly authorized reads/realtime behavior defined by the architecture.

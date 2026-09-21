@@ -3,6 +3,7 @@ import { createApp } from './app.js';
 import { readEnvironment } from './env.js';
 
 const config = readEnvironment(process.env);
+
 createApp({
   ...config,
   verifyToken: createTokenVerifier(

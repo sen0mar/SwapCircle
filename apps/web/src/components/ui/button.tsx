@@ -12,6 +12,7 @@ export function Button({
   variant?: 'primary' | 'secondary' | 'ghost';
 }) {
   const Component = asChild ? Slot : 'button';
+
   return (
     <Component
       type={asChild ? undefined : type}

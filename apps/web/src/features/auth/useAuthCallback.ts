@@ -17,10 +17,13 @@ export function useAuthCallback() {
 
   useEffect(() => {
     let active = true;
+
     if (!client || !code || providerError) {
       setFailed(true);
+
       return;
     }
+
     if (exchange?.code !== code) {
       exchange = {
         code,
@@ -30,14 +33,17 @@ export function useAuthCallback() {
           .catch(() => false),
       };
     }
+
     void exchange.promise.then((ok) => {
       if (!active) return;
+
       if (ok) void navigate(destination, { replace: true });
       else {
         setFailed(true);
         void navigate('/auth/callback', { replace: true });
       }
     });
+
     return () => {
       active = false;
     };

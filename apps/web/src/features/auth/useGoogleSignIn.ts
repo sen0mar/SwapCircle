@@ -8,15 +8,20 @@ export function useGoogleSignIn(destination: string) {
 
   async function signIn() {
     if (!client || pending) return;
+
     setPending(true);
     setError(null);
+
     try {
       const callback = new URL('/auth/callback', window.location.origin);
+
       callback.searchParams.set('next', destination);
+
       const { error } = await client.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: callback.href },
       });
+
       if (error) throw error;
     } catch {
       setError('Google sign-in could not start. Please retry.');

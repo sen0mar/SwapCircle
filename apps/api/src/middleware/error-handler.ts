@@ -9,12 +9,15 @@ export const errorHandler: ErrorRequestHandler = (
 ) => {
   if (response.headersSent) {
     next(error);
+
     return;
   }
+
   const type =
     typeof error === 'object' && error !== null && 'type' in error
       ? error.type
       : undefined;
+
   const [status, code, message] =
     type === 'entity.parse.failed'
       ? ([
@@ -35,6 +38,7 @@ export const errorHandler: ErrorRequestHandler = (
               'INTERNAL_ERROR',
               'The request could not be completed.',
             ] as const);
+
   response
     .status(status)
     .json(errorBody(code, message, response.getHeader('X-Request-Id')));

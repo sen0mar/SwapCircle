@@ -8,6 +8,7 @@ const claimsSchema = z.object({
   exp: z.number().int(),
   role: z.literal('authenticated'),
 });
+
 export type VerifyToken = (token: string) => Promise<string | null>;
 
 export function createTokenVerifier(
@@ -21,13 +22,19 @@ export function createTokenVerifier(
       detectSessionInUrl: false,
     },
   });
+
   return async (token) => {
     try {
       const { data, error } = await client.auth.getClaims(token);
+
       if (error) return null;
+
       const parsed = claimsSchema.safeParse(data?.claims);
+
       if (!parsed.success) return null;
+
       const { sub, iss, aud, exp } = parsed.data;
+
       if (
         iss !== `${url}/auth/v1` ||
         exp <= Date.now() / 1000 ||
@@ -36,6 +43,7 @@ export function createTokenVerifier(
           : aud === 'authenticated')
       )
         return null;
+
       return sub;
     } catch {
       return null;

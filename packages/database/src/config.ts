@@ -5,7 +5,9 @@ export function databaseConfig(value: string | undefined, runtime = true) {
     throw new DatabaseConfigurationError(
       'Missing database connection configuration.',
     );
+
   let url: URL;
+
   try {
     url = new URL(value);
   } catch {
@@ -13,6 +15,7 @@ export function databaseConfig(value: string | undefined, runtime = true) {
       'Invalid database connection configuration.',
     );
   }
+
   if (
     !['postgres:', 'postgresql:'].includes(url.protocol) ||
     !url.username ||
@@ -26,7 +29,9 @@ export function databaseConfig(value: string | undefined, runtime = true) {
     throw new DatabaseConfigurationError(
       'Invalid database connection configuration.',
     );
+
   const local = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+
   return {
     connectionString: value,
     max: runtime ? 5 : 1,
@@ -41,7 +46,9 @@ export function assertLocalTarget(
   environment: string | undefined,
 ) {
   databaseConfig(value, false);
+
   const url = new URL(value!);
+
   if (
     !['development', 'test'].includes(environment ?? '') ||
     url.hostname !== '127.0.0.1' ||
