@@ -8,7 +8,8 @@
     "build": "tsc",
     "dev": "pnpm build && node --env-file-if-exists=.env --watch dist/server.js",
     "start": "node --env-file-if-exists=.env dist/server.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:auth-local": "pnpm --filter @swapcircle/contracts build && pnpm build && node test/local-auth.mjs"
   },
   "exports": {
     ".": {
@@ -19,6 +20,7 @@
     }
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "@swapcircle/contracts": "workspace:*",
     "cors": "^2.8.6",
     "express": "^5.2.1",

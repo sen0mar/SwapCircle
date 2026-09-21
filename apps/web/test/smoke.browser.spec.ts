@@ -1,8 +1,8 @@
+import { signInFixture } from './auth-fixture';
 import { test, expect } from '@playwright/test';
 
-test('Home, theme, navigation and development drawer smoke', async ({
-  page,
-}) => {
+test('Home, theme, navigation and account drawer smoke', async ({ page }) => {
+  await signInFixture(page);
   await page.goto('/');
   await expect(
     page.getByRole('heading', { name: 'Less stuff. More connection.' }),
@@ -21,7 +21,7 @@ test('Home, theme, navigation and development drawer smoke', async ({
     .click();
   await expect(page.getByLabel('Theme')).toHaveValue('dark');
   const account = page.getByRole('button', {
-    name: 'Open development account preview',
+    name: 'Open account',
   });
   await account.click();
   await expect(page.getByRole('dialog', { name: 'Account' })).toBeVisible();

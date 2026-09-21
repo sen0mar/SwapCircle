@@ -10,6 +10,7 @@ import {
   databaseConfig,
   DatabaseConfigurationError,
 } from '../src/config.ts';
+import { withLocalAuthConfig } from './auth-config.ts';
 import { verify } from './verify.ts';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -19,10 +20,11 @@ const migrationsFolder = fileURLToPath(
 const envPath = fileURLToPath(new URL('../.env', import.meta.url));
 const command = process.argv[2];
 
-function cli(args: string[]) {
+function cli(args: string[], environment = process.env) {
   // Fixed workdir and argument lists: never accept --linked, --db-url, or user flags.
   return execFileSync('pnpm', ['exec', 'supabase', ...args], {
     cwd: root,
+    env: environment,
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -79,8 +81,10 @@ async function seed(pool: Pool) {
 }
 async function main() {
   checkProject();
-  if (command === 'start' || command === 'stop') {
-    cli([command]);
+  if (command === 'start') {
+    withLocalAuthConfig(root, (environment) => cli(['start'], environment));
+  } else if (command === 'stop') {
+    cli(['stop']);
   } else if (command === 'setup') {
     const status = JSON.parse(cli(['status', '-o', 'json'])) as {
       DB_URL?: string;

@@ -57,7 +57,7 @@ export function HomeContent({
               </Button>
             </div>
             <p id="listing-unavailable" className="availability-note">
-              Listing items will be available when sign-in is ready.
+              Listing items is coming soon.
             </p>
           </div>
           <img

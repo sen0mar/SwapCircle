@@ -10,6 +10,8 @@ async function startApi() {
     env: {
       ...process.env,
       PORT: '4311',
+      SUPABASE_URL: 'http://127.0.0.1:55439',
+      SUPABASE_PUBLISHABLE_KEY: 'synthetic-public-key',
       CORS_ORIGINS: 'http://127.0.0.1:4173',
     },
     stdio: 'pipe',
