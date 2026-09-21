@@ -1,3 +1,4 @@
+import type { VerifyToken } from './auth/verify.js';
 import { randomUUID } from 'node:crypto';
 import express, { Router } from 'express';
 import type { ErrorRequestHandler, Express } from 'express';
@@ -7,8 +8,10 @@ import type { ApiErrorResponse, Liveness } from '@swapcircle/contracts';
 
 export function createApp({
   allowedOrigins,
+  verifyToken = async () => null,
 }: {
   allowedOrigins: readonly string[];
+  verifyToken?: VerifyToken;
 }): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -31,6 +34,27 @@ export function createApp({
   api.get('/live', (_request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.json({ status: 'ok' } satisfies Liveness);
+  });
+  api.get('/identity', async (request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    const match = /^Bearer ([^\s]+)$/i.exec(
+      request.headers.authorization ?? '',
+    );
+    const userId = match?.[1] ? await verifyToken(match[1]) : null;
+    if (!userId) {
+      response.setHeader('WWW-Authenticate', 'Bearer');
+      response
+        .status(401)
+        .json(
+          errorBody(
+            'UNAUTHORIZED',
+            'Sign in to continue.',
+            response.getHeader('X-Request-Id'),
+          ),
+        );
+      return;
+    }
+    response.json({ userId });
   });
   app.use('/api/v1', api);
   app.use((_request, response) => {

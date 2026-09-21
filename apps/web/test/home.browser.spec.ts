@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { signInFixture } from './auth-fixture';
 import AxeBuilder from '@axe-core/playwright';
 
 for (const theme of ['light', 'dark']) {
@@ -7,6 +8,7 @@ for (const theme of ['light', 'dark']) {
   }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    await signInFixture(page);
     await page.goto('/');
     await page.getByLabel('Theme').selectOption(theme);
     await expect(page.getByText('Jamie Demo')).toHaveCount(0);
@@ -42,9 +44,7 @@ for (const theme of ['light', 'dark']) {
         fullPage: true,
       });
     }
-    await page
-      .getByRole('button', { name: 'Open development account preview' })
-      .click();
+    await page.getByRole('button', { name: 'Open account' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await page.screenshot({ path: `test-results/home-drawer-${theme}.png` });
     await page.keyboard.press('Escape');
