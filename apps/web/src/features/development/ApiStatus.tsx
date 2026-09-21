@@ -4,6 +4,7 @@ import { useApiStatus } from './useApiStatus';
 
 export default function ApiStatus() {
   const status = useApiStatus();
+
   return (
     <section className="panel route-panel" aria-labelledby="api-status-title">
       <h1 id="api-status-title">Development API status</h1>

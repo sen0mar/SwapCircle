@@ -29,6 +29,7 @@ export function MemberIdentity({ member }: { member: Member }) {
 
 export function MessageUnavailable() {
   const id = useId();
+
   return (
     <div className="message-action">
       <Button disabled aria-describedby={id}>
@@ -64,6 +65,7 @@ export interface Listing {
 
 export function ListingCard({ listing }: { listing: Listing }) {
   const [failed, setFailed] = useState(false);
+
   return (
     <Card className="listing-card">
       <article>
@@ -120,6 +122,7 @@ export function ConversationPreview({
 }
 
 export type CollectionState = 'loading' | 'empty' | 'unavailable';
+
 export function CollectionNotice({
   state,
   subject,

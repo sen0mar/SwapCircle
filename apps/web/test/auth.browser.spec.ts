@@ -6,13 +6,17 @@ test('protected route preserves its query and fragment through a single OAuth co
   page,
 }) => {
   let exchanges = 0;
+
   page.on('request', (request) => {
     if (new URL(request.url()).pathname === '/auth/v1/token') exchanges++;
   });
+
   await signInFixture(page, '/account?view=session#details');
+
   await expect(page).toHaveURL(
     'http://127.0.0.1:4173/account?view=session#details',
   );
+
   expect(exchanges).toBe(1);
 });
 
@@ -23,24 +27,31 @@ test('SDK OAuth callback, reload, protected route and sign-out lifecycle (synthe
   await expect(page).toHaveURL(/\/account$/);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.reload();
+
   await expect(
     page.getByText('Your session is verified.', { exact: false }),
   ).toBeVisible();
+
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Open account' }).click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+
   await expect(
     page.getByRole('heading', { name: 'Sign in to SwapCircle' }),
   ).toBeVisible();
+
   await expect(page.getByRole('button', { name: 'Open account' })).toHaveCount(
     0,
   );
+
   await page.reload();
+
   await expect(
     page.getByRole('heading', { name: 'Sign in to SwapCircle' }),
   ).toBeVisible();
 });
+
 test('sign-in and failed callback are usable in both themes and all target widths', async ({
   page,
 }) => {
@@ -49,23 +60,29 @@ test('sign-in and failed callback are usable in both themes and all target width
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/sign-in?next=https://evil.invalid');
       await page.getByLabel('Theme').selectOption(theme);
+
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
+
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
       await page.screenshot({
         path: `test-results/auth-${theme}-${width}.png`,
       });
     }
   }
+
   await page.goto(
     '/auth/callback?error=access_denied&error_description=private-secret',
   );
+
   await expect(page.getByRole('alert')).toContainText(
     'Sign-in could not be completed',
   );
+
   await expect(page.getByText('private-secret')).toHaveCount(0);
 });
 
@@ -73,6 +90,7 @@ test('rejected identity offers a working reauthentication path', async ({
   page,
 }) => {
   await signInFixture(page);
+
   await page.route('**/api/v1/identity', (route) =>
     route.fulfill({
       status: 401,
@@ -85,14 +103,18 @@ test('rejected identity offers a working reauthentication path', async ({
       },
     }),
   );
+
   await page.reload();
   await expect(page.getByRole('alert')).toContainText('could not be verified');
+
   await page
     .getByRole('button', { name: 'Sign out and sign in again' })
     .click();
+
   await expect(
     page.getByRole('button', { name: 'Continue with Google' }),
   ).toBeEnabled();
+
   await expect(page.getByRole('button', { name: 'Open account' })).toHaveCount(
     0,
   );

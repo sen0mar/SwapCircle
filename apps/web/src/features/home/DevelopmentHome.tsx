@@ -29,6 +29,7 @@ const members: Member[] = [
     interests: ['Plants', 'Gardening'],
   },
 ];
+
 const listings: Listing[] = [
   {
     title: 'Everyday backpack',
@@ -59,13 +60,17 @@ const listings: Listing[] = [
     owner: members[3]!,
   },
 ];
+
 const conversations = members.slice(0, 3).map((member) => ({
   member,
   preview: 'This is a sample conversation, not a real message.',
 }));
+
 type Preview = CollectionState | 'ready' | 'off';
+
 export default function DevelopmentHome() {
   const [preview, setPreview] = useState<Preview>('off');
+
   return (
     <>
       <div className="development-preview">

@@ -5,7 +5,9 @@ import { createIdentityRouter } from './features/identity/identity.routes.js';
 
 export function createApiRouter(verifyToken: VerifyToken): Router {
   const api = Router();
+
   api.use(createHealthRouter());
   api.use(createIdentityRouter(verifyToken));
+
   return api;
 }

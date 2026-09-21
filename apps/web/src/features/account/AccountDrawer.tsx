@@ -17,6 +17,7 @@ export function AccountDrawer({
   description: string;
 }) {
   const [open, setOpen] = useState(false);
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>

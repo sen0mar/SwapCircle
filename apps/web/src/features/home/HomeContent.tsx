@@ -30,6 +30,7 @@ export function HomeContent({
   conversations = [],
 }: HomeContentProps) {
   const notice = state === 'ready' ? 'empty' : state;
+
   return (
     <div className="page-grid">
       <div className="home-main">

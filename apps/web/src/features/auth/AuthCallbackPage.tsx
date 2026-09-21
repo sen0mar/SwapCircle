@@ -3,6 +3,7 @@ import { useAuthCallback } from './useAuthCallback';
 
 export function AuthCallbackPage() {
   const { failed } = useAuthCallback();
+
   return (
     <section
       className="panel route-panel auth-panel"

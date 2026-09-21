@@ -8,6 +8,7 @@ export function AccountPage() {
   const { signOut } = useAuth();
   const [recoveryError, setRecoveryError] = useState(false);
   const identity = useIdentity();
+
   return (
     <section
       className="panel route-panel auth-panel"

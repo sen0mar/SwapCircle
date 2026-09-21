@@ -12,7 +12,9 @@ export function AccountControl() {
   const location = useLocation();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   if (loading) return <span role="status">Restoring session…</span>;
+
   if (!session)
     return (
       <Link
@@ -24,6 +26,7 @@ export function AccountControl() {
         <span>Sign in</span>
       </Link>
     );
+
   return (
     <AccountDrawer
       description="Manage your SwapCircle session."
@@ -43,6 +46,7 @@ export function AccountControl() {
         onClick={() => {
           setPending(true);
           setError(null);
+
           void signOut().catch(() => {
             setError('Sign-out failed. Check your connection and retry.');
             setPending(false);

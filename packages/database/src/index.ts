@@ -5,5 +5,6 @@ import * as schema from './schema.js';
 
 export function createDatabase(connectionString: string | undefined) {
   const pool = new Pool(databaseConfig(connectionString));
+
   return { db: drizzle(pool, { schema }), close: () => pool.end() };
 }
