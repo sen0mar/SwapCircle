@@ -1,18 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
-import { livenessSchema } from '@swapcircle/contracts';
-import { apiRequest, ApiError } from '../../lib/api-client';
+import { ApiError } from '../../lib/api-client';
 import { Button } from '../../components/ui/button';
+import { useApiStatus } from './useApiStatus';
 
 export default function ApiStatus() {
-  const status = useQuery({
-    queryKey: ['development', 'api-liveness'],
-    queryFn: ({ signal }) =>
-      apiRequest('/api/v1/live', livenessSchema, { signal }),
-    retry: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    staleTime: Infinity,
-  });
+  const status = useApiStatus();
   return (
     <section className="panel route-panel" aria-labelledby="api-status-title">
       <h1 id="api-status-title">Development API status</h1>

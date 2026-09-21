@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserRound } from 'lucide-react';
-import { safeDestination } from '../auth/client';
+import { safeDestination } from '../auth/safe-destination';
 import { useAuth } from '../auth/AuthProvider';
 import { Button } from '../../components/ui/button';
 import { ThemePicker } from '../../components/layout/ThemePicker';

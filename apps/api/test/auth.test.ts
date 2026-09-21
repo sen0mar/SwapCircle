@@ -66,6 +66,12 @@ test('real SDK verifies signatures and identity claims; API derives identity onl
     .expect(200);
   expect(response.body).toEqual({ userId });
   expect(response.headers['cache-control']).toBe('no-store');
+  const otherUserId = '3f248a50-2f0d-49ee-9882-b6a1e3fc1997';
+  const otherUser = await request(app)
+    .get('/api/v1/identity')
+    .set('Authorization', `Bearer ${token({ sub: otherUserId })}`)
+    .expect(200);
+  expect(otherUser.body).toEqual({ userId: otherUserId });
   await request(app)
     .get('/api/v1/identity')
     .set('Authorization', `Bearer ${token({ aud: ['authenticated'] })}`)
@@ -89,5 +95,39 @@ test('real SDK verifies signatures and identity claims; API derives identity onl
     expect(denied.body.error.code).toBe('UNAUTHORIZED');
     expect(JSON.stringify(denied.body)).not.toContain('Bearer');
     expect(denied.headers['www-authenticate']).toBe('Bearer');
+    expect(denied.headers['cache-control']).toBe('no-store');
+    expect(denied.body.error.requestId).toBe(denied.headers['x-request-id']);
+    expect(denied.body.userId).toBeUndefined();
   }
+});
+
+test('authentication fails closed without a configured verifier while liveness stays public', async () => {
+  const app = createApp({ allowedOrigins: [] });
+  await request(app).get('/api/v1/live').expect(200, { status: 'ok' });
+  const denied = await request(app)
+    .get('/api/v1/identity')
+    .set('Authorization', `Bearer ${token()}`)
+    .expect(401);
+  expect(denied.body.error.code).toBe('UNAUTHORIZED');
+});
+
+test('async authentication failures reach the safe error handler', async () => {
+  const app = createApp({
+    allowedOrigins: [],
+    verifyToken: async () => {
+      throw new Error('synthetic-private-verifier-detail');
+    },
+  });
+  const response = await request(app)
+    .get('/api/v1/identity')
+    .set('Authorization', 'Bearer synthetic-token')
+    .expect(500);
+  expect(response.body).toEqual({
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: 'The request could not be completed.',
+      requestId: response.headers['x-request-id'],
+    },
+  });
+  expect(response.headers['cache-control']).toBe('no-store');
 });

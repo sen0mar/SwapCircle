@@ -1,6 +1,6 @@
 # SwapCircle Architecture
 
-**Status:** Initial implementation blueprint · **Updated:** 2026-09-19
+**Status:** Implementation blueprint · **Updated:** 2026-09-21
 
 ## 1. Product rules
 
@@ -43,8 +43,8 @@ Express ── validate/process uploads ─────────────�
 ## 3. Repository and application boundaries
 
 ```text
-apps/web/                 React routes, components, feature hooks
-apps/api/                 Feature modules: routes → services → repositories
+apps/web/                 React routes → pages/components → feature hooks → API functions
+apps/api/                 Feature modules: routes → controllers → services → repositories
 packages/contracts/       Shared Zod request/response schemas and API types
 packages/database/        Drizzle schema, SQL migrations, synthetic seeds
 supabase/                 Local Supabase configuration, not a second migration history
@@ -55,6 +55,83 @@ tests/e2e/               Cross-user browser scenarios
 TanStack Query owns server data; React state owns local UI; URL parameters own shareable filters. Add Zustand only for cross-page local state, not server caches. Supabase owns auth sessions; clear user-specific caches/subscriptions on logout or account change.
 
 Validate requests in Express with shared Zod schemas. Keep business rules in services and database code server-only. Use versioned REST, bounded pagination, and safe errors: `{ error: { code, message, requestId } }`. Use UTC ISO timestamps in API responses and explicit conflict responses for stale proposals.
+
+### React feature structure
+
+Organize the frontend by feature, separating route registration, rendering, lifecycle/data hooks, and transport:
+
+```text
+apps/web/src/
+  main.tsx                         Browser bootstrap and provider composition
+  App.tsx                          Shared page shell and accessibility landmarks
+  routes.tsx                       URLs, page registration, and route guards
+  pages/NotFoundPage.tsx            App-wide fallback page
+  components/ui/                   Shared accessible UI primitives
+  components/layout/               Header and shared layout controls
+  lib/api-client.ts                Fetch transport, cancellation, safe errors
+  features/
+    auth/
+      client.ts                    Supabase SDK configuration
+      AuthProvider.tsx             Session lifecycle and account cleanup
+      RequireAuth.tsx              Loading and signed-out route behavior
+      SignInPage.tsx
+      AuthCallbackPage.tsx
+      useGoogleSignIn.ts
+      useAuthCallback.ts
+      safe-destination.ts          Pure redirect validation
+    account/
+      AccountPage.tsx
+      AccountControl.tsx
+      AccountDrawer.tsx
+      useIdentity.ts               User-scoped Query state
+      account-api.ts               Typed identity request
+    development/                   Lazy, development-only page, hook, API function
+    home/                          Homepage composition and presentation
+    browse/                        Browse page
+```
+
+- **Routes** select pages, attach session guards, and define loading boundaries. Keep page markup and network operations in their feature files. `App.tsx` composes the shared shell; `main.tsx` wires the router and providers.
+- **Pages and components** render state and connect user actions to feature hooks. Keep reusable UI in `components/` and feature-specific UI beside its page. Simple visual state, such as an open drawer or inline recovery feedback, can remain in the component.
+- **Feature hooks** coordinate lifecycle, async actions, and TanStack Query queries/mutations. They own query keys, retries, invalidation, and request cancellation. Include the user ID in private query keys and pass Query's abort signal through to transport. Keep shareable filters in the URL rather than copying them into React state.
+- **API functions** such as `account-api.ts` define endpoint paths and shared response schemas, using the common fetch wrapper or the authenticated request function supplied by `AuthProvider`. They do not render UI, navigate, or maintain a second cache. The auth feature may call Supabase Auth directly through its SDK; future approved realtime reads/subscriptions follow the existing access rules.
+
+Keep `AuthProvider` as the single session lifecycle owner, including token attachment and cancellation/cache/draft/subscription cleanup on identity transitions. Route guards provide loading and sign-in navigation; Express remains responsible for authorization. Pure helpers such as redirect validation belong in separate modules without client initialization side effects.
+
+Use these layers only where a feature needs them: static pages need no hook or API file, and frontend code needs no database repository layer. Keep development fixtures and routes behind development-only lazy imports. Verify refactors through existing route, component, and browser tests, preserving URLs, query/hash destinations, loading/error/retry behavior, drawer focus, and account isolation.
+
+### Express feature structure
+
+Organize API code by feature, keeping each layer in its own file:
+
+```text
+apps/api/src/
+  server.ts                        Environment, dependency construction, listener
+  app.ts                           App factory and global middleware order
+  routes.ts                        Feature-router registration under /api/v1
+  auth/verify.ts                    Supabase token verification adapter
+  middleware/
+    authenticate.ts                Bearer-token gate and verified identity
+    request-id.ts                  Server-generated request IDs
+    not-found.ts                    Safe response for unmatched routes
+    error-handler.ts               Centralized HTTP error handling
+  http/error-response.ts            Shared safe error-envelope helper
+  features/
+    health/
+      health.routes.ts
+      health.controller.ts
+    identity/
+      identity.routes.ts
+      identity.controller.ts
+```
+
+- **Routes** declare methods and paths, attach authentication and shared-schema validation where needed, and select controllers. They contain no business rules or database queries.
+- **Controllers** translate validated HTTP inputs and the verified identity into service calls, then send typed responses with the appropriate status and headers. They do not verify tokens or access the database directly.
+- **Services** enforce resource permissions and business rules, coordinate repositories, and own transaction boundaries. Keep them independent of Express request/response objects; pass the verified actor explicitly.
+- **Repositories** perform persistence operations through Drizzle/`pg`, accepting the service's transaction when operations must be atomic. They do not handle HTTP or create separate commits inside a service-owned transaction.
+
+Add `<feature>.service.ts` and `<feature>.repository.ts` in the same feature folder when required. Liveness and identity currently need only routes and controllers; do not create empty layers. Authentication attaches a typed `identity` to request-scoped `response.locals`; controllers pass that identity onward instead of trusting client-supplied ownership fields. Authentication alone does not authorize access to a resource.
+
+Keep `createApp` testable without opening a listener. Inject external dependencies through app/router factories; construct production adapters in `server.ts`. Register request IDs before middleware that may fail, mount feature routers after security/body middleware, then register the not-found and final error handlers. Preserve public URLs and response contracts when reorganizing these layers. Test the assembled HTTP boundary for authentication, status codes, headers, and safe errors; add service/repository tests as business logic and persistence arrive.
 
 ## 4. Core data model
 
