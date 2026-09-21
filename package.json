@@ -14,12 +14,20 @@
     "format:check": "prettier --check .",
     "test": "pnpm --filter @swapcircle/contracts build && pnpm -r --if-present test",
     "build": "pnpm -r build",
-    "test:browser": "pnpm --filter @swapcircle/web test:browser"
+    "test:browser": "pnpm --filter @swapcircle/web test:browser",
+    "db:start": "pnpm --filter @swapcircle/database local start",
+    "db:stop": "pnpm --filter @swapcircle/database local stop",
+    "db:setup": "pnpm --filter @swapcircle/database local setup",
+    "db:reset": "pnpm --filter @swapcircle/database local reset",
+    "db:migrate": "pnpm --filter @swapcircle/database local migrate",
+    "db:seed": "pnpm --filter @swapcircle/database local seed",
+    "db:verify": "pnpm --filter @swapcircle/database local verify"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "eslint": "10.11.0",
     "prettier": "3.9.8",
+    "supabase": "2.117.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.70.0"
   }
