@@ -15,16 +15,25 @@ test('startup rejects missing/unsafe configuration without exposing values', () 
     { CORS_ORIGINS: 'https://example.org', PORT: '0' },
   ]) {
     assert.throws(
-      () => readEnvironment(config),
+      () =>
+        readEnvironment({
+          SUPABASE_URL: 'http://127.0.0.1:55431',
+          SUPABASE_PUBLISHABLE_KEY: 'test-public-key',
+          ...config,
+        }),
       /^Error: Invalid server configuration: (CORS_ORIGINS|PORT)$/,
     );
   }
   assert.deepEqual(
     readEnvironment({
+      SUPABASE_URL: 'http://127.0.0.1:55431',
+      SUPABASE_PUBLISHABLE_KEY: 'test-public-key',
       CORS_ORIGINS: 'http://127.0.0.1:5173, https://example.org',
     }),
     {
       port: 3001,
+      supabaseUrl: 'http://127.0.0.1:55431',
+      supabasePublishableKey: 'test-public-key',
       allowedOrigins: ['http://127.0.0.1:5173', 'https://example.org'],
     },
   );

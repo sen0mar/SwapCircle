@@ -105,3 +105,43 @@ The server-only `createDatabase` factory uses at most five connections and provi
 TLS; URL query overrides are rejected. Migration connections use one connection.
 Database credentials and CLI output are never printed by the wrapper commands.
 CI runs a fresh isolated local rebuild and privilege checks without hosted secrets.
+
+## Authentication
+
+The browser uses Supabase Google OAuth with PKCE. `/sign-in` starts the SDK flow,
+`/auth/callback` exchanges the one-use code, and `/account` checks the protected
+Express `/api/v1/identity` endpoint. The callback accepts only implemented local
+destinations. Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in
+`apps/web/.env`; configure `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in
+`apps/api/.env`. Use the same local project for both. These keys are public;
+never substitute a service-role key. The API fails startup if auth configuration
+is missing. Keep its `CORS_ORIGINS` aligned with the frontend origin.
+
+For local Google OAuth, configure a development Google client with JavaScript
+origin `http://127.0.0.1:5173` and Google callback
+`http://127.0.0.1:55431/auth/v1/callback`. Store
+`SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and
+`SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET` in the ignored root `.env`.
+Set `[auth.external.google].enabled = true` in `supabase/config.toml` only once
+those credentials are supplied, then stop/start the isolated local stack to
+apply configuration (preserve data; do not reset it). The app redirect allowlist
+is restricted to the local `/auth/callback` path, including its `next` query.
+Google remains disabled by default so CI and credential-free local development
+can run without pretending OAuth is configured. Hosted setup belongs to the
+later deployment work.
+
+The API verifies tokens using the Supabase SDK, then checks issuer, authenticated
+audience/role, expiry and a UUID subject. The identity endpoint returns only the
+verified user ID with `Cache-Control: no-store`. It grants no resource permissions.
+Account changes abort protected requests, cancel/clear Query state, remove
+Supabase channels and remount local drafts/drawers. Same-user token refreshes keep
+local UI state. Sign-out affects this browser session; an already issued access
+token remains valid until expiry, as with Supabase's standard JWT lifecycle.
+
+`pnpm --filter @swapcircle/api test:auth-local` verifies real SDK sessions for two
+temporary synthetic users against **only** the loopback stack on port 55431,
+checks valid/tampered/missing tokens, signs out and deletes those users. It uses
+an administrative test-only email link to obtain fixtures; no email/password
+login is exposed in the app. This check is included in the isolated database CI
+job. Browser tests mock OAuth transport while exercising the real browser SDK;
+those tests do not replace the manual Google OAuth integration checkpoint.

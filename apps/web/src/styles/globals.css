@@ -878,3 +878,18 @@
     }
   }
 }
+
+@layer components {
+  .auth-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    max-width: 480px;
+    margin-inline: auto;
+  }
+  .auth-panel > h1,
+  .auth-panel > p {
+    margin: 0;
+  }
+}
