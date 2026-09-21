@@ -39,9 +39,9 @@ enabled = false
 [analytics]
 enabled = false
 
-# Google OAuth uses local environment credentials.
+# db:start enables Google temporarily when both local credentials are present.
 [auth.external.google]
-enabled = true
+enabled = false
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"
 redirect_uri = "http://127.0.0.1:55431/auth/v1/callback"

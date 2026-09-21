@@ -122,9 +122,11 @@ origin `http://127.0.0.1:5173` and Google callback
 `http://127.0.0.1:55431/auth/v1/callback`. Store
 `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and
 `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET` in the ignored root `.env`.
-Set `[auth.external.google].enabled = true` in `supabase/config.toml` only once
-those credentials are supplied, then stop/start the isolated local stack to
-apply configuration (preserve data; do not reset it). The app redirect allowlist
+`pnpm db:start` enables Google for startup only when both credentials exist in
+the root `.env` or process environment, then restores the checked-in disabled
+configuration even if startup fails. Partial credentials fail with a safe error.
+Use `pnpm db:stop` followed by `pnpm db:start` to apply changed credentials
+(preserve data; do not reset it). Avoid concurrent local start commands. The app redirect allowlist
 is restricted to the local `/auth/callback` path, including its `next` query.
 Google remains disabled by default so CI and credential-free local development
 can run without pretending OAuth is configured. Hosted setup belongs to the
