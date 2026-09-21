@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-export async function signInFixture(page: Page) {
+export async function signInFixture(page: Page, destination = '/account') {
   const id = 'a8ded912-c170-4988-8750-9747558e8a87';
   const now = Math.floor(Date.now() / 1000);
   const token =
@@ -47,7 +47,7 @@ export async function signInFixture(page: Page) {
   await page.route('**/api/v1/identity', (route) =>
     route.fulfill({ json: { userId: id } }),
   );
-  await page.goto('/account');
+  await page.goto(destination);
   await page.getByRole('button', { name: 'Continue with Google' }).click();
   await expect(
     page.getByText('Your session is verified.', { exact: false }),

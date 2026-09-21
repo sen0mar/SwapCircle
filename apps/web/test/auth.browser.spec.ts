@@ -2,6 +2,20 @@ import { test, expect } from '@playwright/test';
 import { signInFixture } from './auth-fixture';
 import AxeBuilder from '@axe-core/playwright';
 
+test('protected route preserves its query and fragment through a single OAuth code exchange', async ({
+  page,
+}) => {
+  let exchanges = 0;
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/auth/v1/token') exchanges++;
+  });
+  await signInFixture(page, '/account?view=session#details');
+  await expect(page).toHaveURL(
+    'http://127.0.0.1:4173/account?view=session#details',
+  );
+  expect(exchanges).toBe(1);
+});
+
 test('SDK OAuth callback, reload, protected route and sign-out lifecycle (synthetic transport)', async ({
   page,
 }) => {

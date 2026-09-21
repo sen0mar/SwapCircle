@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { AuthProvider, useAuth } from '../src/features/auth/AuthProvider';
-import { safeDestination } from '../src/features/auth/client';
+import { safeDestination } from '../src/features/auth/safe-destination';
 import { identitySchema } from '@swapcircle/contracts';
 import { http, HttpResponse } from 'msw';
 import { server } from './setup';
