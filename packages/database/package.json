@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "build": "tsc"
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.tools.json",
+    "build": "tsc",
+    "generate": "drizzle-kit generate",
+    "test": "node --test test/*.test.ts",
+    "local": "node --env-file-if-exists=.env scripts/local.ts"
   },
   "exports": {
     ".": {
@@ -14,5 +17,14 @@
         "import": "./dist/index.js"
       }
     }
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.2",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.5",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.10"
   }
 }
