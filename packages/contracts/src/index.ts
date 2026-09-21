@@ -10,3 +10,6 @@ export const apiErrorSchema = z.object({
   }),
 });
 export type ApiErrorResponse = z.infer<typeof apiErrorSchema>;
+
+export const identitySchema = z.object({ userId: z.uuid() });
+export type Identity = z.infer<typeof identitySchema>;

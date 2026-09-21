@@ -82,9 +82,7 @@ export default function DevelopmentHome() {
           <option value="empty">Empty</option>
           <option value="unavailable">Unavailable</option>
         </select>
-        <p>
-          Synthetic content only. No signed-in account or working messaging.
-        </p>
+        <p>Synthetic preview content. Messaging is not available yet.</p>
       </div>
       <HomeContent
         state={preview === 'off' ? 'unavailable' : preview}

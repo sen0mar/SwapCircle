@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
+import { SignIn, AuthCallback, AccountPage } from './features/auth/AuthPages';
 import { Home } from './features/home/Home';
 import { Header } from './components/layout/Header';
 
@@ -16,6 +17,9 @@ export function App() {
       <Header />
       <main id="main" className="page-container" tabIndex={-1}>
         <Routes>
+          <Route path="/sign-in" element={<SignIn />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/account" element={<AccountPage />} />
           {ApiStatus && (
             <Route
               path="/dev/api-status"

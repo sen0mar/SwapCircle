@@ -1,14 +1,16 @@
 import { test, expect } from '@playwright/test';
+import { signInFixture } from './auth-fixture';
 import AxeBuilder from '@axe-core/playwright';
 
 for (const theme of ['light', 'dark']) {
   test(`drawer keyboard, dismissal, layout and accessibility in ${theme}`, async ({
     page,
   }) => {
+    await signInFixture(page);
     await page.goto('/');
     await page.getByLabel('Theme').selectOption(theme);
     const trigger = page.getByRole('button', {
-      name: 'Open development account preview',
+      name: 'Open account',
     });
     const dialog = page.getByRole('dialog', { name: 'Account' });
     await expect(dialog).toHaveCount(0);
@@ -23,7 +25,9 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
     expect(await page.locator('main').boundingBox()).toEqual(main);
     await page.keyboard.press('Shift+Tab');
-    await expect(dialog.getByLabel('Theme')).toBeFocused();
+    await expect(
+      dialog.getByRole('button', { name: 'Sign out' }),
+    ).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(
       page.getByRole('button', { name: 'Close', exact: true }),
