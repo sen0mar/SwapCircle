@@ -9,7 +9,7 @@
     "dev": "pnpm build && node --env-file-if-exists=.env --watch dist/server.js",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "test": "vitest run",
-    "test:auth-local": "pnpm --filter @swapcircle/contracts build && pnpm build && node test/local-auth.mjs",
+    "test:auth-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node test/local-auth.mjs",
     "test:profiles-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-profiles.mjs"
   },
   "exports": {
