@@ -46,5 +46,6 @@ jobs:
       - run: pnpm db:reset
       - run: pnpm db:verify
       - run: pnpm --filter @swapcircle/api test:auth-local
+      - run: pnpm --filter @swapcircle/api test:profiles-local
       - if: always()
         run: pnpm db:stop

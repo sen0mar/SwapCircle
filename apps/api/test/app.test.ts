@@ -20,6 +20,8 @@ test('startup rejects missing/unsafe configuration without exposing values', () 
         readEnvironment({
           SUPABASE_URL: 'http://127.0.0.1:55431',
           SUPABASE_PUBLISHABLE_KEY: 'test-public-key',
+          DATABASE_URL:
+            'postgresql://swapcircle_runtime:synthetic@127.0.0.1:55432/postgres',
           ...config,
         }),
       /^Error: Invalid server configuration: (CORS_ORIGINS|PORT)$/,
@@ -30,12 +32,16 @@ test('startup rejects missing/unsafe configuration without exposing values', () 
     readEnvironment({
       SUPABASE_URL: 'http://127.0.0.1:55431',
       SUPABASE_PUBLISHABLE_KEY: 'test-public-key',
+      DATABASE_URL:
+        'postgresql://swapcircle_runtime:synthetic@127.0.0.1:55432/postgres',
       CORS_ORIGINS: 'http://127.0.0.1:5173, https://example.org',
     }),
     {
       port: 3001,
       supabaseUrl: 'http://127.0.0.1:55431',
       supabasePublishableKey: 'test-public-key',
+      databaseUrl:
+        'postgresql://swapcircle_runtime:synthetic@127.0.0.1:55432/postgres',
       allowedOrigins: ['http://127.0.0.1:5173', 'https://example.org'],
     },
   );
