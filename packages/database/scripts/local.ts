@@ -92,9 +92,9 @@ async function provision(pool: Pool) {
 }
 
 async function seed(pool: Pool) {
-  // No domain tables exist yet; intentionally no invented accounts or product data.
+  // Interest catalogue lives in the migration; no synthetic accounts or product data.
   await pool.query('select 1');
-  console.log('Seed complete: no domain fixtures are defined yet.');
+  console.log('Seed complete: no synthetic domain fixtures are defined.');
 }
 
 async function main() {

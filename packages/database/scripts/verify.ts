@@ -84,8 +84,32 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      1,
+      2,
     );
+
+    for (const table of [
+      'profiles',
+      'interests',
+      'profile_interests',
+      'account_restrictions',
+    ]) {
+      const protection = await pool.query<{ relrowsecurity: boolean }>(
+        'select relrowsecurity from pg_class where oid = $1::regclass',
+        [`public.${table}`],
+      );
+
+      assert.equal(protection.rows[0]?.relrowsecurity, true);
+
+      for (const role of ['anon', 'authenticated', 'service_role']) {
+        const access = await pool.query<{ read: boolean; write: boolean }>(
+          `select has_table_privilege($1, $2, 'SELECT') as read,
+                  has_table_privilege($1, $2, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') as write`,
+          [role, `public.${table}`],
+        );
+
+        assert.deepEqual(access.rows[0], { read: false, write: false });
+      }
+    }
 
     console.log(
       'Verified migration replay, runtime login/DDL denial, default table/function denial, and RLS isolation.',

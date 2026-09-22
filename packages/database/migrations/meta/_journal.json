@@ -8,6 +8,13 @@
       "when": 1789955494651,
       "tag": "0000_restrictive_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790104640406,
+      "tag": "0001_easy_pride",
+      "breakpoints": true
     }
   ]
 }

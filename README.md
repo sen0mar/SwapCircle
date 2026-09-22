@@ -43,6 +43,10 @@ cp apps/api/.env.example apps/api/.env
 pnpm --filter @swapcircle/api dev
 ```
 
+After `pnpm db:setup`, copy the generated local `DATABASE_URL` from
+`packages/database/.env` into the ignored `apps/api/.env`. Keep this server-only
+connection string out of `VITE_*` settings and commits.
+
 The default web origin is `http://127.0.0.1:5173`. `CORS_ORIGINS` is required: a comma-separated list of exact HTTP(S) origins without paths or trailing slashes. `PORT` defaults to 3001. Invalid settings fail startup without printing their values. The API dev command compiles before starting; rerun it after TypeScript changes. For compiled operation use `pnpm --filter @swapcircle/api start`.
 
 `VITE_API_URL` is the public API origin (default `http://127.0.0.1:3001`); use `apps/web/.env.example` when overriding it. `/api/v1/live` reports process liveness only. This endpoint does not check database readiness or authentication. JSON bodies are limited to 16 KiB. CORS is browser access control, not authorization.
@@ -66,7 +70,7 @@ Git-ignored, owner-readable `packages/database/.env`. It refuses to overwrite an
 existing file. `.env.example` documents variable names with empty secret values.
 `MIGRATION_DATABASE_URL` uses the local schema owner; `DATABASE_URL` uses a separate
 random-password `swapcircle_runtime` role. Never copy either to a `VITE_*` variable.
-The API does not connect to persistence until a later feature needs it.
+The API uses this runtime role for profile and interest endpoints.
 
 `db:reset` destroys **only this local project's synthetic data**, resets the local
 Supabase infrastructure, applies Drizzle migrations, provisions the local runtime
@@ -77,7 +81,7 @@ are refused. No hosted reset/migrate command is provided at this stage.
 
 ```sh
 pnpm db:migrate  # apply pending Drizzle migrations; safe to repeat
-pnpm db:seed     # repeatable no-op until domain fixtures are introduced
+pnpm db:seed     # repeatable no-op; the interest catalogue is in the migration
 pnpm db:verify   # replay migration runner and check real database privileges
 pnpm db:stop     # stop this project's containers, preserving local data
 ```
@@ -96,9 +100,10 @@ include RLS, explicit grants, and appropriate policies in the same change. The
 initial migration removes implicit browser table/sequence/function grants;
 functions also lose PostgreSQL's global PUBLIC EXECUTE default. Migration objects
 must be created by `postgres` for those defaults to apply. The runtime role has no
-DDL, inheritance, or RLS bypass privileges; later features must explicitly grant
-only their required operations and policies. There are no domain tables or seed
-accounts yet. Permission probes are synthetic and rolled back.
+DDL, inheritance, or RLS bypass privileges. Profile, interest and private account
+restriction tables have explicit runtime grants and RLS policies; browser roles
+have no application table access. There are no seeded accounts. Permission probes
+are synthetic and rolled back.
 
 The server-only `createDatabase` factory uses at most five connections and provides
 `close()` for shutdown. Remote runtime connections require certificate-verified
@@ -147,3 +152,17 @@ an administrative test-only email link to obtain fixtures; no email/password
 login is exposed in the app. This check is included in the isolated database CI
 job. Browser tests mock OAuth transport while exercising the real browser SDK;
 those tests do not replace the manual Google OAuth integration checkpoint.
+
+## Profiles and interests
+
+`GET /api/v1/profiles/me` provisions the signed-in user's profile once and returns
+their current public fields and timestamps. `PUT /api/v1/profiles/me` updates the
+verified owner's display name, biography, approximate location and selected
+interest IDs. `GET /api/v1/interests` lists selectable interests, while
+`GET /api/v1/members/:id` returns only public profile fields. Duplicate or unknown
+interest IDs fail without changing the profile. Private restriction records never
+appear in public responses.
+
+`pnpm --filter @swapcircle/api test:profiles-local` checks these endpoints with
+temporary synthetic users, direct Data API denial, and cleanup against the
+isolated local stack. It runs in the database CI job.
