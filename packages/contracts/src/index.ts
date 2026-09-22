@@ -25,6 +25,8 @@ export const interestSchema = z.object({
   name: z.string().min(1).max(80),
 });
 
+export type Interest = z.infer<typeof interestSchema>;
+
 export const interestCatalogueSchema = z.array(interestSchema);
 
 export const profileUpdateSchema = z.strictObject({

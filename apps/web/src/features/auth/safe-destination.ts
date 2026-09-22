@@ -13,7 +13,14 @@ export function safeDestination(value: string | null): string {
 
     if (
       url.origin !== 'https://swapcircle.invalid' ||
-      !['/', '/browse', '/account'].includes(url.pathname)
+      (![
+        '/',
+        '/browse',
+        '/account',
+        '/account/profile',
+        '/account/settings',
+      ].includes(url.pathname) &&
+        !/^\/members\/[0-9a-f-]{36}$/i.test(url.pathname))
     )
       return '/account';
 

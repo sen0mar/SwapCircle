@@ -1,4 +1,5 @@
-import { useState, type ReactElement, type ReactNode } from 'react';
+import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Sheet,
   SheetContent,
@@ -17,6 +18,11 @@ export function AccountDrawer({
   description: string;
 }) {
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

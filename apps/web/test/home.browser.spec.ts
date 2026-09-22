@@ -20,18 +20,21 @@ for (const theme of ['light', 'dark']) {
       await page.setViewportSize({ width, height: 1000 });
       await page.locator('.listing-photo').last().waitFor();
 
-      expect(
-        await page
-          .locator('img')
-          .evaluateAll((images) =>
-            images.every(
-              (image) =>
-                image instanceof HTMLImageElement &&
-                image.complete &&
-                image.naturalWidth > 0,
-            ),
-          ),
-      ).toBe(true);
+      await expect
+        .poll(
+          async () =>
+            await page
+              .locator('img')
+              .evaluateAll((images) =>
+                images.every(
+                  (image) =>
+                    image instanceof HTMLImageElement &&
+                    image.complete &&
+                    image.naturalWidth > 0,
+                ),
+              ),
+        )
+        .toBe(true);
 
       expect(
         await page.evaluate(
