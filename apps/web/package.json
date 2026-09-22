@@ -11,6 +11,7 @@
     "test:browser": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && pnpm build && playwright test --config test/playwright.config.ts"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-slot": "^1.3.3",
     "@supabase/supabase-js": "^2.116.0",
@@ -19,6 +20,7 @@
     "lucide-react": "^1.47.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-hook-form": "^7.88.0",
     "react-router-dom": "7.18.4"
   },
   "devDependencies": {

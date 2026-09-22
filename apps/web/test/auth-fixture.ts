@@ -1,7 +1,10 @@
 import { expect, type Page } from '@playwright/test';
 
-export async function signInFixture(page: Page, destination = '/account') {
-  const id = 'a8ded912-c170-4988-8750-9747558e8a87';
+export async function signInFixture(
+  page: Page,
+  destination = '/account',
+  id = 'a8ded912-c170-4988-8750-9747558e8a87',
+) {
   const now = Math.floor(Date.now() / 1000);
 
   const token =

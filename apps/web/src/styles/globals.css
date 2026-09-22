@@ -893,3 +893,67 @@
     margin: 0;
   }
 }
+
+@layer components {
+  .profile-page,
+  .member-page,
+  .settings-page {
+    display: grid;
+    gap: 20px;
+  }
+  .profile-form {
+    display: grid;
+    gap: 20px;
+    max-width: 640px;
+  }
+  .profile-field {
+    display: grid;
+    gap: 6px;
+  }
+  .profile-field label,
+  .profile-interests legend {
+    font-weight: 600;
+  }
+  .profile-field p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .profile-field p[role='alert'] {
+    color: var(--state-error);
+  }
+  .profile-biography {
+    min-height: 140px;
+    resize: vertical;
+  }
+  .profile-biography-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .profile-interests {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    border: 0;
+    padding: 0;
+  }
+  .profile-interests legend {
+    margin-bottom: 8px;
+  }
+  .profile-interests label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+  }
+  .profile-interests input {
+    accent-color: var(--accent-primary);
+    width: 18px;
+    height: 18px;
+  }
+  .member-page .interest-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+}

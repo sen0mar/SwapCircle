@@ -4,6 +4,9 @@ import { SignInPage } from './features/auth/SignInPage';
 import { AuthCallbackPage } from './features/auth/AuthCallbackPage';
 import { RequireAuth } from './features/auth/RequireAuth';
 import { AccountPage } from './features/account/AccountPage';
+import { ProfilePage } from './features/account/ProfilePage';
+import { SettingsPage } from './features/account/SettingsPage';
+import { MemberPage } from './features/account/MemberPage';
 import { Home } from './features/home/Home';
 import { BrowsePage } from './features/browse/BrowsePage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -19,6 +22,8 @@ export function AppRoutes() {
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/account/profile" element={<ProfilePage />} />
+        <Route path="/account/settings" element={<SettingsPage />} />
       </Route>
       {ApiStatus && (
         <Route
@@ -32,6 +37,7 @@ export function AppRoutes() {
       )}
       <Route path="/" element={<Home />} />
       <Route path="/browse" element={<BrowsePage />} />
+      <Route path="/members/:id" element={<MemberPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
