@@ -5,11 +5,13 @@ import { initializeTheme } from './src/theme/theme';
 
 export default defineConfig({
   optimizeDeps: {
+    // Workspace exports change without a lockfile change; serve them directly.
+    exclude: ['@swapcircle/contracts'],
     include: [
       '@radix-ui/react-dialog',
       '@radix-ui/react-slot',
       '@tanstack/react-query',
-      '@swapcircle/contracts',
+      '@swapcircle/contracts > zod',
     ],
   },
   plugins: [
