@@ -166,3 +166,30 @@ appear in public responses.
 `pnpm --filter @swapcircle/api test:profiles-local` checks these endpoints with
 temporary synthetic users, direct Data API denial, and cleanup against the
 isolated local stack. It runs in the database CI job.
+
+### Listing records
+
+`POST /api/v1/listings` creates an available listing owned by the verified user.
+Supply `title` (1–120 characters), `description` (1–5000), and `condition`
+(`like_new`, `good`, `fair`, or `poor`). Ownership, availability and timestamps
+are server-managed; unknown request fields are rejected.
+
+`GET /api/v1/listings?limit=20&cursor=…` returns `{ items, nextCursor }`, newest
+first with UUID as the tie-breaker. Limits are 1–50; pass the returned opaque
+cursor unchanged. `GET /api/v1/listings/:id` returns the public listing projection.
+Withdrawn items are excluded from both reads and return 404 on detail reads;
+a later detail UI can use this safe not-found response as its unavailable state.
+Other availability states remain visible with their explicit status.
+
+`PUT /api/v1/listings/:id` replaces editable fields and requires the current
+`revision`. `POST /api/v1/listings/:id/withdraw` accepts only `{ revision }`.
+Both require the owner, reject restricted accounts, lock the listing row and
+increment its revision. Stale revisions and non-available states return 409;
+non-owner writes return 404. No endpoint can restore a withdrawn listing or set
+trade-controlled availability. Future trade operations must lock these same rows
+and update availability atomically with their reservations/events.
+
+`pnpm --filter @swapcircle/api test:listings-local` checks real local authentication,
+ownership, validation rollback, revision races, availability guards, withdrawal
+visibility, pagination ties at microsecond precision, and direct Data API denial.
+It uses isolated synthetic accounts and removes its fixtures afterward.
