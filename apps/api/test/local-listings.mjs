@@ -108,6 +108,36 @@ try {
   const a = (await create(alice).expect(201)).body;
   const b = (await create(bob).expect(201)).body;
   listingSchema.parse(a);
+  const publicItem = (
+    await request(app).get(`/api/v1/listings/${a.id}`).expect(200)
+  ).body;
+  assert.deepEqual(
+    Object.keys(publicItem).sort(),
+    [
+      'id',
+      'ownerId',
+      'title',
+      'description',
+      'condition',
+      'availability',
+      'revision',
+      'createdAt',
+      'updatedAt',
+    ].sort(),
+  );
+  const publicOwner = (
+    await request(app).get(`/api/v1/members/${alice.id}`).expect(200)
+  ).body;
+  assert.deepEqual(
+    Object.keys(publicOwner).sort(),
+    [
+      'id',
+      'displayName',
+      'biography',
+      'approximateLocation',
+      'interests',
+    ].sort(),
+  );
   assert.equal(a.ownerId, alice.id);
   assert.equal(b.ownerId, bob.id);
   await edit(bob, a.id, { ...data, revision: 1 }).expect(404);
