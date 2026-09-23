@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { createServer } from 'vite';
 
@@ -16,7 +17,15 @@ const { App } = await server.ssrLoadModule('/src/App.tsx');
 
 function render(path) {
   return renderToStaticMarkup(
-    createElement(MemoryRouter, { initialEntries: [path] }, createElement(App)),
+    createElement(
+      MemoryRouter,
+      { initialEntries: [path] },
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        createElement(App),
+      ),
+    ),
   );
 }
 
@@ -35,7 +44,7 @@ test('Browse renders on a direct URL and marks Browse as current', () => {
   assert.match(html, /<h1[^>]*>Browse<\/h1>/);
   assert.match(html, /aria-current="page"[^>]*href="\/browse"/);
   assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1);
-  assert.match(html, /The item catalog is coming soon/);
+  assert.match(html, /Loading items/);
 });
 
 test('Unknown paths offer a useful route home without an active nav link', () => {
