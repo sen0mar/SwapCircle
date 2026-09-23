@@ -1,3 +1,4 @@
+import type { ListingsService } from './features/listings/listings.service.js';
 import type { VerifyToken } from './auth/verify.js';
 import express from 'express';
 import type { Express } from 'express';
@@ -13,10 +14,12 @@ export function createApp({
   allowedOrigins,
   verifyToken = async () => null,
   profiles,
+  listings,
 }: {
   allowedOrigins: readonly string[];
   verifyToken?: VerifyToken;
   profiles?: ProfilesService;
+  listings?: ListingsService;
 }): Express {
   const app = express();
 
@@ -34,7 +37,7 @@ export function createApp({
   );
 
   app.use(express.json({ limit: '16kb' }));
-  app.use('/api/v1', createApiRouter(verifyToken, profiles));
+  app.use('/api/v1', createApiRouter(verifyToken, profiles, listings));
   app.use(notFound);
   app.use(errorHandler);
 

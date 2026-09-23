@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      2,
+      3,
     );
 
     for (const table of [
@@ -92,6 +92,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'interests',
       'profile_interests',
       'account_restrictions',
+      'listings',
     ]) {
       const protection = await pool.query<{ relrowsecurity: boolean }>(
         'select relrowsecurity from pg_class where oid = $1::regclass',

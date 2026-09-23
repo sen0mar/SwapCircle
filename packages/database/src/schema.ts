@@ -1,6 +1,9 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   pgTable,
+  integer,
+  index,
+  check,
   primaryKey,
   text,
   timestamp,
@@ -65,4 +68,45 @@ export const profileInterestsRelations = relations(
       references: [interests.id],
     }),
   }),
+);
+
+export const listings = pgTable(
+  'listings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => profiles.id),
+    title: varchar('title', { length: 120 }).notNull(),
+    description: varchar('description', { length: 5000 }).notNull(),
+    condition: varchar('condition', { length: 20 }).notNull(),
+    availability: varchar('availability', { length: 20 })
+      .notNull()
+      .default('available'),
+    revision: integer('revision').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('listings_owner_idx').on(table.ownerId),
+    index('listings_page_idx').on(table.createdAt.desc(), table.id.desc()),
+    check('listing_title_nonempty', sql`length(trim(${table.title})) > 0`),
+    check(
+      'listing_description_nonempty',
+      sql`length(trim(${table.description})) > 0`,
+    ),
+    check(
+      'listing_condition_valid',
+      sql`${table.condition} IN ('like_new', 'good', 'fair', 'poor')`,
+    ),
+    check(
+      'listing_availability_valid',
+      sql`${table.availability} IN ('available', 'withdrawn', 'reserved', 'exchanged', 'disputed')`,
+    ),
+    check('listing_revision_positive', sql`${table.revision} > 0`),
+  ],
 );
