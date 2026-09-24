@@ -172,11 +172,13 @@ try {
 
   assert.deepEqual(Object.keys(publicProfile.body).sort(), [
     'approximateLocation',
+    'avatarUrl',
     'biography',
     'displayName',
     'id',
     'interests',
   ]);
+  assert.equal(publicProfile.body.avatarUrl, null);
   assert.ok(
     !JSON.stringify(publicProfile.body).includes('private synthetic reason'),
   );
