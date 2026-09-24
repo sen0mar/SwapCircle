@@ -346,10 +346,40 @@ try {
     .expect(200);
   assert.equal(publicAvatar.body.avatarUrl, avatar.body.avatarUrl);
   assert.equal((await fetch(avatar.body.avatarUrl)).status, 200);
-  const oldAvatarKey = new URL(avatar.body.avatarUrl).pathname
-    .split('/')
-    .slice(-3)
-    .join('/');
+  const avatarObjectCount = async () =>
+    Number(
+      (
+        await migration.query(
+          "SELECT count(*) AS count FROM storage.objects WHERE bucket_id='item-media' AND name LIKE $1",
+          [`avatars/${alice.id}/%`],
+        )
+      ).rows[0].count,
+    );
+  const avatarKey = (url) =>
+    new URL(url).pathname.split('/').slice(-3).join('/');
+  const failedSwapRepository = new ProfilesRepository(runtime);
+  failedSwapRepository.swapAvatar = async () => {
+    throw new Error('synthetic database failure');
+  };
+  const failedSwapApp = createApp({
+    allowedOrigins: [],
+    verifyToken: verifier,
+    profiles: new ProfilesService(failedSwapRepository, storage),
+  });
+  await request(failedSwapApp)
+    .post(avatarPath)
+    .set(auth(alice))
+    .set('Content-Type', 'image/png')
+    .send(png)
+    .expect(500);
+  assert.equal(
+    (await request(app).get(`/api/v1/members/${alice.id}`)).body.avatarUrl,
+    avatar.body.avatarUrl,
+  );
+  assert.equal((await fetch(avatar.body.avatarUrl)).status, 200);
+  assert.equal(await avatarObjectCount(), 1);
+
+  const oldAvatarKey = avatarKey(avatar.body.avatarUrl);
   const removalFailureStorage = {
     ...storage,
     remove: async (key) => {
@@ -365,31 +395,31 @@ try {
       removalFailureStorage,
     ),
   });
-  await request(removalFailureApp)
+  const replacement = await request(removalFailureApp)
     .post(avatarPath)
     .set(auth(alice))
     .set('Content-Type', 'image/png')
     .send(png)
-    .expect(503);
-  await request(removalFailureApp)
-    .delete(avatarPath)
-    .set(auth(alice))
-    .expect(503);
+    .expect(201);
+  assert.notEqual(replacement.body.avatarUrl, avatar.body.avatarUrl);
+  assert.equal(replacement.body.avatarCleanupPending, true);
   assert.equal(
     (await request(app).get(`/api/v1/members/${alice.id}`)).body.avatarUrl,
-    avatar.body.avatarUrl,
+    replacement.body.avatarUrl,
   );
-  assert.equal(
-    Number(
-      (
-        await migration.query(
-          "SELECT count(*) AS count FROM storage.objects WHERE bucket_id='item-media' AND name LIKE $1",
-          [`avatars/${alice.id}/%`],
-        )
-      ).rows[0].count,
-    ),
-    1,
-  );
+  assert.equal((await fetch(avatar.body.avatarUrl)).status, 200);
+  assert.equal(await avatarObjectCount(), 2);
+  await request(removalFailureApp)
+    .post(`${avatarPath}/cleanup`)
+    .set(auth(alice))
+    .expect(503);
+  const cleanedReplacement = await request(app)
+    .post(`${avatarPath}/cleanup`)
+    .set(auth(alice))
+    .expect(200);
+  assert.equal(cleanedReplacement.body.avatarCleanupPending, false);
+  assert.equal((await fetch(avatar.body.avatarUrl)).ok, false);
+  assert.equal(await avatarObjectCount(), 1);
   const failedAvatarApp = createApp({
     allowedOrigins: [],
     verifyToken: verifier,
@@ -406,8 +436,52 @@ try {
     .expect(503);
   assert.equal(
     (await request(app).get(`/api/v1/members/${alice.id}`)).body.avatarUrl,
-    avatar.body.avatarUrl,
+    replacement.body.avatarUrl,
   );
+
+  let uploadsReady = 0;
+  let releaseUploads;
+  const uploadsGate = new Promise((resolve) => {
+    releaseUploads = resolve;
+  });
+  const concurrentStorage = {
+    ...storage,
+    upload: async (key, body) => {
+      await storage.upload(key, body);
+      uploadsReady++;
+      if (uploadsReady === 2) releaseUploads();
+      await uploadsGate;
+    },
+  };
+  const concurrentApp = createApp({
+    allowedOrigins: [],
+    verifyToken: verifier,
+    profiles: new ProfilesService(
+      new ProfilesRepository(runtime),
+      concurrentStorage,
+    ),
+  });
+  const concurrent = await Promise.all(
+    Array.from({ length: 2 }, () =>
+      request(concurrentApp)
+        .post(avatarPath)
+        .set(auth(alice))
+        .set('Content-Type', 'image/png')
+        .send(png),
+    ),
+  );
+  assert.deepEqual(
+    concurrent.map((result) => result.status).sort(),
+    [201, 409],
+  );
+  const winningAvatar = concurrent.find((result) => result.status === 201).body
+    .avatarUrl;
+  assert.equal(
+    (await request(app).get(`/api/v1/members/${alice.id}`)).body.avatarUrl,
+    winningAvatar,
+  );
+  assert.equal((await fetch(winningAvatar)).status, 200);
+  assert.equal(await avatarObjectCount(), 1);
   await request(app)
     .post(avatarPath)
     .set(auth(bob))
@@ -416,9 +490,34 @@ try {
     .expect(415);
   assert.equal(
     (await request(app).get(`/api/v1/members/${alice.id}`)).body.avatarUrl,
-    avatar.body.avatarUrl,
+    winningAvatar,
   );
-  await request(app).delete(avatarPath).set(auth(alice)).expect(200);
+  const failedRemoveStorage = {
+    ...storage,
+    remove: async (key) => {
+      if (key === avatarKey(winningAvatar))
+        throw new Error('synthetic removal failure');
+      await storage.remove(key);
+    },
+  };
+  const failedRemoveApp = createApp({
+    allowedOrigins: [],
+    verifyToken: verifier,
+    profiles: new ProfilesService(
+      new ProfilesRepository(runtime),
+      failedRemoveStorage,
+    ),
+  });
+  const removed = await request(failedRemoveApp)
+    .delete(avatarPath)
+    .set(auth(alice))
+    .expect(200);
+  assert.equal(removed.body.avatarUrl, null);
+  assert.equal(removed.body.avatarCleanupPending, true);
+  assert.equal((await fetch(winningAvatar)).status, 200);
+  await request(app).post(`${avatarPath}/cleanup`).set(auth(alice)).expect(200);
+  assert.equal((await fetch(winningAvatar)).ok, false);
+  assert.equal(await avatarObjectCount(), 0);
   assert.equal(
     (await request(app).get(`/api/v1/members/${alice.id}`)).body.avatarUrl,
     null,

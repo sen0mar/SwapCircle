@@ -11,6 +11,7 @@ type ProfileRow = {
   biography: string;
   approximate_location: string;
   avatar_storage_key: string | null;
+  avatar_cleanup_pending: boolean;
   created_at: Date;
   updated_at: Date;
 };
@@ -43,7 +44,8 @@ export class ProfilesRepository {
     userId: string,
   ): Promise<(CurrentProfile & { avatarStorageKey: string | null }) | null> {
     const result = await this.pool.query<ProfileRow>(
-      `SELECT id, display_name, biography, approximate_location, avatar_storage_key, created_at, updated_at
+      `SELECT id, display_name, biography, approximate_location, avatar_storage_key, created_at, updated_at,
+       EXISTS (SELECT 1 FROM public.avatar_cleanup WHERE owner_id=$1) AS avatar_cleanup_pending
        FROM public.profiles WHERE id = $1`,
       [userId],
     );
@@ -59,6 +61,7 @@ export class ProfilesRepository {
       approximateLocation: row.approximate_location,
       avatarUrl: null,
       avatarStorageKey: row.avatar_storage_key,
+      avatarCleanupPending: row.avatar_cleanup_pending,
       interests: await this.profileInterests(this.pool, userId),
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),
@@ -129,6 +132,11 @@ export class ProfilesRepository {
         'UPDATE public.profiles SET avatar_storage_key=$2, updated_at=now() WHERE id=$1',
         [userId, key],
       );
+      if (expected)
+        await client.query(
+          'INSERT INTO public.avatar_cleanup (storage_key, owner_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+          [expected, userId],
+        );
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -136,6 +144,28 @@ export class ProfilesRepository {
     } finally {
       client.release();
     }
+  }
+
+  async queueAvatarCleanup(userId: string, key: string): Promise<void> {
+    await this.pool.query(
+      'INSERT INTO public.avatar_cleanup (storage_key, owner_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+      [key, userId],
+    );
+  }
+
+  async pendingAvatarCleanup(userId: string): Promise<string[]> {
+    const result = await this.pool.query<{ storage_key: string }>(
+      'SELECT storage_key FROM public.avatar_cleanup WHERE owner_id=$1 ORDER BY created_at',
+      [userId],
+    );
+    return result.rows.map((row) => row.storage_key);
+  }
+
+  async finishAvatarCleanup(userId: string, key: string): Promise<void> {
+    await this.pool.query(
+      'DELETE FROM public.avatar_cleanup WHERE owner_id=$1 AND storage_key=$2',
+      [userId, key],
+    );
   }
 
   async update(

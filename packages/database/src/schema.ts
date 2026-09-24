@@ -30,6 +30,20 @@ export const profiles = pgTable('profiles', {
     .defaultNow(),
 });
 
+export const avatarCleanup = pgTable(
+  'avatar_cleanup',
+  {
+    storageKey: text('storage_key').primaryKey(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('avatar_cleanup_owner_idx').on(table.ownerId)],
+);
+
 export const interests = pgTable('interests', {
   id: uuid('id').primaryKey(),
   name: varchar('name', { length: 80 }).notNull().unique(),

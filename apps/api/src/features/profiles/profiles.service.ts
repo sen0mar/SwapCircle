@@ -51,7 +51,7 @@ export class ProfilesService {
     try {
       await this.storage.upload(key, processed);
     } catch {
-      await this.storage.remove(key).catch(() => {});
+      await this.cleanupUncommitted(userId, key);
       throw new PhotoError(
         503,
         'PHOTO_STORAGE_UNAVAILABLE',
@@ -59,39 +59,49 @@ export class ProfilesService {
       );
     }
     try {
-      if (previous) await this.storage.remove(previous);
-    } catch {
-      await this.storage.remove(key).catch(() => {});
-      throw new PhotoError(
-        503,
-        'PHOTO_STORAGE_UNAVAILABLE',
-        'The previous avatar could not be removed. Try again.',
-      );
-    }
-    try {
       await this.repository.swapAvatar(userId, previous, key);
     } catch (error) {
-      await this.storage.remove(key).catch(() => {});
+      await this.cleanupUncommitted(userId, key);
       throw error;
     }
+    await this.clearQueued(userId, false);
     return this.current(userId);
   }
 
   async removeAvatar(userId: string) {
     const previous = await this.repository.avatarKey(userId);
-    if (previous) {
-      if (!this.storage) throw new Error('Avatar storage unavailable.');
+    await this.repository.swapAvatar(userId, previous, null);
+    await this.clearQueued(userId, false);
+    return this.current(userId);
+  }
+
+  async retryAvatarCleanup(userId: string) {
+    await this.clearQueued(userId, true);
+    return this.current(userId);
+  }
+
+  private async cleanupUncommitted(userId: string, key: string) {
+    try {
+      await this.storage?.remove(key);
+    } catch {
+      await this.repository.queueAvatarCleanup(userId, key);
+    }
+  }
+
+  private async clearQueued(userId: string, strict: boolean) {
+    if (!this.storage) throw new Error('Avatar storage unavailable.');
+    for (const key of await this.repository.pendingAvatarCleanup(userId)) {
       try {
-        await this.storage.remove(previous);
+        await this.storage.remove(key);
+        await this.repository.finishAvatarCleanup(userId, key);
       } catch {
-        throw new PhotoError(
-          503,
-          'PHOTO_STORAGE_UNAVAILABLE',
-          'The avatar could not be removed. Try again.',
-        );
+        if (strict)
+          throw new PhotoError(
+            503,
+            'PHOTO_STORAGE_UNAVAILABLE',
+            'The previous avatar could not be removed. Try again.',
+          );
       }
     }
-    await this.repository.swapAvatar(userId, previous, null);
-    return this.current(userId);
   }
 }

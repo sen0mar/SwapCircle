@@ -123,6 +123,33 @@ export function createProfilesRouter(
       }
     },
   );
+  router.post(
+    '/profiles/me/avatar/cleanup',
+    authenticate(verifyToken),
+    async (
+      _request: Request,
+      response: Response<unknown, AuthenticatedLocals>,
+      next: NextFunction,
+    ) => {
+      try {
+        response.json(
+          await service.retryAvatarCleanup(response.locals.identity.userId),
+        );
+      } catch (error) {
+        if (error instanceof PhotoError)
+          response
+            .status(error.status)
+            .json(
+              errorBody(
+                error.code,
+                error.message,
+                response.getHeader('X-Request-Id'),
+              ),
+            );
+        else next(error);
+      }
+    },
+  );
   router.get('/interests', controller.interests);
   router.get('/members/:id', controller.publicProfile);
 
