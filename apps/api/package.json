@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:auth-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node test/local-auth.mjs",
     "test:profiles-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-profiles.mjs",
-    "test:listings-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-listings.mjs"
+    "test:listings-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-listings.mjs",
+    "test:photos-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-photos.mjs"
   },
   "exports": {
     ".": {
@@ -26,9 +27,10 @@
     "@swapcircle/contracts": "workspace:*",
     "@swapcircle/database": "workspace:*",
     "cors": "^2.8.6",
-    "pg": "8.23.0",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "pg": "8.23.0",
+    "sharp": "0.34.4",
     "zod": "^4.6.5"
   },
   "devDependencies": {

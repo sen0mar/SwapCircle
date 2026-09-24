@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      3,
+      4,
     );
 
     for (const table of [
@@ -93,6 +93,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'profile_interests',
       'account_restrictions',
       'listings',
+      'listing_photos',
     ]) {
       const protection = await pool.query<{ relrowsecurity: boolean }>(
         'select relrowsecurity from pg_class where oid = $1::regclass',
@@ -111,6 +112,23 @@ export async function verify(pool: Pool, runtimeUrl: string) {
         assert.deepEqual(access.rows[0], { read: false, write: false });
       }
     }
+
+    const order = await pool.query<{ condeferrable: boolean }>(
+      `SELECT condeferrable FROM pg_constraint
+       WHERE conrelid='public.listing_photos'::regclass AND conname='listing_photos_position_unique'`,
+    );
+    assert.equal(order.rows[0]?.condeferrable, true);
+
+    const bucket = await pool.query<{
+      public: boolean;
+      allowed_mime_types: string[];
+    }>(
+      "SELECT public, allowed_mime_types FROM storage.buckets WHERE id='item-media'",
+    );
+    assert.deepEqual(bucket.rows[0], {
+      public: true,
+      allowed_mime_types: ['image/webp'],
+    });
 
     console.log(
       'Verified migration replay, runtime login/DDL denial, default table/function denial, and RLS isolation.',

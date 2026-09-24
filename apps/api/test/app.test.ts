@@ -20,6 +20,7 @@ test('startup rejects missing/unsafe configuration without exposing values', () 
         readEnvironment({
           SUPABASE_URL: 'http://127.0.0.1:55431',
           SUPABASE_PUBLISHABLE_KEY: 'test-public-key',
+          SUPABASE_SERVICE_ROLE_KEY: 'synthetic-server-key',
           DATABASE_URL:
             'postgresql://swapcircle_runtime:synthetic@127.0.0.1:55432/postgres',
           ...config,
@@ -32,6 +33,7 @@ test('startup rejects missing/unsafe configuration without exposing values', () 
     readEnvironment({
       SUPABASE_URL: 'http://127.0.0.1:55431',
       SUPABASE_PUBLISHABLE_KEY: 'test-public-key',
+      SUPABASE_SERVICE_ROLE_KEY: 'synthetic-server-key',
       DATABASE_URL:
         'postgresql://swapcircle_runtime:synthetic@127.0.0.1:55432/postgres',
       CORS_ORIGINS: 'http://127.0.0.1:5173, https://example.org',
@@ -40,6 +42,7 @@ test('startup rejects missing/unsafe configuration without exposing values', () 
       port: 3001,
       supabaseUrl: 'http://127.0.0.1:55431',
       supabasePublishableKey: 'test-public-key',
+      supabaseServiceRoleKey: 'synthetic-server-key',
       databaseUrl:
         'postgresql://swapcircle_runtime:synthetic@127.0.0.1:55432/postgres',
       allowedOrigins: ['http://127.0.0.1:5173', 'https://example.org'],
