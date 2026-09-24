@@ -18,6 +18,8 @@ import { ListingsService } from '../dist/features/listings/listings.service.js';
 import { PhotosRepository } from '../dist/features/photos/photos.repository.js';
 import { PhotosService } from '../dist/features/photos/photos.service.js';
 import { createPhotoStorage } from '../dist/features/photos/photos.storage.js';
+import { ProfilesRepository } from '../dist/features/profiles/profiles.repository.js';
+import { ProfilesService } from '../dist/features/profiles/profiles.service.js';
 
 const fetch = globalThis.fetch;
 
@@ -44,6 +46,7 @@ const app = createApp({
   verifyToken: verifier,
   listings: new ListingsService(new ListingsRepository(runtime)),
   photos: new PhotosService(repository, storage),
+  profiles: new ProfilesService(new ProfilesRepository(runtime), storage),
 });
 const users = [];
 const listingIds = [];
@@ -163,29 +166,30 @@ try {
     photos.map((photo) => photo.position),
     [0, 1, 2],
   );
-  const ordering = await migration.connect();
-  try {
-    await ordering.query('BEGIN');
-    await ordering.query(
-      'SET CONSTRAINTS listing_photos_position_unique DEFERRED',
-    );
-    await ordering.query(
-      `UPDATE public.listing_photos SET position = CASE id
-       WHEN $1::uuid THEN 1 WHEN $2::uuid THEN 0 ELSE position END
-       WHERE id IN ($1::uuid, $2::uuid)`,
-      [photos[0].id, photos[1].id],
-    );
-    await ordering.query('COMMIT');
-  } catch (error) {
-    await ordering.query('ROLLBACK');
-    throw error;
-  } finally {
-    ordering.release();
-  }
-  assert.equal(
-    (await request(app).get(path).expect(200)).body[0].id,
-    photos[1].id,
-  );
+  const reorderedIds = [photos[1].id, photos[0].id, photos[2].id];
+  await request(app)
+    .put(`${path}/order`)
+    .set(auth(bob))
+    .send({ ids: reorderedIds })
+    .expect(404);
+  await request(app)
+    .put(`${path}/order`)
+    .set(auth(alice))
+    .send({ ids: [photos[0].id] })
+    .expect(409);
+  await request(app)
+    .put(`${path}/order`)
+    .set(auth(alice))
+    .send({ ids: reorderedIds })
+    .expect(200);
+  const reordered = (await request(app).get(path).expect(200)).body;
+  assert.equal(reordered[0].id, photos[1].id);
+  assert.equal(reordered[0].position, 0);
+  const metadata = (rows) =>
+    rows
+      .map(({ id, width, height, bytes }) => ({ id, width, height, bytes }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  assert.deepEqual(metadata(reordered), metadata(photos));
   for (const photo of photos) {
     assert.equal(new URL(photo.url).origin, status.API_URL);
     const visible = await fetch(photo.url);
@@ -201,6 +205,16 @@ try {
       await bob.client.storage
         .from('item-media')
         .upload(`${listingId}/browser.webp`, png, { contentType: 'image/webp' })
+    ).error,
+    null,
+  );
+  assert.notEqual(
+    (
+      await bob.client.storage
+        .from('item-media')
+        .upload(`avatars/${bob.id}/browser.webp`, png, {
+          contentType: 'image/webp',
+        })
     ).error,
     null,
   );
@@ -317,8 +331,56 @@ try {
     ).rowCount,
     2,
   );
+  const avatarPath = '/api/v1/profiles/me/avatar';
+  const avatar = await request(app)
+    .post(avatarPath)
+    .set(auth(alice))
+    .set('Content-Type', 'image/png')
+    .send(png)
+    .expect(201);
+  assert.equal(avatar.body.id, alice.id);
+  assert.equal(typeof avatar.body.avatarUrl, 'string');
+  assert.equal('avatarStorageKey' in avatar.body, false);
+  const publicAvatar = await request(app)
+    .get(`/api/v1/members/${alice.id}`)
+    .expect(200);
+  assert.equal(publicAvatar.body.avatarUrl, avatar.body.avatarUrl);
+  assert.equal((await fetch(avatar.body.avatarUrl)).status, 200);
+  const failedAvatarApp = createApp({
+    allowedOrigins: [],
+    verifyToken: verifier,
+    profiles: new ProfilesService(
+      new ProfilesRepository(runtime),
+      failingStorage,
+    ),
+  });
+  await request(failedAvatarApp)
+    .post(avatarPath)
+    .set(auth(alice))
+    .set('Content-Type', 'image/png')
+    .send(png)
+    .expect(503);
+  assert.equal(
+    (await request(app).get(`/api/v1/members/${alice.id}`)).body.avatarUrl,
+    avatar.body.avatarUrl,
+  );
+  await request(app)
+    .post(avatarPath)
+    .set(auth(bob))
+    .set('Content-Type', 'image/png')
+    .send(Buffer.from('invalid'))
+    .expect(415);
+  assert.equal(
+    (await request(app).get(`/api/v1/members/${alice.id}`)).body.avatarUrl,
+    avatar.body.avatarUrl,
+  );
+  await request(app).delete(avatarPath).set(auth(alice)).expect(200);
+  assert.equal(
+    (await request(app).get(`/api/v1/members/${alice.id}`)).body.avatarUrl,
+    null,
+  );
   console.info(
-    'Local photos: auth, limits, malformed input, concurrent fourth, public processed URL, browser write denial, removal, storage and DB failure cleanup passed.',
+    'Local photos: ownership, reorder, limits, malformed input, concurrent fourth, public processed URLs, avatar editing, browser write denial, removal, and failure cleanup passed.',
   );
 } finally {
   for (const listingId of listingIds) {

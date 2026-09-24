@@ -1,12 +1,24 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '../../components/ui/card';
 import { useListings } from './useListings';
+import { CatalogOwner, conditions, ListingRetry } from './ListingContent';
 import {
-  CatalogOwner,
-  conditions,
-  ListingPlaceholder,
-  ListingRetry,
-} from './ListingContent';
+  ListingImage,
+  PhotoLoadError,
+  useListingPhotos,
+} from './listing-photos';
+
+function CatalogPhoto({ id, title }: { id: string; title: string }) {
+  const photos = useListingPhotos(id);
+  if (photos.isPending)
+    return (
+      <div className="photo-unavailable" role="status">
+        Loading photo…
+      </div>
+    );
+  if (photos.isError) return <PhotoLoadError />;
+  return <ListingImage photo={photos.data[0]} title={title} />;
+}
 
 export function BrowsePage() {
   const [params] = useSearchParams();
@@ -35,7 +47,7 @@ export function BrowsePage() {
               {listings.data.items.map((item) => (
                 <Card className="listing-card" key={item.id}>
                   <article>
-                    <ListingPlaceholder />
+                    <CatalogPhoto id={item.id} title={item.title} />
                     <div className="listing-copy">
                       <h2>
                         <Link to={`/listings/${item.id}`}>{item.title}</Link>

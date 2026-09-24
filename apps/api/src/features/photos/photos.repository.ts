@@ -116,6 +116,31 @@ export class PhotosRepository {
     return result.rows;
   }
 
+  async reorder(client: PoolClient, listingId: string, ids: string[]) {
+    const result = await client.query<{ id: string; position: number }>(
+      `SELECT id, position FROM public.listing_photos WHERE listing_id=$1 AND state='active' ORDER BY position FOR UPDATE`,
+      [listingId],
+    );
+
+    if (
+      result.rows.length !== ids.length ||
+      result.rows.some((row) => !ids.includes(row.id))
+    )
+      return false;
+
+    await client.query(
+      'SET CONSTRAINTS listing_photos_position_unique DEFERRED',
+    );
+    for (const [position, id] of ids.entries()) {
+      await client.query(
+        'UPDATE public.listing_photos SET position=$3 WHERE listing_id=$1 AND id=$2',
+        [listingId, id, result.rows[position]!.position],
+      );
+    }
+
+    return true;
+  }
+
   async abandoned(listingId: string) {
     const result = await this.pool.query<PhotoRow>(
       `SELECT ${projection} FROM public.listing_photos
