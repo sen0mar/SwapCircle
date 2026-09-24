@@ -154,9 +154,11 @@ try {
       'displayName',
       'biography',
       'approximateLocation',
+      'avatarUrl',
       'interests',
     ].sort(),
   );
+  assert.equal(publicOwner.avatarUrl, null);
   assert.equal(a.ownerId, alice.id);
   assert.equal(b.ownerId, bob.id);
   await edit(bob, a.id, { ...data, revision: 1 }).expect(404);
