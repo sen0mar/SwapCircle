@@ -99,6 +99,9 @@ test('create, edit, withdraw and reload with draft recovery', async ({
 
     return route.fulfill({ status: 404, headers });
   });
+  await page.route('**/api/v1/listings/*/photos', (route) =>
+    route.fulfill({ headers, json: [] }),
+  );
   await page.route(`**/api/v1/members/${ownerId}`, (route) =>
     route.fulfill({
       headers,
@@ -125,7 +128,8 @@ test('create, edit, withdraw and reload with draft recovery', async ({
   ).toBeVisible();
   await expect(page.getByLabel('Title')).toHaveValue('Canvas bag');
   await page.getByRole('button', { name: 'Create item' }).click();
-  await expect(page).toHaveURL(/\/listings\/a329028e[^/]*$/);
+  await expect(page).toHaveURL(/\/listings\/a329028e[^/]*\/edit$/);
+  await page.getByRole('link', { name: 'View item' }).click();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Canvas bag' })).toBeVisible();
 

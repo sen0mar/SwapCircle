@@ -25,7 +25,10 @@ createApp({
     new PhotosRepository(pool),
     createPhotoStorage(config.supabaseUrl, config.supabaseServiceRoleKey),
   ),
-  profiles: new ProfilesService(new ProfilesRepository(pool)),
+  profiles: new ProfilesService(
+    new ProfilesRepository(pool),
+    createPhotoStorage(config.supabaseUrl, config.supabaseServiceRoleKey),
+  ),
 }).listen(config.port, () => {
   console.info(`SwapCircle API listening on port ${config.port}`);
 });

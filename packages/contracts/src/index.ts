@@ -47,6 +47,7 @@ export const publicProfileSchema = profileUpdateSchema
   .extend({
     id: z.uuid(),
     interests: interestCatalogueSchema,
+    avatarUrl: z.url().nullable().default(null),
   });
 
 export const currentProfileSchema = publicProfileSchema.extend({

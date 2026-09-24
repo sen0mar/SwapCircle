@@ -21,6 +21,7 @@ export const profiles = pgTable('profiles', {
   approximateLocation: varchar('approximate_location', { length: 120 })
     .notNull()
     .default(''),
+  avatarStorageKey: text('avatar_storage_key'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

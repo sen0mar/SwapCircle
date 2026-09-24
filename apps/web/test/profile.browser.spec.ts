@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import type { CurrentProfile } from '@swapcircle/contracts';
 import { signInFixture } from './auth-fixture';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const id = 'a8ded912-c170-4988-8750-9747558e8a87';
 const interest = {
@@ -13,6 +15,105 @@ const timestamps = {
   updatedAt: '2026-09-01T12:00:00.000Z',
 };
 
+test('avatar preview, failed upload retry, public display and removal', async ({
+  page,
+}) => {
+  let avatarUrl: string | null = null;
+  let attempts = 0;
+  const image = readFileSync(
+    fileURLToPath(new URL('../src/assets/backpack.jpg', import.meta.url)),
+  );
+  const current = () => ({
+    id,
+    displayName: 'Ada Garden',
+    biography: '',
+    approximateLocation: '',
+    interests: [],
+    avatarUrl,
+    ...timestamps,
+  });
+  const headers = { 'Access-Control-Allow-Origin': 'http://127.0.0.1:4173' };
+  await page.route('**/api/v1/interests', (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route('**/api/v1/profiles/me', (route) =>
+    route.fulfill({ headers, json: current() }),
+  );
+  await page.route('**/api/v1/profiles/me/avatar', (route) => {
+    if (route.request().method() === 'OPTIONS')
+      return route.fulfill({
+        status: 204,
+        headers: {
+          ...headers,
+          'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'authorization, content-type',
+        },
+      });
+    if (route.request().method() === 'POST') {
+      attempts++;
+      if (attempts === 1)
+        return route.fulfill({
+          status: 503,
+          headers,
+          json: {
+            error: {
+              code: 'PHOTO_STORAGE_UNAVAILABLE',
+              message: 'Retry.',
+              requestId: crypto.randomUUID(),
+            },
+          },
+        });
+      avatarUrl = 'http://127.0.0.1:4173/src/assets/backpack.jpg';
+      return route.fulfill({ status: 201, headers, json: current() });
+    }
+    avatarUrl = null;
+    return route.fulfill({ headers, json: current() });
+  });
+  await page.route(`**/api/v1/members/${id}`, (route) =>
+    route.fulfill({
+      headers,
+      json: {
+        id,
+        displayName: 'Ada Garden',
+        biography: '',
+        approximateLocation: '',
+        interests: [],
+        avatarUrl,
+      },
+    }),
+  );
+  await signInFixture(page);
+  await page.goto('/account/profile');
+  await page.getByLabel('Choose avatar').setInputFiles({
+    name: 'avatar.jpg',
+    mimeType: 'image/jpeg',
+    buffer: image,
+  });
+  await expect(
+    page.getByRole('img', { name: 'Selected avatar preview' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Upload avatar' }).click();
+  await expect(
+    page.getByText('Your selection is still here', { exact: false }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Upload avatar' }).click();
+  await expect(
+    page.getByRole('img', { name: "Ada Garden's avatar" }),
+  ).toBeVisible();
+  await page.goto(`/members/${id}`);
+  await expect(
+    page.getByRole('img', { name: "Ada Garden's avatar" }),
+  ).toBeVisible();
+  await page.goto('/account/profile');
+  await page.getByRole('button', { name: 'Remove avatar' }).click();
+  await expect(
+    page.getByRole('img', { name: 'Ada Garden has no available avatar' }),
+  ).toBeVisible();
+  await page.getByLabel('Theme').selectOption('dark');
+  await page.setViewportSize({ width: 360, height: 900 });
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
 test('profile draft, save, reload and public second session', async ({
   page,
   browser,
@@ -23,6 +124,7 @@ test('profile draft, save, reload and public second session', async ({
     biography: '',
     approximateLocation: '',
     interests: [],
+    avatarUrl: null,
     ...timestamps,
   };
   let failSave = true;

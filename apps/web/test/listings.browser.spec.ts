@@ -25,6 +25,46 @@ const profile = {
   interests: [],
 };
 
+test('stored listing photos render on cards and detail with fallback', async ({
+  page,
+}) => {
+  let url = 'http://127.0.0.1:4173/src/assets/backpack.jpg';
+  const photo = {
+    id: crypto.randomUUID(),
+    listingId: id,
+    position: 0,
+    width: 500,
+    height: 375,
+    bytes: 1000,
+  };
+  await page.route('**/api/v1/listings?*', (route) =>
+    route.fulfill({ json: { items: [item], nextCursor: null } }),
+  );
+  await page.route(`**/api/v1/listings/${id}`, (route) =>
+    route.fulfill({ json: item }),
+  );
+  await page.route(`**/api/v1/listings/${id}/photos`, (route) =>
+    route.fulfill({ json: [{ ...photo, url }] }),
+  );
+  await page.route(`**/api/v1/members/${ownerId}`, (route) =>
+    route.fulfill({ json: profile }),
+  );
+  await page.goto('/browse');
+  await expect(
+    page.getByRole('img', { name: `${item.title}, photo 1` }),
+  ).toBeVisible();
+  await page.getByRole('link', { name: item.title }).click();
+  await expect(
+    page.getByRole('img', { name: `${item.title}, photo 1` }),
+  ).toBeVisible();
+  url = 'http://127.0.0.1:4173/broken-photo.jpg';
+  await page.route('**/broken-photo.jpg', (route) =>
+    route.fulfill({ status: 404 }),
+  );
+  await page.reload();
+  await expect(page.getByText('Photo unavailable')).toBeVisible();
+});
+
 test('public cursor navigation, reload, owner profile, long text and accessible themes', async ({
   page,
 }) => {

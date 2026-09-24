@@ -10,6 +10,7 @@ type ProfileRow = {
   display_name: string;
   biography: string;
   approximate_location: string;
+  avatar_storage_key: string | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -37,9 +38,11 @@ export class ProfilesRepository {
     return result.rows;
   }
 
-  async profile(userId: string): Promise<CurrentProfile | null> {
+  async profile(
+    userId: string,
+  ): Promise<(CurrentProfile & { avatarStorageKey: string | null }) | null> {
     const result = await this.pool.query<ProfileRow>(
-      `SELECT id, display_name, biography, approximate_location, created_at, updated_at
+      `SELECT id, display_name, biography, approximate_location, avatar_storage_key, created_at, updated_at
        FROM public.profiles WHERE id = $1`,
       [userId],
     );
@@ -53,24 +56,78 @@ export class ProfilesRepository {
       displayName: row.display_name,
       biography: row.biography,
       approximateLocation: row.approximate_location,
+      avatarUrl: null,
+      avatarStorageKey: row.avatar_storage_key,
       interests: await this.profileInterests(this.pool, userId),
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),
     };
   }
 
-  async publicProfile(userId: string): Promise<PublicProfile | null> {
+  async publicProfile(
+    userId: string,
+  ): Promise<(PublicProfile & { avatarStorageKey: string | null }) | null> {
     const profile = await this.profile(userId);
 
     if (!profile) return null;
 
-    const { id, displayName, biography, approximateLocation, interests } =
-      profile;
+    const {
+      id,
+      displayName,
+      biography,
+      approximateLocation,
+      interests,
+      avatarStorageKey,
+    } = profile;
 
-    return { id, displayName, biography, approximateLocation, interests };
+    return {
+      id,
+      displayName,
+      biography,
+      approximateLocation,
+      interests,
+      avatarUrl: null,
+      avatarStorageKey,
+    };
   }
 
-  async update(userId: string, input: ProfileUpdate): Promise<CurrentProfile> {
+  async swapAvatar(userId: string, key: string | null): Promise<string | null> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        'SELECT id FROM public.profiles WHERE id=$1 FOR UPDATE',
+        [userId],
+      );
+      const restricted = await client.query(
+        'SELECT 1 FROM public.account_restrictions WHERE user_id=$1',
+        [userId],
+      );
+      if (restricted.rowCount) throw new RestrictedAccountError();
+      const previous = await client.query<{
+        avatar_storage_key: string | null;
+      }>('SELECT avatar_storage_key FROM public.profiles WHERE id=$1', [
+        userId,
+      ]);
+      if (!previous.rowCount) throw new Error('Profile not found.');
+      await client.query(
+        'UPDATE public.profiles SET avatar_storage_key=$2, updated_at=now() WHERE id=$1',
+        [userId, key],
+      );
+      await client.query('COMMIT');
+      return previous.rows[0]?.avatar_storage_key ?? null;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async update(
+    userId: string,
+    input: ProfileUpdate,
+  ): Promise<CurrentProfile & { avatarStorageKey: string | null }> {
     const client = await this.pool.connect();
 
     try {

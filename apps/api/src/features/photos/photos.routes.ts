@@ -94,6 +94,24 @@ export function createPhotosRouter(
       response.status(204).end();
     }),
   );
+  router.put(
+    '/listings/:id/photos/order',
+    authenticate(verifyToken),
+    handle(async (request, response) => {
+      const ids = z
+        .array(z.uuid())
+        .max(3)
+        .refine((items) => new Set(items).size === items.length)
+        .parse(request.body?.ids);
+      response.json(
+        await service.reorder(
+          response.locals.identity.userId,
+          z.uuid().parse(request.params.id),
+          ids,
+        ),
+      );
+    }),
+  );
   router.post(
     '/listings/:id/photos/cleanup',
     authenticate(verifyToken),
