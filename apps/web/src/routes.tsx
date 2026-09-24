@@ -10,6 +10,8 @@ import { MemberPage } from './features/account/MemberPage';
 import { Home } from './features/home/Home';
 import { ListingPage } from './features/browse/ListingPage';
 import { BrowsePage } from './features/browse/BrowsePage';
+import { ListingEditorPage } from './features/listings/ListingEditorPage';
+import { MyShelfPage } from './features/listings/MyShelfPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const ApiStatus = import.meta.env.DEV
@@ -25,6 +27,9 @@ export function AppRoutes() {
         <Route path="/account" element={<AccountPage />} />
         <Route path="/account/profile" element={<ProfilePage />} />
         <Route path="/account/settings" element={<SettingsPage />} />
+        <Route path="/shelf" element={<MyShelfPage />} />
+        <Route path="/listings/new" element={<ListingEditorPage />} />
+        <Route path="/listings/:id/edit" element={<ListingEditorPage />} />
       </Route>
       {ApiStatus && (
         <Route

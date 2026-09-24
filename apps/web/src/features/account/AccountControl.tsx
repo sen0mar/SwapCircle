@@ -82,6 +82,7 @@ function SignedInControl({
           </p>
         )}
         <Link to="/account/profile">Edit profile</Link>
+        <Link to="/shelf">My Shelf</Link>
         {profile.data && (
           <Link to={`/members/${profile.data.id}`}>Public profile</Link>
         )}

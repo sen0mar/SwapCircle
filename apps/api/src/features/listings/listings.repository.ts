@@ -104,4 +104,15 @@ export class ListingsRepository {
 
     return result.rows;
   }
+
+  async ownerPage(actor: string, limit: number, cursor?: ListingCursor) {
+    const result = await this.pool.query<Listing>(
+      `SELECT ${projection} FROM public.listings
+      WHERE owner_id=$1 AND ($3::timestamptz IS NULL OR (created_at, id) < ($3::timestamptz, $4::uuid))
+      ORDER BY created_at DESC, id DESC LIMIT $2`,
+      [actor, limit + 1, cursor?.createdAt ?? null, cursor?.id ?? null],
+    );
+
+    return result.rows;
+  }
 }

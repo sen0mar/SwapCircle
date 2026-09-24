@@ -132,7 +132,7 @@ test('loading, recoverable failure, empty and withdrawn states', async ({
   ).toHaveCount(0);
 });
 
-test('only owners see the truthful edit limitation', async ({ page }) => {
+test('only owners see the edit link', async ({ page }) => {
   await page.route('**/api/v1/profiles/me', (route) =>
     route.fulfill({
       json: {
@@ -150,11 +150,10 @@ test('only owners see the truthful edit limitation', async ({ page }) => {
   );
   await signInFixture(page);
   await page.goto(`/listings/${id}`);
-  await expect(page.getByRole('button', { name: 'Edit item' })).toBeDisabled();
-  await expect(
-    page.getByText('This is your item. Listing editing is not available yet.'),
-  ).toBeVisible();
-  await expect(page.locator('a[href$="/edit"]')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Edit item' })).toHaveAttribute(
+    'href',
+    `/listings/${id}/edit`,
+  );
 });
 
 test('another signed-in member cannot edit and owner failure can recover', async ({

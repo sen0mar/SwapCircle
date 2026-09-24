@@ -46,9 +46,11 @@ export function HomeContent({
               less wasteful world.
             </p>
             <div className="hero-actions">
-              <Button disabled aria-describedby="listing-unavailable">
-                <Plus size={20} aria-hidden="true" />
-                List an item
+              <Button asChild>
+                <Link to="/listings/new">
+                  <Plus size={20} aria-hidden="true" />
+                  List an item
+                </Link>
               </Button>
               <Button asChild variant="primary">
                 <Link to="/browse">
@@ -57,9 +59,6 @@ export function HomeContent({
                 </Link>
               </Button>
             </div>
-            <p id="listing-unavailable" className="availability-note">
-              Listing items is coming soon.
-            </p>
           </div>
           <img
             className="hero-photo"

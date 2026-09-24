@@ -36,6 +36,22 @@ test('listing writes reject missing authentication before persistence', async ()
   }
 });
 
+test('My Shelf requires authentication before persistence', async () => {
+  const result = await request(app).get('/api/v1/listings/mine').expect(401);
+  apiErrorSchema.parse(result.body);
+});
+
+test('My Shelf rejects owner and cursor query injection', async () => {
+  for (const query of [{ ownerId: 'forged' }, { cursor: 'invalid' }]) {
+    const result = await request(app)
+      .get('/api/v1/listings/mine')
+      .set('Authorization', 'Bearer synthetic')
+      .query(query)
+      .expect(400);
+    apiErrorSchema.parse(result.body);
+  }
+});
+
 test('listing contracts reject ownership, state and revision injection', () => {
   assert.equal(listingCreateSchema.safeParse(data).success, true);
   for (const extra of [
