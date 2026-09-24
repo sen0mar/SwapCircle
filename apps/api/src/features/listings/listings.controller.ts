@@ -55,6 +55,16 @@ export function createListingsController(service: ListingsService) {
   }
 
   return {
+    mine: handle(async (request, response) => {
+      const query = listingQuerySchema.parse(request.query);
+      response.json(
+        await service.ownerPage(
+          response.locals.identity.userId,
+          query.limit,
+          parseCursor(query.cursor),
+        ),
+      );
+    }),
     create: handle(async (request, response) => {
       const input = listingCreateSchema.parse(request.body);
 
@@ -94,23 +104,19 @@ export function createListingsController(service: ListingsService) {
     }),
     page: handle(async (request, response) => {
       const query = listingQuerySchema.parse(request.query);
-      let cursor;
-
-      if (query.cursor !== undefined) {
-        try {
-          cursor = listingCursorSchema.parse(
-            JSON.parse(Buffer.from(query.cursor, 'base64url').toString('utf8')),
-          );
-        } catch {
-          throw new ListingError(
-            400,
-            'INVALID_CURSOR',
-            'Invalid pagination cursor.',
-          );
-        }
-      }
-
-      response.json(await service.page(query.limit, cursor));
+      response.json(await service.page(query.limit, parseCursor(query.cursor)));
     }),
   };
+}
+
+function parseCursor(value: string | undefined) {
+  if (value === undefined) return undefined;
+
+  try {
+    return listingCursorSchema.parse(
+      JSON.parse(Buffer.from(value, 'base64url').toString('utf8')),
+    );
+  } catch {
+    throw new ListingError(400, 'INVALID_CURSOR', 'Invalid pagination cursor.');
+  }
 }

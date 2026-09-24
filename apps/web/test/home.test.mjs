@@ -75,7 +75,7 @@ test('homepage without data is truthful with implemented navigation only', () =>
 
   assert.deepEqual(
     [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map((match) => match[1]),
-    ['/browse', '/browse'],
+    ['/listings/new', '/browse', '/browse'],
   );
 
   assert.doesNotMatch(

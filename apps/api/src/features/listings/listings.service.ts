@@ -78,6 +78,18 @@ export class ListingsService {
 
   async page(limit: number, cursor?: ListingCursor) {
     const rows = await this.repository.page(limit, cursor);
+    return this.makePage(rows, limit);
+  }
+
+  async ownerPage(actor: string, limit: number, cursor?: ListingCursor) {
+    const rows = await this.repository.ownerPage(actor, limit, cursor);
+    return this.makePage(rows, limit);
+  }
+
+  private makePage(
+    rows: Awaited<ReturnType<ListingsRepository['page']>>,
+    limit: number,
+  ) {
     const items = rows.slice(0, limit);
     const last = items.at(-1);
     const nextCursor =

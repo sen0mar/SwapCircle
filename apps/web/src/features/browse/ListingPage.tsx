@@ -70,12 +70,12 @@ export function ListingPage() {
           )}
           {session?.user.id === item.ownerId && (
             <div className="message-action">
-              <Button disabled aria-describedby="edit-unavailable">
-                Edit item
-              </Button>
-              <p id="edit-unavailable">
-                This is your item. Listing editing is not available yet.
-              </p>
+              {item.availability === 'available' && (
+                <Button asChild>
+                  <Link to={`/listings/${item.id}/edit`}>Edit item</Link>
+                </Button>
+              )}
+              <Link to="/shelf">My Shelf</Link>
             </div>
           )}
           <MessageUnavailable />
