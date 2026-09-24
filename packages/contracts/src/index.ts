@@ -107,3 +107,15 @@ export type Listing = z.infer<typeof listingSchema>;
 export type ListingCreate = z.infer<typeof listingCreateSchema>;
 export type ListingUpdate = z.infer<typeof listingUpdateSchema>;
 export type ListingCursor = z.infer<typeof listingCursorSchema>;
+
+export const listingPhotoSchema = z.object({
+  id: z.uuid(),
+  listingId: z.uuid(),
+  position: z.number().int().min(0).max(2),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  bytes: z.number().int().positive(),
+  url: z.url(),
+});
+export const listingPhotosSchema = z.array(listingPhotoSchema).max(3);
+export type ListingPhoto = z.infer<typeof listingPhotoSchema>;

@@ -13,6 +13,7 @@ async function startApi() {
       PORT: '4311',
       SUPABASE_URL: 'http://127.0.0.1:55439',
       SUPABASE_PUBLISHABLE_KEY: 'synthetic-public-key',
+      SUPABASE_SERVICE_ROLE_KEY: 'synthetic-server-key',
       CORS_ORIGINS: 'http://127.0.0.1:4173',
       DATABASE_URL:
         'postgresql://swapcircle_runtime:synthetic@127.0.0.1:55432/postgres',
