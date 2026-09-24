@@ -16,6 +16,7 @@ const origin = z
 const environmentSchema = z.object({
   SUPABASE_URL: origin,
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   DATABASE_URL: z.string().min(1),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   CORS_ORIGINS: z
@@ -42,6 +43,7 @@ export function readEnvironment(
     allowedOrigins: result.data.CORS_ORIGINS,
     supabaseUrl: result.data.SUPABASE_URL,
     supabasePublishableKey: result.data.SUPABASE_PUBLISHABLE_KEY,
+    supabaseServiceRoleKey: result.data.SUPABASE_SERVICE_ROLE_KEY,
     databaseUrl: result.data.DATABASE_URL,
   };
 }
