@@ -4,7 +4,10 @@ import type { VerifyToken } from '../../auth/verify.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { errorBody } from '../../http/error-response.js';
 import { PhotoError } from '../photos/photos.service.js';
-import { RestrictedAccountError } from './profiles.repository.js';
+import {
+  RestrictedAccountError,
+  AvatarChangedError,
+} from './profiles.repository.js';
 import type { AuthenticatedLocals } from '../../middleware/authenticate.js';
 import { createProfilesController } from './profiles.controller.js';
 import type { ProfilesService } from './profiles.service.js';
@@ -45,17 +48,29 @@ export function createProfilesRouter(
       } catch (error) {
         if (
           error instanceof PhotoError ||
-          error instanceof RestrictedAccountError
+          error instanceof RestrictedAccountError ||
+          error instanceof AvatarChangedError
         ) {
-          const status = error instanceof PhotoError ? error.status : 403;
+          const status =
+            error instanceof PhotoError
+              ? error.status
+              : error instanceof AvatarChangedError
+                ? 409
+                : 403;
           response
             .status(status)
             .json(
               errorBody(
-                error instanceof PhotoError ? error.code : 'ACCOUNT_RESTRICTED',
+                error instanceof PhotoError
+                  ? error.code
+                  : error instanceof AvatarChangedError
+                    ? 'AVATAR_CHANGED'
+                    : 'ACCOUNT_RESTRICTED',
                 error instanceof PhotoError
                   ? error.message
-                  : 'This account cannot change its avatar.',
+                  : error instanceof AvatarChangedError
+                    ? 'Your avatar changed. Reload and try again.'
+                    : 'This account cannot change its avatar.',
                 response.getHeader('X-Request-Id'),
               ),
             );
@@ -76,13 +91,31 @@ export function createProfilesRouter(
           await service.removeAvatar(response.locals.identity.userId),
         );
       } catch (error) {
-        if (error instanceof RestrictedAccountError)
+        if (
+          error instanceof PhotoError ||
+          error instanceof RestrictedAccountError ||
+          error instanceof AvatarChangedError
+        )
           response
-            .status(403)
+            .status(
+              error instanceof PhotoError
+                ? error.status
+                : error instanceof AvatarChangedError
+                  ? 409
+                  : 403,
+            )
             .json(
               errorBody(
-                'ACCOUNT_RESTRICTED',
-                'This account cannot change its avatar.',
+                error instanceof PhotoError
+                  ? error.code
+                  : error instanceof AvatarChangedError
+                    ? 'AVATAR_CHANGED'
+                    : 'ACCOUNT_RESTRICTED',
+                error instanceof PhotoError
+                  ? error.message
+                  : error instanceof AvatarChangedError
+                    ? 'Your avatar changed. Reload and try again.'
+                    : 'This account cannot change its avatar.',
                 response.getHeader('X-Request-Id'),
               ),
             );

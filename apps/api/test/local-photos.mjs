@@ -346,6 +346,50 @@ try {
     .expect(200);
   assert.equal(publicAvatar.body.avatarUrl, avatar.body.avatarUrl);
   assert.equal((await fetch(avatar.body.avatarUrl)).status, 200);
+  const oldAvatarKey = new URL(avatar.body.avatarUrl).pathname
+    .split('/')
+    .slice(-3)
+    .join('/');
+  const removalFailureStorage = {
+    ...storage,
+    remove: async (key) => {
+      if (key === oldAvatarKey) throw new Error('synthetic removal failure');
+      await storage.remove(key);
+    },
+  };
+  const removalFailureApp = createApp({
+    allowedOrigins: [],
+    verifyToken: verifier,
+    profiles: new ProfilesService(
+      new ProfilesRepository(runtime),
+      removalFailureStorage,
+    ),
+  });
+  await request(removalFailureApp)
+    .post(avatarPath)
+    .set(auth(alice))
+    .set('Content-Type', 'image/png')
+    .send(png)
+    .expect(503);
+  await request(removalFailureApp)
+    .delete(avatarPath)
+    .set(auth(alice))
+    .expect(503);
+  assert.equal(
+    (await request(app).get(`/api/v1/members/${alice.id}`)).body.avatarUrl,
+    avatar.body.avatarUrl,
+  );
+  assert.equal(
+    Number(
+      (
+        await migration.query(
+          "SELECT count(*) AS count FROM storage.objects WHERE bucket_id='item-media' AND name LIKE $1",
+          [`avatars/${alice.id}/%`],
+        )
+      ).rows[0].count,
+    ),
+    1,
+  );
   const failedAvatarApp = createApp({
     allowedOrigins: [],
     verifyToken: verifier,
