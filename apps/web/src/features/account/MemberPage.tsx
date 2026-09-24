@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { getPublicProfile } from './profile-api';
+import { Avatar } from './Avatar';
 
 export function MemberPage() {
   const { id = '' } = useParams();
@@ -31,6 +32,7 @@ export function MemberPage() {
       aria-labelledby="member-title"
     >
       <h1 id="member-title">{profile.displayName}</h1>
+      <Avatar url={profile.avatarUrl} name={profile.displayName} />
       {profile.approximateLocation && <p>{profile.approximateLocation}</p>}
       <h2>About</h2>
       <p className="profile-biography-text">

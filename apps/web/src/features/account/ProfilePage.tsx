@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { useCurrentProfile, useInterests, useSaveProfile } from './useProfile';
+import { AvatarEditor } from './AvatarEditor';
 
 export function ProfilePage() {
   const profile = useCurrentProfile();
@@ -35,6 +36,7 @@ export function ProfilePage() {
         interests={interests.data ?? []}
         interestsAvailable={!interests.isError}
       />
+      <AvatarEditor profile={profile.data} />
       {interests.isError && (
         <div>
           <p role="alert">

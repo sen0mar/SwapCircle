@@ -47,9 +47,11 @@ export const publicProfileSchema = profileUpdateSchema
   .extend({
     id: z.uuid(),
     interests: interestCatalogueSchema,
+    avatarUrl: z.url().nullable().default(null),
   });
 
 export const currentProfileSchema = publicProfileSchema.extend({
+  avatarCleanupPending: z.boolean().default(false),
   createdAt: z.iso.datetime({ offset: true }),
   updatedAt: z.iso.datetime({ offset: true }),
 });

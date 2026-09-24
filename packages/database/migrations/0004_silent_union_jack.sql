@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "avatar_storage_key" text;

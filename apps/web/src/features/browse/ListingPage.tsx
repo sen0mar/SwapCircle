@@ -5,11 +5,17 @@ import { useAuth } from '../auth/AuthProvider';
 import { MessageUnavailable } from '../home/Previews';
 import { useListing, useListingOwner } from './useListings';
 import { conditions, ListingPlaceholder, ListingRetry } from './ListingContent';
+import {
+  ListingImage,
+  PhotoLoadError,
+  useListingPhotos,
+} from './listing-photos';
 
 export function ListingPage() {
   const { id = '' } = useParams();
   const listing = useListing(id);
   const owner = useListingOwner(listing.data?.ownerId ?? '');
+  const photos = useListingPhotos(id);
   const { session } = useAuth();
 
   if (listing.isPending) return <p role="status">Loading item…</p>;
@@ -35,7 +41,31 @@ export function ListingPage() {
       <Link to="/browse">Back to Browse</Link>
       <div className="listing-detail-grid">
         <div>
-          <ListingPlaceholder />
+          {photos.isPending ? (
+            <div className="photo-unavailable" role="status">
+              Loading photos…
+            </div>
+          ) : photos.isError ? (
+            <div>
+              <PhotoLoadError />
+              <Button onClick={() => void photos.refetch()}>
+                Retry photos
+              </Button>
+            </div>
+          ) : photos.data.length ? (
+            <div className="listing-detail-photos">
+              {photos.data.map((photo, index) => (
+                <ListingImage
+                  key={photo.id}
+                  photo={photo}
+                  title={item.title}
+                  index={index}
+                />
+              ))}
+            </div>
+          ) : (
+            <ListingPlaceholder />
+          )}
         </div>
         <div className="panel route-panel">
           <h1 id="listing-title">{item.title}</h1>

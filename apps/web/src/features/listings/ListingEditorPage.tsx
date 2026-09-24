@@ -13,6 +13,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { conditions } from '../browse/ListingContent';
 import { useListing } from '../browse/useListings';
 import { useCreateListing, useEditListing } from './useMyListings';
+import { ListingPhotosEditor } from './ListingPhotosEditor';
 
 const empty: ListingCreate = { title: '', description: '', condition: 'good' };
 
@@ -87,6 +88,7 @@ function ListingForm({
   return (
     <section className="panel route-panel listing-editor">
       <Link to="/shelf">Back to My Shelf</Link>
+      {listing && <Link to={`/listings/${listing.id}`}>View item</Link>}
       <h1>{mode === 'create' ? 'List an item' : 'Edit item'}</h1>
       <p>Describe your item so another member knows what to expect.</p>
       <form
@@ -101,7 +103,11 @@ function ListingForm({
                     revision: listing!.revision,
                   });
 
-            navigate(`/listings/${saved.id}`);
+            navigate(
+              mode === 'create'
+                ? `/listings/${saved.id}/edit`
+                : `/listings/${saved.id}`,
+            );
           } catch {
             // React Hook Form keeps the draft available for another attempt.
           }
@@ -166,6 +172,11 @@ function ListingForm({
               : 'Save item'}
         </Button>
       </form>
+      {listing ? (
+        <ListingPhotosEditor listingId={listing.id} title={listing.title} />
+      ) : (
+        <p>Create the item to add up to three photos.</p>
+      )}
     </section>
   );
 }
