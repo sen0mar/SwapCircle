@@ -42,6 +42,7 @@ export function AccountPage() {
         <p>Your session is verified. You’re signed in to SwapCircle.</p>
       )}
       <Link to="/">Back to Home</Link>
+      <Link to="/shelf">My Shelf</Link>
     </section>
   );
 }
