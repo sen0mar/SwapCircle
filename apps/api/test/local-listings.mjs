@@ -107,6 +107,25 @@ try {
   await request(app).post('/api/v1/listings').send(data).expect(401);
   const a = (await create(alice).expect(201)).body;
   const b = (await create(bob).expect(201)).body;
+  await request(app).get('/api/v1/listings/mine').expect(401);
+  const aliceShelf = await request(app)
+    .get('/api/v1/listings/mine')
+    .set(auth(alice))
+    .expect(200);
+  listingPageSchema.parse(aliceShelf.body);
+  assert.deepEqual(
+    aliceShelf.body.items.map((item) => item.id),
+    [a.id],
+  );
+  assert.ok(!aliceShelf.body.items.some((item) => item.id === b.id));
+  const bobShelf = await request(app)
+    .get('/api/v1/listings/mine')
+    .set(auth(bob))
+    .expect(200);
+  assert.deepEqual(
+    bobShelf.body.items.map((item) => item.id),
+    [b.id],
+  );
   listingSchema.parse(a);
   const publicItem = (
     await request(app).get(`/api/v1/listings/${a.id}`).expect(200)
@@ -197,9 +216,30 @@ try {
   const withdrawn = await withdraw(alice, a.id, 2).expect(200);
   assert.equal(withdrawn.body.revision, 3);
   await request(app).get(`/api/v1/listings/${a.id}`).expect(404);
+  const withdrawnShelf = await request(app)
+    .get('/api/v1/listings/mine')
+    .set(auth(alice))
+    .expect(200);
+  assert.equal(withdrawnShelf.body.items[0].availability, 'withdrawn');
+  assert.equal(withdrawnShelf.body.items[0].revision, 3);
+  await withdraw(bob, a.id, 3).expect(404);
   await edit(alice, a.id, { ...data, revision: 3 }).expect(409);
   const tied = [b];
   for (let i = 0; i < 4; i++) tied.push((await create(bob).expect(201)).body);
+  let shelfCursor;
+  const shelfIds = [];
+  do {
+    const shelfPage = await request(app)
+      .get('/api/v1/listings/mine')
+      .set(auth(bob))
+      .query({ limit: 2, ...(shelfCursor ? { cursor: shelfCursor } : {}) })
+      .expect(200);
+    listingPageSchema.parse(shelfPage.body);
+    shelfIds.push(...shelfPage.body.items.map((item) => item.id));
+    shelfCursor = shelfPage.body.nextCursor;
+  } while (shelfCursor);
+  assert.deepEqual(new Set(shelfIds), new Set(tied.map((item) => item.id)));
+  assert.ok(!shelfIds.includes(a.id));
   await migration.query(
     "UPDATE public.listings SET created_at='2100-01-01T00:00:00.123456Z' WHERE owner_id=$1",
     [bob.id],

@@ -12,6 +12,7 @@ export function createListingsRouter(
   const controller = createListingsController(service);
 
   router.get('/listings', controller.page);
+  router.get('/listings/mine', authenticate(verifyToken), controller.mine);
   router.get('/listings/:id', controller.detail);
   router.post('/listings', authenticate(verifyToken), controller.create);
   router.put('/listings/:id', authenticate(verifyToken), controller.edit);
