@@ -80,7 +80,7 @@ test('create form validates fields, keeps a failed draft, then navigates after s
         <MemoryRouter initialEntries={['/listings/new']}>
           <Routes>
             <Route path="/listings/new" element={<ListingEditorPage />} />
-            <Route path="/listings/:id" element={<p>Item saved</p>} />
+            <Route path="/listings/:id/edit" element={<p>Item saved</p>} />
           </Routes>
         </MemoryRouter>
       </AuthProvider>

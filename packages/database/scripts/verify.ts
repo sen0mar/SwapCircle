@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      4,
+      6,
     );
 
     for (const table of [
@@ -94,6 +94,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'account_restrictions',
       'listings',
       'listing_photos',
+      'avatar_cleanup',
     ]) {
       const protection = await pool.query<{ relrowsecurity: boolean }>(
         'select relrowsecurity from pg_class where oid = $1::regclass',
@@ -118,6 +119,11 @@ export async function verify(pool: Pool, runtimeUrl: string) {
        WHERE conrelid='public.listing_photos'::regclass AND conname='listing_photos_position_unique'`,
     );
     assert.equal(order.rows[0]?.condeferrable, true);
+
+    const avatarColumn = await pool.query(
+      `SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='avatar_storage_key'`,
+    );
+    assert.equal(avatarColumn.rowCount, 1);
 
     const bucket = await pool.query<{
       public: boolean;
