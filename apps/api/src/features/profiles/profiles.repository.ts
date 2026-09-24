@@ -19,6 +19,7 @@ type InterestRow = { id: string; name: string };
 
 export class UnknownInterestError extends Error {}
 export class RestrictedAccountError extends Error {}
+export class AvatarChangedError extends Error {}
 
 export class ProfilesRepository {
   constructor(private readonly pool: Pool) {}
@@ -91,7 +92,19 @@ export class ProfilesRepository {
     };
   }
 
-  async swapAvatar(userId: string, key: string | null): Promise<string | null> {
+  async avatarKey(userId: string): Promise<string | null> {
+    const result = await this.pool.query<{ avatar_storage_key: string | null }>(
+      'SELECT avatar_storage_key FROM public.profiles WHERE id=$1',
+      [userId],
+    );
+    return result.rows[0]?.avatar_storage_key ?? null;
+  }
+
+  async swapAvatar(
+    userId: string,
+    expected: string | null,
+    key: string | null,
+  ): Promise<void> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -110,12 +123,13 @@ export class ProfilesRepository {
         userId,
       ]);
       if (!previous.rowCount) throw new Error('Profile not found.');
+      if (previous.rows[0]?.avatar_storage_key !== expected)
+        throw new AvatarChangedError();
       await client.query(
         'UPDATE public.profiles SET avatar_storage_key=$2, updated_at=now() WHERE id=$1',
         [userId, key],
       );
       await client.query('COMMIT');
-      return previous.rows[0]?.avatar_storage_key ?? null;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

@@ -45,6 +45,7 @@ export class ProfilesService {
   async uploadAvatar(userId: string, input: Buffer) {
     if (!this.storage) throw new Error('Avatar storage unavailable.');
     await this.repository.provision(userId);
+    const previous = await this.repository.avatarKey(userId);
     const { processed } = await processPhoto(input);
     const key = `avatars/${userId}/${randomUUID()}.webp`;
     try {
@@ -58,8 +59,17 @@ export class ProfilesService {
       );
     }
     try {
-      const previous = await this.repository.swapAvatar(userId, key);
-      if (previous) await this.storage.remove(previous).catch(() => {});
+      if (previous) await this.storage.remove(previous);
+    } catch {
+      await this.storage.remove(key).catch(() => {});
+      throw new PhotoError(
+        503,
+        'PHOTO_STORAGE_UNAVAILABLE',
+        'The previous avatar could not be removed. Try again.',
+      );
+    }
+    try {
+      await this.repository.swapAvatar(userId, previous, key);
     } catch (error) {
       await this.storage.remove(key).catch(() => {});
       throw error;
@@ -68,9 +78,20 @@ export class ProfilesService {
   }
 
   async removeAvatar(userId: string) {
-    const previous = await this.repository.swapAvatar(userId, null);
-    if (previous && this.storage)
-      await this.storage.remove(previous).catch(() => {});
+    const previous = await this.repository.avatarKey(userId);
+    if (previous) {
+      if (!this.storage) throw new Error('Avatar storage unavailable.');
+      try {
+        await this.storage.remove(previous);
+      } catch {
+        throw new PhotoError(
+          503,
+          'PHOTO_STORAGE_UNAVAILABLE',
+          'The avatar could not be removed. Try again.',
+        );
+      }
+    }
+    await this.repository.swapAvatar(userId, previous, null);
     return this.current(userId);
   }
 }
