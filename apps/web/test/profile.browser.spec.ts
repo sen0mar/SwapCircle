@@ -19,6 +19,7 @@ test('avatar preview, failed upload retry, public display and removal', async ({
   page,
 }) => {
   let avatarUrl: string | null = null;
+  let avatarCleanupPending = false;
   let attempts = 0;
   const image = readFileSync(
     fileURLToPath(new URL('../src/assets/backpack.jpg', import.meta.url)),
@@ -30,6 +31,7 @@ test('avatar preview, failed upload retry, public display and removal', async ({
     approximateLocation: '',
     interests: [],
     avatarUrl,
+    avatarCleanupPending,
     ...timestamps,
   });
   const headers = { 'Access-Control-Allow-Origin': 'http://127.0.0.1:4173' };
@@ -64,9 +66,24 @@ test('avatar preview, failed upload retry, public display and removal', async ({
           },
         });
       avatarUrl = 'http://127.0.0.1:4173/src/assets/backpack.jpg';
+      avatarCleanupPending = true;
       return route.fulfill({ status: 201, headers, json: current() });
     }
     avatarUrl = null;
+    avatarCleanupPending = true;
+    return route.fulfill({ headers, json: current() });
+  });
+  await page.route('**/api/v1/profiles/me/avatar/cleanup', (route) => {
+    if (route.request().method() === 'OPTIONS')
+      return route.fulfill({
+        status: 204,
+        headers: {
+          ...headers,
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'authorization, content-type',
+        },
+      });
+    avatarCleanupPending = false;
     return route.fulfill({ headers, json: current() });
   });
   await page.route(`**/api/v1/members/${id}`, (route) =>
@@ -100,6 +117,13 @@ test('avatar preview, failed upload retry, public display and removal', async ({
   await expect(
     page.getByRole('img', { name: "Ada Garden's avatar" }),
   ).toBeVisible();
+  await expect(
+    page.getByText('A previous avatar is waiting', { exact: false }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Retry avatar cleanup' }).click();
+  await expect(
+    page.getByText('A previous avatar is waiting', { exact: false }),
+  ).toHaveCount(0);
   await page.goto(`/members/${id}`);
   await expect(
     page.getByRole('img', { name: "Ada Garden's avatar" }),
@@ -109,6 +133,10 @@ test('avatar preview, failed upload retry, public display and removal', async ({
   await expect(
     page.getByRole('img', { name: 'Ada Garden has no available avatar' }),
   ).toBeVisible();
+  await page.getByRole('button', { name: 'Retry avatar cleanup' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Retry avatar cleanup' }),
+  ).toHaveCount(0);
   await page.getByLabel('Theme').selectOption('dark');
   await page.setViewportSize({ width: 360, height: 900 });
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
@@ -125,6 +153,7 @@ test('profile draft, save, reload and public second session', async ({
     approximateLocation: '',
     interests: [],
     avatarUrl: null,
+    avatarCleanupPending: false,
     ...timestamps,
   };
   let failSave = true;

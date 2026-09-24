@@ -23,9 +23,13 @@ export function AvatarEditor({ profile }: { profile: CurrentProfile }) {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  const updated = (saved: CurrentProfile) => {
+  const apply = (saved: CurrentProfile) => {
     queries.setQueryData(['private', session?.user.id, 'profile'], saved);
     void queries.invalidateQueries({ queryKey: ['member', saved.id] });
+  };
+
+  const updated = (saved: CurrentProfile) => {
+    apply(saved);
     setFile(null);
     setPreview(null);
   };
@@ -126,6 +130,38 @@ export function AvatarEditor({ profile }: { profile: CurrentProfile }) {
         >
           Remove avatar
         </Button>
+      )}
+      {profile.avatarCleanupPending && (
+        <div>
+          <p role="status">
+            A previous avatar is waiting to be removed from public media.
+          </p>
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError('');
+              try {
+                apply(
+                  await request(
+                    '/api/v1/profiles/me/avatar/cleanup',
+                    currentProfileSchema,
+                    { method: 'POST' },
+                  ),
+                );
+              } catch {
+                setError(
+                  'The previous avatar could not be removed. Try again.',
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Retry avatar cleanup
+          </Button>
+        </div>
       )}
       {error && <p role="alert">{error}</p>}
     </section>

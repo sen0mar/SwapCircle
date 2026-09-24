@@ -51,6 +51,7 @@ export const publicProfileSchema = profileUpdateSchema
   });
 
 export const currentProfileSchema = publicProfileSchema.extend({
+  avatarCleanupPending: z.boolean().default(false),
   createdAt: z.iso.datetime({ offset: true }),
   updatedAt: z.iso.datetime({ offset: true }),
 });
