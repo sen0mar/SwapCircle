@@ -1,3 +1,5 @@
+import type { ConversationsService } from './features/conversations/conversations.service.js';
+import { createConversationsRouter } from './features/conversations/conversations.routes.js';
 import type { SafetyService } from './features/safety/safety.service.js';
 import { createSafetyRouter } from './features/safety/safety.routes.js';
 import { createListingsRouter } from './features/listings/listings.routes.js';
@@ -17,6 +19,7 @@ export function createApiRouter(
   listings?: ListingsService,
   photos?: PhotosService,
   safety?: SafetyService,
+  conversations?: ConversationsService,
 ): Router {
   const api = Router();
 
@@ -29,6 +32,9 @@ export function createApiRouter(
   if (photos) api.use(createPhotosRouter(verifyToken, photos));
 
   if (safety) api.use(createSafetyRouter(verifyToken, safety));
+
+  if (conversations)
+    api.use(createConversationsRouter(verifyToken, conversations));
 
   return api;
 }

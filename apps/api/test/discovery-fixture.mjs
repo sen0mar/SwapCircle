@@ -1,3 +1,5 @@
+import { ConversationsService } from '../dist/features/conversations/conversations.service.js';
+import { ConversationsRepository } from '../dist/features/conversations/conversations.repository.js';
 // Synthetic accounts only; this fixture refuses every target except the isolated local stack.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -52,6 +54,10 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
   const makeApp = (limits = developmentLimits) => {
     const permissions = new SafetyPermissions(limits);
     return createApp({
+      conversations: new ConversationsService(
+        new ConversationsRepository(runtime),
+        permissions,
+      ),
       allowedOrigins: [origin],
       limits,
       verifyToken: createTokenVerifier(status.API_URL, status.ANON_KEY),
@@ -72,6 +78,10 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
   const app = makeApp();
   const users = [];
   const cleanup = async () => {
+    await migration.query(
+      `DELETE FROM public.conversations WHERE id IN (SELECT conversation_id FROM public.conversation_members WHERE user_id=ANY($1::uuid[]))`,
+      [users.map((user) => user.id)],
+    );
     await migration.query(
       'DELETE FROM public.reports WHERE reporter_id=ANY($1::uuid[]) OR reported_user_id=ANY($1::uuid[]) OR listing_id IN (SELECT id FROM public.listings WHERE owner_id=ANY($1::uuid[]))',
       [users.map((user) => user.id)],

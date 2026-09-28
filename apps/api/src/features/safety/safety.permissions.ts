@@ -21,7 +21,13 @@ export const developmentLimits = {
 
 export type SafetyLimits = typeof developmentLimits;
 export type WriteAction =
-  'profile' | 'avatar' | 'listing' | 'photo' | 'block' | 'report';
+  | 'profile'
+  | 'avatar'
+  | 'listing'
+  | 'photo'
+  | 'block'
+  | 'report'
+  | 'conversation';
 
 export class SafetyPermissions {
   constructor(

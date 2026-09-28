@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      9,
+      10,
     );
 
     for (const table of [
@@ -98,6 +98,9 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'blocks',
       'reports',
       'action_quotas',
+      'conversations',
+      'conversation_members',
+      'messages',
     ]) {
       const protection = await pool.query<{ relrowsecurity: boolean }>(
         'select relrowsecurity from pg_class where oid = $1::regclass',
@@ -113,7 +116,34 @@ export async function verify(pool: Pool, runtimeUrl: string) {
           [role, `public.${table}`],
         );
 
-        assert.deepEqual(access.rows[0], { read: false, write: false });
+        assert.deepEqual(access.rows[0], {
+          read:
+            role === 'authenticated' &&
+            ['conversations', 'conversation_members', 'messages'].includes(
+              table,
+            ),
+          write: false,
+        });
+      }
+    }
+
+    for (const signature of [
+      'public.allocate_message_order()',
+      'public.guard_direct_membership()',
+      'public.guard_conversation_identity()',
+    ]) {
+      for (const role of [
+        'anon',
+        'authenticated',
+        'service_role',
+        'swapcircle_runtime',
+      ]) {
+        const access = await pool.query<{ execute: boolean }>(
+          "SELECT has_function_privilege($1, $2, 'EXECUTE') AS execute",
+          [role, signature],
+        );
+
+        assert.equal(access.rows[0]?.execute, false);
       }
     }
 
