@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      10,
+      11,
     );
 
     for (const table of [
