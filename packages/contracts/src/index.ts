@@ -213,3 +213,18 @@ export const messageReadSchema = z.object({
 });
 export type ConversationRead = z.infer<typeof conversationReadSchema>;
 export type MessageRead = z.infer<typeof messageReadSchema>;
+
+export const messageSubmissionSchema = z.strictObject({
+  conversation_id: z.uuid().transform((value) => value.toLowerCase()),
+  body: z
+    .string()
+    .min(1)
+    .max(5000)
+    .refine((value) => value.trim().length > 0),
+  client_message_id: z.uuid().transform((value) => value.toLowerCase()),
+});
+export const messageReceiptSchema = messageReadSchema.extend({
+  client_message_id: z.uuid(),
+});
+export type MessageSubmission = z.infer<typeof messageSubmissionSchema>;
+export type MessageReceipt = z.infer<typeof messageReceiptSchema>;

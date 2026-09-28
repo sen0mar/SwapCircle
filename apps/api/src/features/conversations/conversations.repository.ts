@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import type { MessageReceipt, MessageSubmission } from '@swapcircle/contracts';
 
 export class ConversationsRepository {
   constructor(private readonly pool: Pool) {}
@@ -17,6 +18,55 @@ export class ConversationsRepository {
     } finally {
       client.release();
     }
+  }
+
+  async identity(client: PoolClient, id: string) {
+    const result = await client.query<{
+      type: 'direct' | 'group';
+      direct_user_low: string | null;
+      direct_user_high: string | null;
+    }>(
+      'SELECT type,direct_user_low,direct_user_high FROM public.conversations WHERE id=$1',
+      [id],
+    );
+    return result.rows[0];
+  }
+
+  async activeMembers(client: PoolClient, id: string) {
+    // Account locks always precede this lock, including across retry conversations.
+    await client.query(
+      'SELECT id FROM public.conversations WHERE id=$1 FOR NO KEY UPDATE',
+      [id],
+    );
+    const result = await client.query<{ user_id: string }>(
+      'SELECT user_id FROM public.conversation_members WHERE conversation_id=$1 AND active',
+      [id],
+    );
+    return result.rows.map((row) => row.user_id);
+  }
+
+  async retryMessage(client: PoolClient, actor: string, key: string) {
+    const result = await client.query<MessageReceipt>(
+      `SELECT id,conversation_id,sender_id,body,client_message_id,message_order,
+       to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
+       FROM public.messages WHERE sender_id=$1 AND client_message_id=$2`,
+      [actor, key],
+    );
+    return result.rows[0];
+  }
+
+  async insertMessage(
+    client: PoolClient,
+    actor: string,
+    input: MessageSubmission,
+  ) {
+    // The existing trigger allocates the position while holding the conversation
+    // row until commit; neither timestamps nor sequences determine history order.
+    await client.query(
+      'INSERT INTO public.messages (conversation_id,sender_id,body,client_message_id) VALUES ($1,$2,$3,$4)',
+      [input.conversation_id, actor, input.body, input.client_message_id],
+    );
+    return (await this.retryMessage(client, actor, input.client_message_id))!;
   }
 
   async memberExists(client: PoolClient, user: string) {

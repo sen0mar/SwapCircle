@@ -40,7 +40,7 @@ test('starting a conversation authenticates and rejects forged identity and inva
   }
 });
 
-test('history, membership management, group creation and message writes have no Express bypass routes', async () => {
+test('history, membership management and group creation have no Express bypass routes', async () => {
   for (const path of [
     '/api/v1/conversations',
     `/api/v1/conversations/${randomUUID()}`,
@@ -56,5 +56,36 @@ test('history, membership management, group creation and message writes have no 
       .set('Authorization', 'Bearer synthetic')
       .send({ userId: actor })
       .expect(404);
+  }
+});
+
+test('message submission rejects invalid content, references and forged identity before persistence', async () => {
+  const input = {
+    conversation_id: randomUUID(),
+    body: 'Synthetic message',
+    client_message_id: randomUUID(),
+  };
+  const path = '/api/v1/conversations/messages';
+
+  await request(app).post(path).send(input).expect(401);
+
+  for (const invalid of [
+    {},
+    { ...input, sender_id: actor },
+    { ...input, senderId: actor },
+    { ...input, conversation_id: 'invalid' },
+    { ...input, client_message_id: 'invalid' },
+    { ...input, body: '' },
+    { ...input, body: ' \n\t' },
+    { ...input, body: 'x'.repeat(5001) },
+    { ...input, body: 123 },
+  ]) {
+    const result = await request(app)
+      .post(path)
+      .set('Authorization', 'Bearer synthetic')
+      .send(invalid)
+      .expect(400);
+    apiErrorSchema.parse(result.body);
+    assert.equal(result.body.error.code, 'INVALID_INPUT');
   }
 });

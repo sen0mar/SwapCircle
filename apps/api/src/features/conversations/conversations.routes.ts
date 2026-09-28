@@ -16,5 +16,11 @@ export function createConversationsRouter(
     authenticate(verifyToken),
     controller.startDirect,
   );
+  router.post(
+    '/conversations/messages',
+    authenticate(verifyToken),
+    controller.send,
+  );
+
   return router;
 }
