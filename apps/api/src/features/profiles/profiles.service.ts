@@ -67,6 +67,7 @@ export class ProfilesService {
     if (!this.storage) throw new Error('Avatar storage unavailable.');
     await this.repository.provision(userId);
     const previous = await this.repository.avatarKey(userId);
+    await this.repository.authorizeAvatarUpload(userId);
     const { processed } = await processPhoto(input);
     const key = `avatars/${userId}/${randomUUID()}.webp`;
     try {
@@ -80,7 +81,7 @@ export class ProfilesService {
       );
     }
     try {
-      await this.repository.swapAvatar(userId, previous, key);
+      await this.repository.swapAvatar(userId, previous, key, false);
     } catch (error) {
       await this.cleanupUncommitted(userId, key);
       throw error;
@@ -97,6 +98,7 @@ export class ProfilesService {
   }
 
   async retryAvatarCleanup(userId: string) {
+    await this.repository.checkAvatarCleanup(userId);
     await this.clearQueued(userId, true);
     return this.current(userId);
   }

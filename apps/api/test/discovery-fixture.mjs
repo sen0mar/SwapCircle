@@ -15,6 +15,12 @@ import { ListingsRepository } from '../dist/features/listings/listings.repositor
 import { ListingsService } from '../dist/features/listings/listings.service.js';
 import { PhotosRepository } from '../dist/features/photos/photos.repository.js';
 import { PhotosService } from '../dist/features/photos/photos.service.js';
+import {
+  SafetyPermissions,
+  developmentLimits,
+} from '../dist/features/safety/safety.permissions.js';
+import { SafetyRepository } from '../dist/features/safety/safety.repository.js';
+import { SafetyService } from '../dist/features/safety/safety.service.js';
 import { createPhotoStorage } from '../dist/features/photos/photos.storage.js';
 
 export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
@@ -43,15 +49,33 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
   const options = { auth: { persistSession: false, autoRefreshToken: false } };
   const admin = createClient(status.API_URL, status.SERVICE_ROLE_KEY, options);
   const storage = createPhotoStorage(status.API_URL, status.SERVICE_ROLE_KEY);
-  const app = createApp({
-    allowedOrigins: [origin],
-    verifyToken: createTokenVerifier(status.API_URL, status.ANON_KEY),
-    profiles: new ProfilesService(new ProfilesRepository(runtime), storage),
-    listings: new ListingsService(new ListingsRepository(runtime)),
-    photos: new PhotosService(new PhotosRepository(runtime), storage),
-  });
+  const makeApp = (limits = developmentLimits) => {
+    const permissions = new SafetyPermissions(limits);
+    return createApp({
+      allowedOrigins: [origin],
+      limits,
+      verifyToken: createTokenVerifier(status.API_URL, status.ANON_KEY),
+      safety: new SafetyService(new SafetyRepository(runtime), permissions),
+      profiles: new ProfilesService(
+        new ProfilesRepository(runtime, permissions),
+        storage,
+      ),
+      listings: new ListingsService(
+        new ListingsRepository(runtime, permissions),
+      ),
+      photos: new PhotosService(
+        new PhotosRepository(runtime, permissions),
+        storage,
+      ),
+    });
+  };
+  const app = makeApp();
   const users = [];
   const cleanup = async () => {
+    await migration.query(
+      'DELETE FROM public.reports WHERE reporter_id=ANY($1::uuid[]) OR reported_user_id=ANY($1::uuid[]) OR listing_id IN (SELECT id FROM public.listings WHERE owner_id=ANY($1::uuid[]))',
+      [users.map((user) => user.id)],
+    );
     for (const user of users) {
       const photos = await migration.query(
         'SELECT storage_key FROM public.listing_photos WHERE owner_id=$1',
@@ -103,6 +127,8 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
     }
     return {
       app,
+      makeApp,
+      runtime,
       users,
       migration,
       storage,

@@ -50,6 +50,20 @@
       "when": 1790590574343,
       "tag": "0006_faithful_ogun",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790591644762,
+      "tag": "0007_fixed_dagger",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790592033533,
+      "tag": "0008_past_beyonder",
+      "breakpoints": true
     }
   ]
 }

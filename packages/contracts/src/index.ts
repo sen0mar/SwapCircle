@@ -151,3 +151,29 @@ export const listingPhotoSchema = z.object({
 });
 export const listingPhotosSchema = z.array(listingPhotoSchema).max(3);
 export type ListingPhoto = z.infer<typeof listingPhotoSchema>;
+
+export const blockTargetSchema = z.strictObject({ userId: z.uuid() });
+export const blockQuerySchema = z.strictObject({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  after: z.uuid().optional(),
+});
+export const blockSchema = z.object({
+  userId: z.uuid(),
+  createdAt: z.iso.datetime(),
+});
+export const blockPageSchema = z.object({
+  items: z.array(blockSchema),
+  nextAfter: z.uuid().nullable(),
+});
+export const reportSubmissionSchema = z.strictObject({
+  clientReportId: z.uuid(),
+  targetType: z.enum(['member', 'listing']),
+  targetId: z.uuid(),
+  reason: z.string().trim().min(1).max(2000),
+});
+export const reportReceiptSchema = z.object({
+  id: z.uuid(),
+  createdAt: z.iso.datetime(),
+});
+export type ReportSubmission = z.infer<typeof reportSubmissionSchema>;
+export type BlockQuery = z.infer<typeof blockQuerySchema>;
