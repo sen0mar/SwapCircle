@@ -53,6 +53,7 @@ test('private deep link requires sign-in and returns to its stable URL; switchin
           conversation_id: id,
           sender_id: bob,
           body: 'Private thread body',
+          client_message_id: '40000000-0000-4000-8000-000000000001',
           message_order: 1,
           created_at: '2026-09-28T10:00:00Z',
         },
@@ -66,8 +67,8 @@ test('private deep link requires sign-in and returns to its stable URL; switchin
   ).toContainText('Private thread body');
   await page.getByLabel('Message draft').fill('Unsent draft');
   await expect(
-    page.getByRole('button', { name: 'Send unavailable' }),
-  ).toBeDisabled();
+    page.getByRole('button', { name: 'Send message' }),
+  ).toBeEnabled();
   await page.locator(`.conversation-list a[href="/inbox/${denied}"]`).click();
   await expect(
     page.getByRole('region', { name: 'Message history' }),

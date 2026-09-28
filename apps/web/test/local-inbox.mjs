@@ -208,8 +208,8 @@ try {
   await expect(page.getByLabel('Message draft')).toBeVisible();
   await page.getByLabel('Message draft').fill('Unsent synthetic draft');
   await expect(
-    page.getByRole('button', { name: 'Send unavailable' }),
-  ).toBeDisabled();
+    page.getByRole('button', { name: 'Send message' }),
+  ).toBeEnabled();
   const scroll = page.getByRole('region', { name: 'Message history' });
   await scroll.evaluate((element) => {
     element.scrollTop = 0;

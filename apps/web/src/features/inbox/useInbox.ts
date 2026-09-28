@@ -85,8 +85,13 @@ export function useThread(id: string) {
     retry: false,
     gcTime: 0,
   });
-  const messages =
-    history.data?.pages.flatMap((page) => page.items).reverse() ?? [];
+  const messages = [
+    ...new Map(
+      (history.data?.pages.flatMap((page) => page.items) ?? []).map(
+        (message) => [message.id, message],
+      ),
+    ).values(),
+  ].sort((a, b) => a.message_order - b.message_order);
   const peer = conversation.data ? directPeer(conversation.data, userId) : null;
   const ids = [
     ...new Set([
