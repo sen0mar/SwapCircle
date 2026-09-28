@@ -24,6 +24,7 @@ const report = {
 
 test('safety routes authenticate before persistence', async () => {
   await request(app).get('/api/v1/safety/blocks').expect(401);
+  await request(app).get('/api/v1/safety/status').expect(401);
   await request(app)
     .put('/api/v1/safety/blocks')
     .send({ userId: randomUUID() })
@@ -66,6 +67,15 @@ test('safety validation rejects forged owners, invalid targets, blank and oversi
     .set('Authorization', 'Bearer synthetic')
     .query({ ownerId: randomUUID() })
     .expect(400);
+});
+
+test('private status rejects forged actors and malformed targets', async () => {
+  for (const query of [{ actor: randomUUID() }, { userId: 'invalid' }])
+    await request(app)
+      .get('/api/v1/safety/status')
+      .set('Authorization', 'Bearer synthetic')
+      .query(query)
+      .expect(400);
 });
 
 test('burst limit has safe errors and Retry-After, ignores reads and forwarded address spoofing', async () => {

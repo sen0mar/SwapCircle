@@ -1187,3 +1187,58 @@
     width: 100%;
   }
 }
+
+.safety-actions,
+.blocked-members,
+.safety-report-form {
+  display: grid;
+  gap: 12px;
+}
+
+.safety-actions {
+  margin-block: 24px;
+  justify-items: start;
+}
+
+.safety-report-form textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid var(--input);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.safety-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.blocked-members-list {
+  display: grid;
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+}
+
+.blocked-members-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .safety-dialog-actions > button {
+    width: 100%;
+  }
+}
+
+.safety-report-receipt {
+  overflow-wrap: anywhere;
+}

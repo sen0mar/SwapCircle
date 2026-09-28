@@ -1,3 +1,4 @@
+import { actionError } from '../safety/action-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   profileUpdateSchema,
@@ -176,10 +177,7 @@ function ProfileForm({
         {errors.interestIds && <p role="alert">{errors.interestIds.message}</p>}
       </fieldset>
       {save.isError && (
-        <p role="alert">
-          Your changes could not be saved. Your draft is still here; retry when
-          ready.
-        </p>
+        <p role="alert">{actionError(save.error)} Your draft is still here.</p>
       )}
       {save.isSuccess && !isDirty && <p role="status">Profile saved.</p>}
       <Button

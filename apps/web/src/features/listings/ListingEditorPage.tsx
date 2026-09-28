@@ -1,3 +1,4 @@
+import { actionError } from '../safety/action-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   listingCreateSchema,
@@ -161,7 +162,7 @@ function ListingForm({
             {mutation.error instanceof ApiError &&
             mutation.error.code === 'STALE_REVISION'
               ? 'This item changed since you opened it. Your draft is still here. Reload before saving again.'
-              : 'The item could not be saved. Your draft is still here; retry when ready.'}
+              : `${actionError(mutation.error)} Your draft is still here.`}
           </p>
         )}
         <Button type="submit" variant="primary" disabled={mutation.isPending}>

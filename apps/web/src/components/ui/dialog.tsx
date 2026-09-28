@@ -13,9 +13,11 @@ export function DialogContent({
   children,
   className = '',
   presentation = 'dialog',
+  closeDisabled = false,
   ...props
 }: ComponentProps<typeof DialogPrimitive.Content> & {
   presentation?: 'dialog' | 'sheet';
+  closeDisabled?: boolean;
 }) {
   return (
     <DialogPrimitive.Portal>
@@ -25,7 +27,12 @@ export function DialogContent({
         {...props}
       >
         <DialogPrimitive.Close asChild>
-          <Button variant="ghost" className="ui-modal-close" aria-label="Close">
+          <Button
+            variant="ghost"
+            className="ui-modal-close"
+            aria-label="Close"
+            disabled={closeDisabled}
+          >
             <X size={20} aria-hidden="true" />
           </Button>
         </DialogPrimitive.Close>
