@@ -1267,6 +1267,7 @@
 .conversation-summary > span,
 .conversation-summary time,
 .message-bubble time,
+.message-status,
 .thread-header p,
 .composer-shell p {
   color: var(--text-secondary);
@@ -1368,6 +1369,11 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   margin-block: 6px;
+}
+
+.message-status {
+  display: block;
+  margin-top: 4px;
 }
 
 .composer-shell {

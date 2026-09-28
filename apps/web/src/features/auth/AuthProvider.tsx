@@ -10,6 +10,7 @@ import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../../lib/api-client';
 import { supabase } from './client';
+import { MessageComposerProvider } from '../inbox/MessageComposerProvider';
 
 type AuthState = {
   session: Session | null;
@@ -181,5 +182,5 @@ export function AuthProvider({
 
 // Remount account-owned local state (drawers/forms/drafts) on identity transitions.
 function AuthBoundary({ children }: { children: ReactNode }) {
-  return children;
+  return <MessageComposerProvider>{children}</MessageComposerProvider>;
 }

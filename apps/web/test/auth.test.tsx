@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
+import { useComposer } from '../src/features/inbox/MessageComposerProvider';
 import { AuthProvider, useAuth } from '../src/features/auth/AuthProvider';
 import { safeDestination } from '../src/features/auth/safe-destination';
 import { identitySchema } from '@swapcircle/contracts';
@@ -181,4 +182,97 @@ test('restoration cannot overwrite newer account events; transitions cancel requ
   expect(auth.remove).toHaveBeenCalledTimes(3);
   view.unmount();
   expect(auth.unsubscribe).toHaveBeenCalledOnce();
+});
+
+test('account lifecycle clears composer drafts and failed/pending payloads and cancels interrupted sends', async () => {
+  const auth = fixture();
+  const alice = '10000000-0000-4000-8000-000000000001';
+  const bob = '10000000-0000-4000-8000-000000000002';
+  const thread = '20000000-0000-4000-8000-000000000001';
+  const queries = new QueryClient();
+  let pending = false;
+  let aborted = false;
+  server.use(
+    http.post(
+      'http://127.0.0.1:3001/api/v1/conversations/messages',
+      async ({ request }) => {
+        if (pending)
+          await new Promise<void>((resolve) =>
+            request.signal.addEventListener(
+              'abort',
+              () => {
+                aborted = true;
+                resolve();
+              },
+              { once: true },
+            ),
+          );
+        return HttpResponse.error();
+      },
+    ),
+  );
+  function Probe() {
+    const composer = useComposer();
+    return (
+      <>
+        <input
+          aria-label="Composer draft"
+          value={composer.drafts[thread] ?? ''}
+          onChange={(event) => composer.setDraft(thread, event.target.value)}
+        />
+        <button onClick={() => composer.send(thread)}>Send</button>
+        {composer.outbox.map((message) => (
+          <p key={message.payload.client_message_id}>
+            {message.status}: {message.payload.body}
+          </p>
+        ))}
+      </>
+    );
+  }
+  render(
+    <QueryClientProvider client={queries}>
+      <AuthProvider client={auth.client}>
+        <Probe />
+      </AuthProvider>
+    </QueryClientProvider>,
+  );
+  act(() => auth.emit(alice));
+  const user = userEvent.setup();
+  await user.type(
+    screen.getByLabelText('Composer draft'),
+    'Private failed body',
+  );
+  await user.click(screen.getByRole('button', { name: 'Send' }));
+  await screen.findByText('failed: Private failed body');
+  await user.type(
+    screen.getByLabelText('Composer draft'),
+    'Keep same-account draft',
+  );
+  act(() => auth.emit(alice));
+  expect(screen.getByLabelText('Composer draft')).toHaveValue(
+    'Keep same-account draft',
+  );
+  act(() => auth.emit(bob));
+  expect(screen.getByLabelText('Composer draft')).toHaveValue('');
+  expect(
+    screen.queryByText('failed: Private failed body'),
+  ).not.toBeInTheDocument();
+  pending = true;
+  await user.type(
+    screen.getByLabelText('Composer draft'),
+    'Interrupted private body',
+  );
+  await user.click(screen.getByRole('button', { name: 'Send' }));
+  await screen.findByText('pending: Interrupted private body');
+  await user.type(
+    screen.getByLabelText('Composer draft'),
+    'Private next draft',
+  );
+  act(() => auth.emit(null));
+  await waitFor(() => expect(aborted).toBe(true));
+  expect(screen.getByLabelText('Composer draft')).toHaveValue('');
+  expect(
+    screen.queryByText('pending: Interrupted private body'),
+  ).not.toBeInTheDocument();
+  expect(queries.getQueryCache().getAll()).toHaveLength(0);
 });
