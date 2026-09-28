@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm';
 import {
   pgTable,
   integer,
+  boolean,
   index,
   check,
   primaryKey,
@@ -244,7 +245,98 @@ export const actionQuotas = pgTable(
     check('quota_used_positive', sql`${table.used} > 0`),
     check(
       'quota_action_valid',
-      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report')`,
+      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report', 'conversation')`,
     ),
+  ],
+);
+
+export const conversations = pgTable(
+  'conversations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    type: varchar('type', { length: 16 }).notNull(),
+    directUserLow: uuid('direct_user_low').references(() => profiles.id),
+    directUserHigh: uuid('direct_user_high').references(() => profiles.id),
+    lastMessageOrder: integer('last_message_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('conversations_direct_pair_unique').on(
+      table.directUserLow,
+      table.directUserHigh,
+    ),
+    index('conversations_direct_high_idx').on(table.directUserHigh),
+    check(
+      'conversation_identity_valid',
+      sql`(${table.type} = 'direct' AND ${table.directUserLow} IS NOT NULL AND ${table.directUserHigh} IS NOT NULL AND ${table.directUserLow} < ${table.directUserHigh}) OR (${table.type} = 'group' AND ${table.directUserLow} IS NULL AND ${table.directUserHigh} IS NULL)`,
+    ),
+    check(
+      'conversation_order_nonnegative',
+      sql`${table.lastMessageOrder} >= 0`,
+    ),
+  ],
+);
+
+export const conversationMembers = pgTable(
+  'conversation_members',
+  {
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id),
+    active: boolean('active').notNull().default(true),
+    joinedAt: timestamp('joined_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.conversationId, table.userId] }),
+    index('conversation_members_user_idx').on(
+      table.userId,
+      table.conversationId,
+    ),
+  ],
+);
+
+export const messages = pgTable(
+  'messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    senderId: uuid('sender_id')
+      .notNull()
+      .references(() => profiles.id),
+    body: varchar('body', { length: 5000 }).notNull(),
+    clientMessageId: uuid('client_message_id').notNull(),
+    messageOrder: integer('message_order').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('messages_sender_client_unique').on(
+      table.senderId,
+      table.clientMessageId,
+    ),
+    unique('messages_conversation_order_unique').on(
+      table.conversationId,
+      table.messageOrder,
+    ),
+    index('messages_sender_idx').on(table.senderId),
+    foreignKey({
+      columns: [table.conversationId, table.senderId],
+      foreignColumns: [
+        conversationMembers.conversationId,
+        conversationMembers.userId,
+      ],
+    }),
+    check('message_body_nonempty', sql`length(trim(${table.body})) > 0`),
+    check('message_order_positive', sql`${table.messageOrder} > 0`),
   ],
 );

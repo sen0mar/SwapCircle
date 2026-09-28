@@ -1,3 +1,4 @@
+import type { ConversationsService } from './features/conversations/conversations.service.js';
 import { rateLimit } from 'express-rate-limit';
 import { errorBody } from './http/error-response.js';
 import {
@@ -25,6 +26,7 @@ export function createApp({
   listings,
   photos,
   safety,
+  conversations,
   limits = developmentLimits,
 }: {
   allowedOrigins: readonly string[];
@@ -33,6 +35,7 @@ export function createApp({
   listings?: ListingsService;
   photos?: PhotosService;
   safety?: SafetyService;
+  conversations?: ConversationsService;
   limits?: SafetyLimits;
 }): Express {
   const app = express();
@@ -80,7 +83,14 @@ export function createApp({
   app.use(express.json({ limit: '16kb' }));
   app.use(
     '/api/v1',
-    createApiRouter(verifyToken, profiles, listings, photos, safety),
+    createApiRouter(
+      verifyToken,
+      profiles,
+      listings,
+      photos,
+      safety,
+      conversations,
+    ),
   );
   app.use(notFound);
   app.use(errorHandler);
