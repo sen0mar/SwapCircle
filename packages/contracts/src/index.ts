@@ -157,8 +157,17 @@ export const blockQuerySchema = z.strictObject({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   after: z.uuid().optional(),
 });
+export const emptyResponseSchema = z.null();
+export const safetyStatusQuerySchema = z.strictObject({
+  userId: z.uuid().optional(),
+});
+export const safetyStatusSchema = z.object({
+  restricted: z.boolean(),
+  ownBlocked: z.boolean(),
+});
 export const blockSchema = z.object({
   userId: z.uuid(),
+  displayName: z.string(),
   createdAt: z.iso.datetime(),
 });
 export const blockPageSchema = z.object({

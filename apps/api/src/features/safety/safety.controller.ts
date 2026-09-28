@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import {
+  safetyStatusQuerySchema,
   blockQuerySchema,
   blockTargetSchema,
   reportSubmissionSchema,
@@ -9,6 +10,15 @@ import type { SafetyService } from './safety.service.js';
 
 export function createSafetyController(service: SafetyService) {
   return {
+    status: async (
+      request: Request,
+      response: Response<unknown, AuthenticatedLocals>,
+    ) => {
+      const input = safetyStatusQuerySchema.parse(request.query);
+      response.json(
+        await service.status(response.locals.identity.userId, input.userId),
+      );
+    },
     ownBlocks: async (
       request: Request,
       response: Response<unknown, AuthenticatedLocals>,

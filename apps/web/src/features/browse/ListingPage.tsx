@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
+import { SafetyActions } from '../safety/SafetyActions';
 import { MessageUnavailable } from '../home/Previews';
 import { useListing, useListingOwner } from './useListings';
 import { conditions, ListingPlaceholder, ListingRetry } from './ListingContent';
@@ -108,6 +109,13 @@ export function ListingPage() {
               <Link to="/shelf">My Shelf</Link>
             </div>
           )}
+          <SafetyActions
+            key={item.id}
+            userId={item.ownerId}
+            name={owner.data?.displayName ?? 'this member'}
+            targetType="listing"
+            targetId={item.id}
+          />
           <MessageUnavailable />
           <div className="message-action">
             <Button disabled aria-describedby="trade-unavailable">

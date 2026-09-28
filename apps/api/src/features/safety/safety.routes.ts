@@ -12,6 +12,7 @@ export function createSafetyRouter(
   const controller = createSafetyController(service);
 
   router.use('/safety', authenticate(verifyToken));
+  router.get('/safety/status', controller.status);
   router.get('/safety/blocks', controller.ownBlocks);
   router.put('/safety/blocks', controller.block);
   router.delete('/safety/blocks/:userId', controller.unblock);
