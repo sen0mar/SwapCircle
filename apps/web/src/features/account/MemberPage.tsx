@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { getPublicProfile } from './profile-api';
+import { MemberListings } from '../browse/MemberListings';
 import { Avatar } from './Avatar';
 
 export function MemberPage() {
@@ -51,7 +52,7 @@ export function MemberPage() {
         <p>No interests added yet.</p>
       )}
       <h2>Listings</h2>
-      <p>Listings will appear here when members can publish items.</p>
+      <MemberListings owner={id} />
     </section>
   );
 }

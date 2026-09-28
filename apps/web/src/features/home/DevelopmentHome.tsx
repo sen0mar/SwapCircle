@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import backpack from '../../assets/backpack.jpg';
 import camera from '../../assets/camera.jpg';
 import books from '../../assets/books.jpg';
@@ -68,7 +68,7 @@ const conversations = members.slice(0, 3).map((member) => ({
 
 type Preview = CollectionState | 'ready' | 'off';
 
-export default function DevelopmentHome() {
+export default function DevelopmentHome({ children }: { children: ReactNode }) {
   const [preview, setPreview] = useState<Preview>('off');
 
   return (
@@ -81,7 +81,7 @@ export default function DevelopmentHome() {
           value={preview}
           onChange={(event) => setPreview(event.target.value as Preview)}
         >
-          <option value="off">Off — signed-out view</option>
+          <option value="off">Off — live discovery</option>
           <option value="ready">Sample content</option>
           <option value="loading">Loading</option>
           <option value="empty">Empty</option>
@@ -89,12 +89,16 @@ export default function DevelopmentHome() {
         </select>
         <p>Synthetic preview content. Messaging is not available yet.</p>
       </div>
-      <HomeContent
-        state={preview === 'off' ? 'unavailable' : preview}
-        listings={listings}
-        members={members}
-        conversations={conversations}
-      />
+      {preview === 'off' ? (
+        children
+      ) : (
+        <HomeContent
+          state={preview}
+          listings={listings}
+          members={members}
+          conversations={conversations}
+        />
+      )}
     </>
   );
 }

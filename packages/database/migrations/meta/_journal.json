@@ -43,6 +43,13 @@
       "when": 1790241693472,
       "tag": "0005_unique_misty_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790590574343,
+      "tag": "0006_faithful_ogun",
+      "breakpoints": true
     }
   ]
 }

@@ -151,6 +151,12 @@ export function createProfilesRouter(
     },
   );
   router.get('/interests', controller.interests);
+  router.get('/members', controller.discover);
+  router.get(
+    '/members/discovery',
+    authenticate(verifyToken),
+    controller.discover,
+  );
   router.get('/members/:id', controller.publicProfile);
 
   return router;
