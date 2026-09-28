@@ -186,3 +186,11 @@ export const reportReceiptSchema = z.object({
 });
 export type ReportSubmission = z.infer<typeof reportSubmissionSchema>;
 export type BlockQuery = z.infer<typeof blockQuerySchema>;
+
+export const directConversationStartSchema = z.strictObject({
+  userId: z.uuid().transform((value) => value.toLowerCase()),
+});
+export const directConversationReceiptSchema = z.object({
+  id: z.uuid(),
+  type: z.literal('direct'),
+});
