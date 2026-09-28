@@ -101,6 +101,36 @@ export const listingQuerySchema = z.strictObject({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   cursor: z.string().max(300).optional(),
 });
+export const catalogQuerySchema = listingQuerySchema.extend({
+  q: z.string().trim().max(120).default(''),
+  condition: listingConditionSchema.optional(),
+  availability: z
+    .enum(['all', 'available', 'reserved', 'exchanged', 'disputed'])
+    .default('available'),
+  sort: z.enum(['newest', 'oldest']).default('newest'),
+  owner: z.uuid().optional(),
+});
+export type CatalogQuery = z.infer<typeof catalogQuerySchema>;
+
+export const memberCursorSchema = z.strictObject({
+  id: z.uuid(),
+  sharedInterestCount: z.number().int().min(0).max(30),
+});
+export const memberQuerySchema = listingQuerySchema.extend({
+  interest: z.uuid().optional(),
+});
+export const discoveredMemberSchema = publicProfileSchema.extend({
+  sharedInterests: interestCatalogueSchema,
+  sharedInterestCount: z.number().int().min(0).max(30).nullable(),
+});
+export const memberPageSchema = z.object({
+  items: z.array(discoveredMemberSchema),
+  nextCursor: z.string().nullable(),
+});
+export type DiscoveredMember = z.infer<typeof discoveredMemberSchema>;
+export type MemberQuery = z.infer<typeof memberQuerySchema>;
+export type MemberCursor = z.infer<typeof memberCursorSchema>;
+
 export const listingPageSchema = z.object({
   items: z.array(listingSchema),
   nextCursor: z.string().nullable(),

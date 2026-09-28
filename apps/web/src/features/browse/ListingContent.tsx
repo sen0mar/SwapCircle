@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useListingOwner } from './useListings';
 import { ImageOff } from 'lucide-react';
 import type { Listing } from '@swapcircle/contracts';
@@ -40,7 +41,9 @@ export function CatalogOwner({ id }: { id: string }) {
 
   return (
     <>
-      <p className="listing-owner">{owner.data.displayName}</p>
+      <p className="listing-owner">
+        <Link to={`/members/${id}`}>{owner.data.displayName}</Link>
+      </p>
       <p>{owner.data.approximateLocation || 'Location not shared'}</p>
     </>
   );

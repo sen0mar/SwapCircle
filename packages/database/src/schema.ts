@@ -110,6 +110,10 @@ export const listings = pgTable(
       .defaultNow(),
   },
   (table) => [
+    index('listings_search_idx').using(
+      'gin',
+      sql`to_tsvector('english', ${table.title} || ' ' || ${table.description})`,
+    ),
     index('listings_owner_idx').on(table.ownerId),
     uniqueIndex('listings_id_owner_idx').on(table.id, table.ownerId),
     index('listings_page_idx').on(table.createdAt.desc(), table.id.desc()),

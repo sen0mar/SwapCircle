@@ -1,0 +1,1 @@
+CREATE INDEX "listings_search_idx" ON "listings" USING gin (to_tsvector('english', "title" || ' ' || "description"));

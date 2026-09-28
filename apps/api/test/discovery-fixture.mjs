@@ -1,0 +1,116 @@
+// Synthetic accounts only; this fixture refuses every target except the isolated local stack.
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import process from 'node:process';
+import { URL } from 'node:url';
+import { Pool } from 'pg';
+import { createClient } from '@supabase/supabase-js';
+import { databaseConfig } from '@swapcircle/database';
+import { createApp } from '../dist/app.js';
+import { createTokenVerifier } from '../dist/auth/verify.js';
+import { ProfilesRepository } from '../dist/features/profiles/profiles.repository.js';
+import { ProfilesService } from '../dist/features/profiles/profiles.service.js';
+import { ListingsRepository } from '../dist/features/listings/listings.repository.js';
+import { ListingsService } from '../dist/features/listings/listings.service.js';
+import { PhotosRepository } from '../dist/features/photos/photos.repository.js';
+import { PhotosService } from '../dist/features/photos/photos.service.js';
+import { createPhotoStorage } from '../dist/features/photos/photos.storage.js';
+
+export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
+  const status = JSON.parse(
+    execFileSync('pnpm', ['exec', 'supabase', 'status', '-o', 'json'], {
+      cwd: new URL('../../..', import.meta.url),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }),
+  );
+  assert.equal(status.API_URL, 'http://127.0.0.1:55431');
+  assert.equal(process.env.NODE_ENV, 'development');
+  for (const value of [
+    process.env.DATABASE_URL,
+    process.env.MIGRATION_DATABASE_URL,
+  ]) {
+    const target = new URL(value);
+    assert.equal(target.hostname, '127.0.0.1');
+    assert.equal(target.port, '55432');
+    assert.equal(target.pathname, '/postgres');
+  }
+  const runtime = new Pool(databaseConfig(process.env.DATABASE_URL));
+  const migration = new Pool(
+    databaseConfig(process.env.MIGRATION_DATABASE_URL, false),
+  );
+  const options = { auth: { persistSession: false, autoRefreshToken: false } };
+  const admin = createClient(status.API_URL, status.SERVICE_ROLE_KEY, options);
+  const storage = createPhotoStorage(status.API_URL, status.SERVICE_ROLE_KEY);
+  const app = createApp({
+    allowedOrigins: [origin],
+    verifyToken: createTokenVerifier(status.API_URL, status.ANON_KEY),
+    profiles: new ProfilesService(new ProfilesRepository(runtime), storage),
+    listings: new ListingsService(new ListingsRepository(runtime)),
+    photos: new PhotosService(new PhotosRepository(runtime), storage),
+  });
+  const users = [];
+  const cleanup = async () => {
+    for (const user of users) {
+      const photos = await migration.query(
+        'SELECT storage_key FROM public.listing_photos WHERE owner_id=$1',
+        [user.id],
+      );
+      for (const row of photos.rows) await storage.remove(row.storage_key);
+      await migration.query(
+        'DELETE FROM public.listing_photos WHERE owner_id=$1',
+        [user.id],
+      );
+      await migration.query('DELETE FROM public.listings WHERE owner_id=$1', [
+        user.id,
+      ]);
+      await migration.query(
+        'DELETE FROM public.account_restrictions WHERE user_id=$1',
+        [user.id],
+      );
+      assert.equal((await admin.auth.admin.deleteUser(user.id)).error, null);
+    }
+    await runtime.end();
+    await migration.end();
+  };
+  try {
+    for (let i = 0; i < 4; i++) {
+      const email = `discovery-check-${randomUUID()}@example.invalid`;
+      const created = await admin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+      });
+      assert.equal(created.error, null);
+      const record = { id: created.data.user.id };
+      users.push(record);
+      const link = await admin.auth.admin.generateLink({
+        type: 'magiclink',
+        email,
+      });
+      assert.equal(link.error, null);
+      const client = createClient(status.API_URL, status.ANON_KEY, options);
+      const login = await client.auth.verifyOtp({
+        type: 'magiclink',
+        token_hash: link.data.properties.hashed_token,
+      });
+      assert.equal(login.error, null);
+      Object.assign(record, {
+        client,
+        session: login.data.session,
+        token: login.data.session.access_token,
+      });
+    }
+    return {
+      app,
+      users,
+      migration,
+      storage,
+      cleanup,
+      publicAuth: { url: status.API_URL, key: status.ANON_KEY },
+    };
+  } catch (error) {
+    await cleanup();
+    throw error;
+  }
+}

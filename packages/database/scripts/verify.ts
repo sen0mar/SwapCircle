@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      6,
+      7,
     );
 
     for (const table of [
@@ -113,6 +113,14 @@ export async function verify(pool: Pool, runtimeUrl: string) {
         assert.deepEqual(access.rows[0], { read: false, write: false });
       }
     }
+
+    const searchIndex = await pool.query<{ indexdef: string }>(
+      "SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND indexname='listings_search_idx'",
+    );
+    assert.match(
+      searchIndex.rows[0]?.indexdef ?? '',
+      /USING gin .*to_tsvector/,
+    );
 
     const order = await pool.query<{ condeferrable: boolean }>(
       `SELECT condeferrable FROM pg_constraint

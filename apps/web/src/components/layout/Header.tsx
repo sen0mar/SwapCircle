@@ -1,5 +1,5 @@
 import { AccountControl } from '../../features/account/AccountControl';
-import { ArrowRightLeft, Bell, Search } from 'lucide-react';
+import { ArrowRightLeft, Search } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
 import { ThemePicker } from './ThemePicker';
 
@@ -18,38 +18,16 @@ export function Header() {
             Home
           </NavLink>
           <NavLink to="/browse">Browse</NavLink>
-          <span
-            className="future-nav"
-            aria-disabled="true"
-            title="My Swaps is not available yet"
-          >
-            My Swaps
-          </span>
-          <span
-            className="future-nav"
-            aria-disabled="true"
-            title="Community is not available yet"
-          >
-            Community
-          </span>
         </nav>
-        <button
+        <Link
           className="search-entry"
-          disabled
-          aria-label="Search — not available yet"
+          to="/browse#catalog-search"
+          aria-label="Search items"
         >
           <Search size={18} aria-hidden="true" />
-          <span>Search coming soon</span>
-        </button>
+          <span>Search items</span>
+        </Link>
         <div className="header-controls">
-          <button
-            className="icon-button"
-            disabled
-            aria-label="Notifications — not available yet"
-            title="Notifications are not available yet"
-          >
-            <Bell size={20} aria-hidden="true" />
-          </button>
           <AccountControl />
           <ThemePicker />
         </div>

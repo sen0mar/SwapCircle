@@ -35,6 +35,7 @@ export function useSaveProfile() {
     onSuccess: (profile) => {
       queries.setQueryData(['private', session?.user.id, 'profile'], profile);
       void queries.invalidateQueries({ queryKey: ['member', profile.id] });
+      void queries.invalidateQueries({ queryKey: ['member-discovery'] });
     },
   });
 }

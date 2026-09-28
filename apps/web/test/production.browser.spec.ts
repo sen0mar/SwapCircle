@@ -26,7 +26,9 @@ test('production is signed out and contains no profile fixture', async ({
     );
   }
 
-  await expect(page.getByText('Listings are not available yet.')).toBeVisible();
+  await expect(
+    page.getByText('Items could not be loaded.', { exact: false }),
+  ).toBeVisible();
   await expect(page.getByLabel('Development homepage preview')).toHaveCount(0);
   await expect(page.locator('.listing-card')).toHaveCount(0);
 

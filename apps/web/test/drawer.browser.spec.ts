@@ -19,6 +19,10 @@ for (const theme of ['light', 'dark']) {
     await expect(dialog).toHaveCount(0);
     await expect(page.getByLabel('Development homepage preview')).toBeVisible();
 
+    await page
+      .getByLabel('Development homepage preview')
+      .selectOption('unavailable');
+
     const main = await page.locator('main').boundingBox();
 
     await trigger.focus();
