@@ -1,3 +1,5 @@
+import { SafetyError } from '../features/safety/safety.permissions.js';
+import { z } from 'zod';
 import type { ErrorRequestHandler } from 'express';
 import { errorBody } from '../http/error-response.js';
 
@@ -10,6 +12,23 @@ export const errorHandler: ErrorRequestHandler = (
   if (response.headersSent) {
     next(error);
 
+    return;
+  }
+
+  if (error instanceof SafetyError || error instanceof z.ZodError) {
+    if (error instanceof SafetyError && error.retryAfterSeconds !== undefined)
+      response.setHeader('Retry-After', error.retryAfterSeconds);
+    response
+      .status(error instanceof SafetyError ? error.status : 400)
+      .json(
+        errorBody(
+          error instanceof SafetyError ? error.code : 'INVALID_INPUT',
+          error instanceof SafetyError
+            ? error.message
+            : 'Check the request fields.',
+          response.getHeader('X-Request-Id'),
+        ),
+      );
     return;
   }
 

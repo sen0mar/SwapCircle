@@ -1,3 +1,10 @@
+import { rateLimit } from 'express-rate-limit';
+import { errorBody } from './http/error-response.js';
+import {
+  developmentLimits,
+  type SafetyLimits,
+} from './features/safety/safety.permissions.js';
+import type { SafetyService } from './features/safety/safety.service.js';
 import type { ListingsService } from './features/listings/listings.service.js';
 import type { VerifyToken } from './auth/verify.js';
 import express from 'express';
@@ -17,12 +24,16 @@ export function createApp({
   profiles,
   listings,
   photos,
+  safety,
+  limits = developmentLimits,
 }: {
   allowedOrigins: readonly string[];
   verifyToken?: VerifyToken;
   profiles?: ProfilesService;
   listings?: ListingsService;
   photos?: PhotosService;
+  safety?: SafetyService;
+  limits?: SafetyLimits;
 }): Express {
   const app = express();
 
@@ -34,13 +45,43 @@ export function createApp({
     cors({
       origin: (origin, callback) =>
         callback(null, origin !== undefined && allowedOrigins.includes(origin)),
-      exposedHeaders: ['X-Request-Id'],
+      exposedHeaders: [
+        'X-Request-Id',
+        'Retry-After',
+        'RateLimit',
+        'RateLimit-Policy',
+      ],
       methods: ['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'DELETE'],
     }),
   );
 
+  app.use(
+    rateLimit({
+      windowMs: limits.burstWindowMs,
+      limit: limits.burstMax,
+      skip: (request) => ['GET', 'HEAD', 'OPTIONS'].includes(request.method),
+      standardHeaders: 'draft-8',
+      // Forwarded addresses are untrusted; they never choose this limiter's key.
+      validate: { xForwardedForHeader: false },
+      legacyHeaders: false,
+      handler: (_request, response) =>
+        response
+          .status(429)
+          .json(
+            errorBody(
+              'BURST_LIMIT',
+              'Too many requests. Try again shortly.',
+              response.getHeader('X-Request-Id'),
+            ),
+          ),
+    }),
+  );
+
   app.use(express.json({ limit: '16kb' }));
-  app.use('/api/v1', createApiRouter(verifyToken, profiles, listings, photos));
+  app.use(
+    '/api/v1',
+    createApiRouter(verifyToken, profiles, listings, photos, safety),
+  );
   app.use(notFound);
   app.use(errorHandler);
 
