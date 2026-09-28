@@ -1,3 +1,6 @@
+import { SafetyPermissions } from './features/safety/safety.permissions.js';
+import { SafetyRepository } from './features/safety/safety.repository.js';
+import { SafetyService } from './features/safety/safety.service.js';
 import { ListingsRepository } from './features/listings/listings.repository.js';
 import { ListingsService } from './features/listings/listings.service.js';
 import { createTokenVerifier } from './auth/verify.js';
@@ -14,19 +17,22 @@ import { createPhotoStorage } from './features/photos/photos.storage.js';
 const config = readEnvironment(process.env);
 const pool = new Pool(databaseConfig(config.databaseUrl));
 
+const permissions = new SafetyPermissions(config.limits);
+
 createApp({
+  safety: new SafetyService(new SafetyRepository(pool), permissions),
   ...config,
   verifyToken: createTokenVerifier(
     config.supabaseUrl,
     config.supabasePublishableKey,
   ),
-  listings: new ListingsService(new ListingsRepository(pool)),
+  listings: new ListingsService(new ListingsRepository(pool, permissions)),
   photos: new PhotosService(
-    new PhotosRepository(pool),
+    new PhotosRepository(pool, permissions),
     createPhotoStorage(config.supabaseUrl, config.supabaseServiceRoleKey),
   ),
   profiles: new ProfilesService(
-    new ProfilesRepository(pool),
+    new ProfilesRepository(pool, permissions),
     createPhotoStorage(config.supabaseUrl, config.supabaseServiceRoleKey),
   ),
 }).listen(config.port, () => {

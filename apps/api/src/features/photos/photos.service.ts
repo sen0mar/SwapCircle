@@ -48,12 +48,7 @@ export class PhotosService {
       if (!listing || listing.ownerId !== actor)
         throw new PhotoError(404, 'NOT_FOUND', 'Listing not found.');
 
-      if (await this.repository.restricted(client, actor))
-        throw new PhotoError(
-          403,
-          'ACCOUNT_RESTRICTED',
-          'This account cannot change photos.',
-        );
+      await this.repository.permissions.assertUnrestricted(client, [actor]);
 
       if (listing.availability !== 'available')
         throw new PhotoError(
@@ -76,12 +71,7 @@ export class PhotosService {
       if (!listing || listing.ownerId !== actor)
         throw new PhotoError(404, 'NOT_FOUND', 'Listing not found.');
 
-      if (await this.repository.restricted(client, actor))
-        throw new PhotoError(
-          403,
-          'ACCOUNT_RESTRICTED',
-          'This account cannot change photos.',
-        );
+      await this.repository.permissions.assertUnrestricted(client, [actor]);
 
       if (listing.availability !== 'available')
         throw new PhotoError(
@@ -99,6 +89,8 @@ export class PhotosService {
           'PHOTO_LIMIT',
           'An item can have at most three photos.',
         );
+
+      await this.repository.permissions.consume(client, actor, 'photo');
 
       return this.repository.reserve(client, listingId, actor, key, position);
     });
@@ -144,12 +136,7 @@ export class PhotosService {
       if (!listing || listing.ownerId !== actor)
         throw new PhotoError(404, 'NOT_FOUND', 'Photo not found.');
 
-      if (await this.repository.restricted(client, actor))
-        throw new PhotoError(
-          403,
-          'ACCOUNT_RESTRICTED',
-          'This account cannot change photos.',
-        );
+      await this.repository.permissions.assertUnrestricted(client, [actor]);
 
       const row = await this.repository.lockPhoto(client, listingId, photoId);
 
@@ -163,6 +150,9 @@ export class PhotosService {
           'LISTING_UNAVAILABLE',
           'This listing cannot be changed.',
         );
+
+      // Each Storage removal attempt is bounded, including retries of deleting rows.
+      await this.repository.permissions.consume(client, actor, 'photo');
 
       await this.repository.markDeleting(client, row.id);
       return row;
@@ -189,12 +179,7 @@ export class PhotosService {
       if (!listing || listing.ownerId !== actor)
         throw new PhotoError(404, 'NOT_FOUND', 'Listing not found.');
 
-      if (await this.repository.restricted(client, actor))
-        throw new PhotoError(
-          403,
-          'ACCOUNT_RESTRICTED',
-          'This account cannot change photos.',
-        );
+      await this.repository.permissions.assertUnrestricted(client, [actor]);
     });
 
     for (const row of await this.repository.abandoned(listingId)) {
@@ -213,18 +198,15 @@ export class PhotosService {
 
       if (!listing || listing.ownerId !== actor)
         throw new PhotoError(404, 'NOT_FOUND', 'Listing not found.');
-      if (await this.repository.restricted(client, actor))
-        throw new PhotoError(
-          403,
-          'ACCOUNT_RESTRICTED',
-          'This account cannot change photos.',
-        );
+      await this.repository.permissions.assertUnrestricted(client, [actor]);
       if (listing.availability !== 'available')
         throw new PhotoError(
           409,
           'LISTING_UNAVAILABLE',
           'This listing cannot be changed.',
         );
+      await this.repository.permissions.consume(client, actor, 'photo');
+
       if (!(await this.repository.reorder(client, listingId, ids)))
         throw new PhotoError(
           409,

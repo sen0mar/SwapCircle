@@ -1,3 +1,4 @@
+import { SafetyPermissions } from '../safety/safety.permissions.js';
 import type { Pool, PoolClient } from 'pg';
 import type {
   CatalogQuery,
@@ -11,7 +12,10 @@ const projection = `id, owner_id AS "ownerId", title, description, condition, av
   to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "updatedAt"`;
 
 export class ListingsRepository {
-  constructor(private readonly pool: Pool) {}
+  constructor(
+    private readonly pool: Pool,
+    readonly permissions = new SafetyPermissions(),
+  ) {}
 
   async transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
@@ -31,15 +35,6 @@ export class ListingsRepository {
     } finally {
       client.release();
     }
-  }
-
-  async restricted(client: PoolClient, actor: string) {
-    const result = await client.query(
-      'SELECT 1 FROM public.account_restrictions WHERE user_id = $1',
-      [actor],
-    );
-
-    return Boolean(result.rowCount);
   }
 
   async create(client: PoolClient, actor: string, input: ListingCreate) {

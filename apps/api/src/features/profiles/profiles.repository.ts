@@ -1,3 +1,4 @@
+import { SafetyPermissions } from '../safety/safety.permissions.js';
 import type { Pool, PoolClient } from 'pg';
 import type {
   CurrentProfile,
@@ -26,7 +27,10 @@ export class RestrictedAccountError extends Error {}
 export class AvatarChangedError extends Error {}
 
 export class ProfilesRepository {
-  constructor(private readonly pool: Pool) {}
+  constructor(
+    private readonly pool: Pool,
+    readonly permissions = new SafetyPermissions(),
+  ) {}
 
   async provision(userId: string): Promise<void> {
     await this.pool.query(
@@ -146,6 +150,7 @@ export class ProfilesRepository {
     userId: string,
     expected: string | null,
     key: string | null,
+    charge = true,
   ): Promise<void> {
     const client = await this.pool.connect();
     try {
@@ -154,11 +159,7 @@ export class ProfilesRepository {
         'SELECT id FROM public.profiles WHERE id=$1 FOR UPDATE',
         [userId],
       );
-      const restricted = await client.query(
-        'SELECT 1 FROM public.account_restrictions WHERE user_id=$1',
-        [userId],
-      );
-      if (restricted.rowCount) throw new RestrictedAccountError();
+      await this.permissions.assertUnrestricted(client, [userId]);
       const previous = await client.query<{
         avatar_storage_key: string | null;
       }>('SELECT avatar_storage_key FROM public.profiles WHERE id=$1', [
@@ -167,6 +168,13 @@ export class ProfilesRepository {
       if (!previous.rowCount) throw new Error('Profile not found.');
       if (previous.rows[0]?.avatar_storage_key !== expected)
         throw new AvatarChangedError();
+      const pendingCleanup = await client.query(
+        'SELECT 1 FROM public.avatar_cleanup WHERE owner_id=$1 LIMIT 1',
+        [userId],
+      );
+      if (charge && (key !== expected || pendingCleanup.rowCount))
+        await this.permissions.consume(client, userId, 'avatar');
+
       await client.query(
         'UPDATE public.profiles SET avatar_storage_key=$2, updated_at=now() WHERE id=$1',
         [userId, key],
@@ -176,6 +184,43 @@ export class ProfilesRepository {
           'INSERT INTO public.avatar_cleanup (storage_key, owner_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
           [expected, userId],
         );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Charge a durable processing/storage attempt before external work. Failure does
+  // not refund it: repeated invalid uploads must not bypass the processing bound.
+  // No transaction stays open during decoding or a Storage request.
+  async authorizeAvatarUpload(userId: string) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.permissions.authorizeWrite(client, userId, 'avatar');
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async checkAvatarCleanup(userId: string) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.permissions.assertUnrestricted(client, [userId]);
+      const pending = await client.query(
+        'SELECT 1 FROM public.avatar_cleanup WHERE owner_id=$1 LIMIT 1',
+        [userId],
+      );
+      if (pending.rowCount)
+        await this.permissions.consume(client, userId, 'avatar');
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -225,12 +270,7 @@ export class ProfilesRepository {
         [userId],
       );
 
-      const restriction = await client.query(
-        'SELECT 1 FROM public.account_restrictions WHERE user_id = $1',
-        [userId],
-      );
-
-      if (restriction.rowCount) throw new RestrictedAccountError();
+      await this.permissions.authorizeWrite(client, userId, 'profile');
 
       const known = await client.query<{ id: string }>(
         'SELECT id FROM public.interests WHERE id = ANY($1::uuid[])',
