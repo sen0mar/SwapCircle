@@ -194,3 +194,22 @@ export const directConversationReceiptSchema = z.object({
   id: z.uuid(),
   type: z.literal('direct'),
 });
+
+// Authorized Supabase read projections; do not include private profile fields.
+export const conversationReadSchema = z.object({
+  id: z.uuid(),
+  type: z.enum(['direct', 'group']),
+  direct_user_low: z.uuid().nullable(),
+  direct_user_high: z.uuid().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+});
+export const messageReadSchema = z.object({
+  id: z.uuid(),
+  conversation_id: z.uuid(),
+  sender_id: z.uuid(),
+  body: z.string().min(1).max(5000),
+  message_order: z.number().int().positive(),
+  created_at: z.string().datetime({ offset: true }),
+});
+export type ConversationRead = z.infer<typeof conversationReadSchema>;
+export type MessageRead = z.infer<typeof messageReadSchema>;
