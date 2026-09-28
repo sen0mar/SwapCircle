@@ -1,6 +1,9 @@
+import type { apiRequest } from '../../lib/api-client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   conversationReadSchema,
+  messageReceiptSchema,
+  type MessageSubmission,
   messageReadSchema,
   type ConversationRead,
 } from '@swapcircle/contracts';
@@ -10,7 +13,7 @@ export const conversationPageSize = 20;
 const conversationColumns =
   'id,type,direct_user_low,direct_user_high,created_at';
 const messageColumns =
-  'id,conversation_id,sender_id,body,message_order,created_at';
+  'id,conversation_id,sender_id,body,client_message_id,message_order,created_at';
 
 export class ConversationDenied extends Error {}
 
@@ -115,4 +118,15 @@ export async function readHistory(
     items,
     nextCursor: rows.length > limit ? items.at(-1)?.message_order : undefined,
   };
+}
+
+export function submitMessage(
+  request: typeof apiRequest,
+  payload: MessageSubmission,
+) {
+  return request('/api/v1/conversations/messages', messageReceiptSchema, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 }

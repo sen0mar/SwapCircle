@@ -205,6 +205,7 @@ export const conversationReadSchema = z.object({
 });
 export const messageReadSchema = z.object({
   id: z.uuid(),
+  client_message_id: z.uuid(),
   conversation_id: z.uuid(),
   sender_id: z.uuid(),
   body: z.string().min(1).max(5000),

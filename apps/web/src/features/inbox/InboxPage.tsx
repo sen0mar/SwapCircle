@@ -1,9 +1,10 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Avatar } from '../account/Avatar';
 import { ConversationDenied } from './inbox-api';
 import { useInbox, useThread } from './useInbox';
+import { useComposer } from './MessageComposerProvider';
 
 export function MessageTime({ value }: { value: string }) {
   return (
@@ -21,7 +22,7 @@ export function MessageTime({ value }: { value: string }) {
 
 export function InboxPage() {
   const { id } = useParams();
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const { drafts, setDraft } = useComposer();
 
   return (
     <section aria-labelledby="inbox-title">
@@ -33,9 +34,7 @@ export function InboxPage() {
             key={id}
             id={id}
             draft={drafts[id] ?? ''}
-            setDraft={(draft) =>
-              setDrafts((current) => ({ ...current, [id]: draft }))
-            }
+            setDraft={(draft) => setDraft(id, draft)}
           />
         ) : (
           <section className="panel inbox-placeholder">
@@ -142,10 +141,33 @@ function Thread({
 }) {
   const { conversation, history, messages, profiles, peer, userId } =
     useThread(id);
+  const composer = useComposer();
+  const local = composer.outbox.filter(
+    (message) =>
+      message.payload.conversation_id === id &&
+      !messages.some(
+        (saved) =>
+          saved.sender_id === userId &&
+          saved.client_message_id === message.payload.client_message_id,
+      ),
+  );
+
+  useEffect(() => {
+    if (history.data)
+      composer.reconcile(history.data.pages.flatMap((page) => page.items));
+  }, [history.data, composer.reconcile]);
+
+  const localLayout = local
+    .map(
+      (message) =>
+        `${message.payload.client_message_id}:${message.status}:${message.delayed}`,
+    )
+    .join(',');
   const scroll = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const anchor = useRef<{ height: number; top: number } | null>(null);
   const initialized = useRef(false);
+  const atBottom = useRef(true);
 
   useLayoutEffect(() => {
     heading.current?.focus();
@@ -159,11 +181,11 @@ function Thread({
       viewport.scrollTop =
         anchor.current.top + viewport.scrollHeight - anchor.current.height;
       anchor.current = null;
-    } else if (!initialized.current) {
+    } else if (!initialized.current || atBottom.current) {
       viewport.scrollTop = viewport.scrollHeight;
       initialized.current = true;
     }
-  }, [history.data]);
+  }, [history.data, localLayout]);
 
   const older = async () => {
     const viewport = scroll.current;
@@ -234,9 +256,23 @@ function Thread({
         <p role="status">Loading history…</p>
       ) : (
         <>
+          <Button
+            disabled={history.isFetching}
+            onClick={() => void history.refetch()}
+          >
+            Refresh history
+          </Button>
           <div
             className="thread-scroll"
             ref={scroll}
+            onScroll={(event) => {
+              const viewport = event.currentTarget;
+              atBottom.current =
+                viewport.scrollHeight -
+                  viewport.scrollTop -
+                  viewport.clientHeight <
+                40;
+            }}
             tabIndex={0}
             role="region"
             aria-label="Message history"
@@ -253,10 +289,11 @@ function Thread({
             )}
             {history.isError && (
               <p role="alert">
-                Older history could not be loaded. Retry loading older messages.
+                History could not be updated. Refresh history or retry loading
+                older messages.
               </p>
             )}
-            {messages.length ? (
+            {messages.length || local.length ? (
               <ol className="message-history">
                 {messages.map((message) => {
                   const sender =
@@ -276,16 +313,52 @@ function Thread({
                         <strong>{sender}</strong>
                         <p>{message.body}</p>
                         <MessageTime value={message.created_at} />
+                        {message.sender_id === userId && (
+                          <span className="message-status">Sent</span>
+                        )}
                       </div>
                     </li>
                   );
                 })}
+                {local.map((message) => (
+                  <li
+                    key={message.payload.client_message_id}
+                    className="message-own"
+                  >
+                    <div className="message-bubble">
+                      <strong>You</strong>
+                      <p>{message.payload.body}</p>
+                      {message.status === 'pending' ? (
+                        <span role="status">
+                          {message.delayed
+                            ? 'Connecting… The API may be waking up.'
+                            : 'Sending…'}
+                        </span>
+                      ) : (
+                        <>
+                          <p role="alert">
+                            Save could not be confirmed. Your text is kept here.
+                          </p>
+                          <Button onClick={() => composer.retry(message)}>
+                            Retry message
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                ))}
               </ol>
             ) : (
               <p>No messages yet.</p>
             )}
           </div>
-          <div className="composer-shell">
+          <form
+            className="composer-shell"
+            onSubmit={(event) => {
+              event.preventDefault();
+              composer.send(id);
+            }}
+          >
             <label htmlFor="message-draft">Message draft</label>
             <textarea
               id="message-draft"
@@ -297,12 +370,15 @@ function Thread({
             />
             <div>
               <p id="composer-help">
-                Sending is not available yet. Your draft is unsent and stays
-                here while you browse conversations. Reloading clears it.
+                Sent means saved by the server. Refresh history to see new
+                messages. Drafts and failed sends stay while you browse;
+                reloading clears them.
               </p>
-              <Button disabled>Send unavailable</Button>
+              <Button type="submit" disabled={!draft.trim()}>
+                Send message
+              </Button>
             </div>
-          </div>
+          </form>
         </>
       )}
     </section>
