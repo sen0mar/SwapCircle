@@ -245,7 +245,7 @@ export const actionQuotas = pgTable(
     check('quota_used_positive', sql`${table.used} > 0`),
     check(
       'quota_action_valid',
-      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report', 'conversation')`,
+      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report', 'conversation', 'message')`,
     ),
   ],
 );

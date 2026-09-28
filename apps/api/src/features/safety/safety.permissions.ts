@@ -27,7 +27,8 @@ export type WriteAction =
   | 'photo'
   | 'block'
   | 'report'
-  | 'conversation';
+  | 'conversation'
+  | 'message';
 
 export class SafetyPermissions {
   constructor(
