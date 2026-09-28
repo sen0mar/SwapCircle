@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ArrowRight, Leaf, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
@@ -17,6 +18,9 @@ import {
 } from './Previews';
 
 export interface HomeContentProps {
+  listingContent?: ReactNode;
+  memberContent?: ReactNode;
+  live?: boolean;
   state?: CollectionState | 'ready';
   listings?: readonly Listing[];
   members?: readonly Member[];
@@ -24,6 +28,9 @@ export interface HomeContentProps {
 }
 
 export function HomeContent({
+  listingContent,
+  memberContent,
+  live = false,
   state = 'unavailable',
   listings = [],
   members = [],
@@ -75,43 +82,53 @@ export function HomeContent({
               Browse items <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </div>
-          {state === 'ready' && listings.length ? (
-            <>
-              <div className="listing-grid">
-                {listings.map((listing) => (
-                  <ListingCard key={listing.title} listing={listing} />
-                ))}
-              </div>
-              <p className="availability-note">
-                Sample listings for design preview. Item details are not
-                available yet.
-              </p>
-            </>
-          ) : (
-            <CollectionNotice state={notice} subject="listings" />
-          )}
+          {listingContent ??
+            (state === 'ready' && listings.length ? (
+              <>
+                <div className="listing-grid">
+                  {listings.map((listing) => (
+                    <ListingCard key={listing.title} listing={listing} />
+                  ))}
+                </div>
+                <p className="availability-note">
+                  Sample listings for design preview. Item details are not
+                  available yet.
+                </p>
+              </>
+            ) : (
+              <CollectionNotice state={notice} subject="listings" />
+            ))}
         </section>
         <section aria-labelledby="members-title">
           <div className="section-heading">
             <h2 id="members-title">Discover your community</h2>
           </div>
-          {state === 'ready' && members.length ? (
-            <div className="member-grid">
-              {members.map((member) => (
-                <MemberPreview key={member.name} member={member} />
-              ))}
-            </div>
-          ) : (
-            <CollectionNotice state={notice} subject="members" />
-          )}
+          {memberContent ??
+            (state === 'ready' && members.length ? (
+              <div className="member-grid">
+                {members.map((member) => (
+                  <MemberPreview key={member.name} member={member} />
+                ))}
+              </div>
+            ) : (
+              <CollectionNotice state={notice} subject="members" />
+            ))}
         </section>
       </div>
-      <aside className="right-rail" aria-label="Community and conversations">
+      <aside
+        className="right-rail"
+        aria-label={live ? 'Community' : 'Community and conversations'}
+      >
         <Card className="community-panel">
           <Leaf size={28} aria-hidden="true" className="text-brand-ink" />
           <h2>A little more community</h2>
           <p>Shared interests can be the start of a connection.</p>
-          {state === 'ready' && members.length ? (
+          {live ? (
+            <p>
+              Explore public profiles and interests below. Shared interests are
+              optional for swapping and messaging.
+            </p>
+          ) : state === 'ready' && members.length ? (
             <>
               <p>Sample interests from the preview community</p>
               <div className="interest-list">
@@ -129,27 +146,31 @@ export function HomeContent({
             </p>
           )}
         </Card>
-        <section aria-labelledby="conversations-title">
-          <div className="section-heading">
-            <h2 id="conversations-title">Conversations</h2>
-          </div>
-          {state === 'ready' && conversations.length ? (
-            <Card>
-              <p className="preview-caption">Synthetic conversation previews</p>
-              <ul>
-                {conversations.map((conversation) => (
-                  <ConversationPreview
-                    key={conversation.member.name}
-                    conversation={conversation}
-                  />
-                ))}
-              </ul>
-              <MessageUnavailable />
-            </Card>
-          ) : (
-            <CollectionNotice state={notice} subject="conversations" />
-          )}
-        </section>
+        {!live && (
+          <section aria-labelledby="conversations-title">
+            <div className="section-heading">
+              <h2 id="conversations-title">Conversations</h2>
+            </div>
+            {state === 'ready' && conversations.length ? (
+              <Card>
+                <p className="preview-caption">
+                  Synthetic conversation previews
+                </p>
+                <ul>
+                  {conversations.map((conversation) => (
+                    <ConversationPreview
+                      key={conversation.member.name}
+                      conversation={conversation}
+                    />
+                  ))}
+                </ul>
+                <MessageUnavailable />
+              </Card>
+            ) : (
+              <CollectionNotice state={notice} subject="conversations" />
+            )}
+          </section>
+        )}
       </aside>
     </div>
   );

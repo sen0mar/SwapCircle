@@ -1,4 +1,8 @@
-import type { ProfileUpdate } from '@swapcircle/contracts';
+import type {
+  MemberQuery,
+  MemberCursor,
+  ProfileUpdate,
+} from '@swapcircle/contracts';
 import { ProfilesRepository } from './profiles.repository.js';
 import type { PhotoStorage } from '../photos/photos.storage.js';
 import { PhotoError, processPhoto } from '../photos/photos.service.js';
@@ -40,6 +44,23 @@ export class ProfilesService {
 
   async publicProfile(userId: string) {
     return this.present(await this.repository.publicProfile(userId));
+  }
+
+  async discover(query: MemberQuery, actor?: string, cursor?: MemberCursor) {
+    const rows = await this.repository.discover(query, actor, cursor);
+    const items = rows.slice(0, query.limit).map((row) => this.present(row)!);
+    const last = items.at(-1);
+    const nextCursor =
+      rows.length > query.limit && last
+        ? Buffer.from(
+            JSON.stringify({
+              id: last.id,
+              sharedInterestCount: last.sharedInterestCount ?? 0,
+            }),
+          ).toString('base64url')
+        : null;
+
+    return { items, nextCursor };
   }
 
   async uploadAvatar(userId: string, input: Buffer) {

@@ -1,6 +1,9 @@
 import type { Pool, PoolClient } from 'pg';
 import type {
   CurrentProfile,
+  MemberQuery,
+  MemberCursor,
+  DiscoveredMember,
   ProfileUpdate,
   PublicProfile,
 } from '@swapcircle/contracts';
@@ -93,6 +96,42 @@ export class ProfilesRepository {
       avatarUrl: null,
       avatarStorageKey,
     };
+  }
+
+  async discover(query: MemberQuery, actor?: string, cursor?: MemberCursor) {
+    const result = await this.pool.query<
+      DiscoveredMember & { avatarStorageKey: string | null }
+    >(
+      `WITH members AS (
+        SELECT p.id, p.display_name AS "displayName", p.biography,
+          p.approximate_location AS "approximateLocation", p.avatar_storage_key AS "avatarStorageKey",
+          NULL::text AS "avatarUrl",
+          COALESCE(jsonb_agg(jsonb_build_object('id', i.id, 'name', i.name) ORDER BY i.name)
+            FILTER (WHERE i.id IS NOT NULL), '[]') AS interests,
+          COALESCE(jsonb_agg(jsonb_build_object('id', i.id, 'name', i.name) ORDER BY i.name)
+            FILTER (WHERE mine.interest_id IS NOT NULL), '[]') AS "sharedInterests",
+          CASE WHEN $1::uuid IS NULL THEN NULL ELSE count(mine.interest_id)::int END AS "sharedInterestCount"
+        FROM public.profiles p
+        LEFT JOIN public.profile_interests pi ON pi.profile_id = p.id
+        LEFT JOIN public.interests i ON i.id = pi.interest_id
+        LEFT JOIN public.profile_interests mine ON mine.profile_id = $1 AND mine.interest_id = pi.interest_id
+        WHERE ($1::uuid IS NULL OR p.id <> $1)
+          AND ($2::uuid IS NULL OR EXISTS (
+            SELECT 1 FROM public.profile_interests filter WHERE filter.profile_id = p.id AND filter.interest_id = $2))
+        GROUP BY p.id
+      ) SELECT * FROM members
+      WHERE ($3::uuid IS NULL OR (COALESCE("sharedInterestCount", 0), id) < ($4::int, $3::uuid))
+      ORDER BY COALESCE("sharedInterestCount", 0) DESC, id DESC LIMIT $5`,
+      [
+        actor ?? null,
+        query.interest ?? null,
+        cursor?.id ?? null,
+        cursor?.sharedInterestCount ?? 0,
+        query.limit + 1,
+      ],
+    );
+
+    return result.rows;
   }
 
   async avatarKey(userId: string): Promise<string | null> {

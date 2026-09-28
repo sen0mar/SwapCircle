@@ -278,6 +278,9 @@ test('profile draft, save, reload and public second session', async ({
       },
     }),
   );
+  await publicPage.route('**/api/v1/listings?*', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
   await publicPage.goto(`/members/${id}`);
   await expect(
     publicPage.getByRole('heading', { name: 'Ada Garden' }),
@@ -291,7 +294,7 @@ test('profile draft, save, reload and public second session', async ({
     fullPage: true,
   });
   await expect(
-    publicPage.getByText('Listings will appear here', { exact: false }),
+    publicPage.getByText('No available items shared yet.', { exact: true }),
   ).toBeVisible();
   expect(await publicPage.locator('main').innerHTML()).not.toMatch(
     /createdAt|updatedAt|interestIds|credential|moderation|meeting/i,

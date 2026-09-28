@@ -1,5 +1,11 @@
 import type { Request, Response } from 'express';
-import { interestIdSchema, profileUpdateSchema } from '@swapcircle/contracts';
+import {
+  interestIdSchema,
+  profileUpdateSchema,
+  memberQuerySchema,
+  memberCursorSchema,
+  type MemberCursor,
+} from '@swapcircle/contracts';
 import { errorBody } from '../../http/error-response.js';
 import type { AuthenticatedLocals } from '../../middleware/authenticate.js';
 import {
@@ -9,7 +15,58 @@ import {
 import type { ProfilesService } from './profiles.service.js';
 
 export function createProfilesController(service: ProfilesService) {
+  const discover = async (
+    request: Request,
+    response: Response<unknown, Partial<AuthenticatedLocals>>,
+  ) => {
+    const query = memberQuerySchema.safeParse(request.query);
+    let cursor: MemberCursor | undefined;
+
+    if (query.success && query.data.cursor) {
+      try {
+        cursor = memberCursorSchema.parse(
+          JSON.parse(
+            Buffer.from(query.data.cursor, 'base64url').toString('utf8'),
+          ),
+        );
+      } catch {
+        response
+          .status(400)
+          .json(
+            errorBody(
+              'INVALID_CURSOR',
+              'Invalid pagination cursor.',
+              response.getHeader('X-Request-Id'),
+            ),
+          );
+        return;
+      }
+    }
+
+    if (!query.success) {
+      response
+        .status(400)
+        .json(
+          errorBody(
+            'INVALID_QUERY',
+            'Check the discovery filters.',
+            response.getHeader('X-Request-Id'),
+          ),
+        );
+      return;
+    }
+
+    response.json(
+      await service.discover(
+        query.data,
+        response.locals.identity?.userId,
+        cursor,
+      ),
+    );
+  };
+
   return {
+    discover,
     current: async (
       _request: Request,
       response: Response<unknown, AuthenticatedLocals>,

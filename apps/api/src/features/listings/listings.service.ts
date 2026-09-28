@@ -1,4 +1,5 @@
 import type {
+  CatalogQuery,
   ListingCreate,
   ListingCursor,
   ListingUpdate,
@@ -76,9 +77,9 @@ export class ListingsService {
     return listing;
   }
 
-  async page(limit: number, cursor?: ListingCursor) {
-    const rows = await this.repository.page(limit, cursor);
-    return this.makePage(rows, limit);
+  async page(query: CatalogQuery, cursor?: ListingCursor) {
+    const rows = await this.repository.page(query, cursor);
+    return this.makePage(rows, query.limit);
   }
 
   async ownerPage(actor: string, limit: number, cursor?: ListingCursor) {
