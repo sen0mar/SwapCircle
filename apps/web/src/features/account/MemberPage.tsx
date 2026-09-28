@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { getPublicProfile } from './profile-api';
 import { MemberListings } from '../browse/MemberListings';
+import { SafetyActions } from '../safety/SafetyActions';
 import { Avatar } from './Avatar';
 
 export function MemberPage() {
@@ -51,6 +52,13 @@ export function MemberPage() {
       ) : (
         <p>No interests added yet.</p>
       )}
+      <SafetyActions
+        key={id}
+        userId={id}
+        name={profile.displayName}
+        targetType="member"
+        targetId={id}
+      />
       <h2>Listings</h2>
       <MemberListings owner={id} />
     </section>

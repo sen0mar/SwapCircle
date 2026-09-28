@@ -1,3 +1,4 @@
+import { actionError } from '../safety/action-error';
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { listingPhotosSchema } from '@swapcircle/contracts';
@@ -98,8 +99,13 @@ export function ListingPhotosEditor({
                           },
                         );
                         await refresh();
-                      } catch {
-                        setError('Photo order could not be saved. Retry.');
+                      } catch (failure) {
+                        setError(
+                          actionError(
+                            failure,
+                            'Photo order could not be saved. Retry.',
+                          ),
+                        );
                       } finally {
                         setBusy(false);
                       }
@@ -129,8 +135,13 @@ export function ListingPhotosEditor({
                           },
                         );
                         await refresh();
-                      } catch {
-                        setError('Photo order could not be saved. Retry.');
+                      } catch (failure) {
+                        setError(
+                          actionError(
+                            failure,
+                            'Photo order could not be saved. Retry.',
+                          ),
+                        );
                       } finally {
                         setBusy(false);
                       }
@@ -156,8 +167,13 @@ export function ListingPhotosEditor({
                           { method: 'DELETE' },
                         );
                         await refresh();
-                      } catch {
-                        setError('Photo could not be removed. Retry.');
+                      } catch (failure) {
+                        setError(
+                          actionError(
+                            failure,
+                            'Photo could not be removed. Retry.',
+                          ),
+                        );
                       } finally {
                         setBusy(false);
                       }
@@ -269,9 +285,12 @@ export function ListingPhotosEditor({
                     removePending(item.url);
                     await refresh();
                   }
-                } catch {
+                } catch (failure) {
                   setError(
-                    'Upload stopped. Saved photos are kept; retry the remaining selections.',
+                    actionError(
+                      failure,
+                      'Upload stopped. Saved photos are kept; retry the remaining selections.',
+                    ),
                   );
                 } finally {
                   setBusy(false);

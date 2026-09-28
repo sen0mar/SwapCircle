@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { ThemePicker } from '../../components/layout/ThemePicker';
+import { BlockedMembers } from '../safety/BlockedMembers';
+import { RestrictionNotice } from '../safety/SafetyActions';
 import { useAuth } from '../auth/AuthProvider';
 
 export function SettingsPage() {
@@ -12,6 +14,8 @@ export function SettingsPage() {
     <section className="panel route-panel settings-page">
       <h1>Account settings</h1>
       <ThemePicker />
+      <RestrictionNotice />
+      <BlockedMembers />
       <Button
         disabled={pending}
         onClick={() => {

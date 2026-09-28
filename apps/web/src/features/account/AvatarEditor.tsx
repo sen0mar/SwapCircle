@@ -1,3 +1,4 @@
+import { actionError } from '../safety/action-error';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -94,9 +95,12 @@ export function AvatarEditor({ profile }: { profile: CurrentProfile }) {
                   },
                 ),
               );
-            } catch {
+            } catch (failure) {
               setError(
-                'Avatar could not be saved. Your selection is still here; retry.',
+                actionError(
+                  failure,
+                  'Avatar could not be saved. Your selection is still here; retry.',
+                ),
               );
             } finally {
               setBusy(false);
@@ -121,8 +125,10 @@ export function AvatarEditor({ profile }: { profile: CurrentProfile }) {
                   { method: 'DELETE' },
                 ),
               );
-            } catch {
-              setError('Avatar could not be removed. Retry.');
+            } catch (failure) {
+              setError(
+                actionError(failure, 'Avatar could not be removed. Retry.'),
+              );
             } finally {
               setBusy(false);
             }
@@ -150,9 +156,12 @@ export function AvatarEditor({ profile }: { profile: CurrentProfile }) {
                     { method: 'POST' },
                   ),
                 );
-              } catch {
+              } catch (failure) {
                 setError(
-                  'The previous avatar could not be removed. Try again.',
+                  actionError(
+                    failure,
+                    'The previous avatar could not be removed. Try again.',
+                  ),
                 );
               } finally {
                 setBusy(false);
