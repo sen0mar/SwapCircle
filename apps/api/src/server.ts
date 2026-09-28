@@ -1,3 +1,5 @@
+import { ConversationsService } from './features/conversations/conversations.service.js';
+import { ConversationsRepository } from './features/conversations/conversations.repository.js';
 import { SafetyPermissions } from './features/safety/safety.permissions.js';
 import { SafetyRepository } from './features/safety/safety.repository.js';
 import { SafetyService } from './features/safety/safety.service.js';
@@ -20,6 +22,10 @@ const pool = new Pool(databaseConfig(config.databaseUrl));
 const permissions = new SafetyPermissions(config.limits);
 
 createApp({
+  conversations: new ConversationsService(
+    new ConversationsRepository(pool),
+    permissions,
+  ),
   safety: new SafetyService(new SafetyRepository(pool), permissions),
   ...config,
   verifyToken: createTokenVerifier(
