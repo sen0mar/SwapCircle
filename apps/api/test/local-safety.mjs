@@ -77,6 +77,19 @@ try {
     .get(`${base}/blocks`)
     .set('Authorization', 'Bearer forged')
     .expect(401);
+  await request(app).get(`${base}/status`).expect(401);
+  const status = async (user, target) =>
+    (
+      await request(app)
+        .get(`${base}/status`)
+        .set(auth(user))
+        .query(target ? { userId: target.id } : {})
+        .expect(200)
+    ).body;
+  assert.deepEqual(await status(alice, bob), {
+    restricted: false,
+    ownBlocked: false,
+  });
   await checkContact(alice, bob);
   await block(alice, alice).expect(400);
   await block(alice, { id: randomUUID() }).expect(404);
@@ -91,6 +104,15 @@ try {
     [bob.id],
   );
   blockPageSchema.parse(await blocks(alice));
+  assert.equal(typeof (await blocks(alice)).items[0].displayName, 'string');
+  assert.deepEqual(await status(alice, bob), {
+    restricted: false,
+    ownBlocked: true,
+  });
+  assert.deepEqual(await status(bob, alice), {
+    restricted: false,
+    ownBlocked: false,
+  });
   assert.deepEqual((await blocks(bob)).items, []);
   await assert.rejects(checkContact(alice, bob), { code: 'CONTACT_BLOCKED' });
   await assert.rejects(checkContact(bob, alice), { code: 'CONTACT_BLOCKED' });
@@ -564,6 +586,7 @@ try {
     targetId: alice.id,
   }).expect(201);
   await unblock(bob, alice).expect(204);
+  assert.deepEqual(await status(bob), { restricted: true, ownBlocked: false });
   const restrictedPublic = (
     await request(app).get(`/api/v1/members/${bob.id}`).expect(200)
   ).body;

@@ -27,10 +27,26 @@ export class SafetyRepository {
     );
   }
 
+  async status(actor: string, other?: string) {
+    const result = await this.pool.query<{
+      restricted: boolean;
+      ownBlocked: boolean;
+    }>(
+      `SELECT EXISTS (SELECT 1 FROM public.account_restrictions WHERE user_id=$1) AS restricted,
+       EXISTS (SELECT 1 FROM public.blocks WHERE blocker_id=$1 AND blocked_id=$2) AS "ownBlocked"`,
+      [actor, other ?? null],
+    );
+    return result.rows[0]!;
+  }
+
   async ownBlocks(actor: string, query: BlockQuery) {
-    const result = await this.pool.query<{ userId: string; createdAt: string }>(
-      `SELECT blocked_id AS "userId", to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"
-       FROM public.blocks WHERE blocker_id=$1 AND ($2::uuid IS NULL OR blocked_id > $2)
+    const result = await this.pool.query<{
+      userId: string;
+      displayName: string;
+      createdAt: string;
+    }>(
+      `SELECT blocked_id AS "userId", p.display_name AS "displayName", to_char(b.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "createdAt"
+       FROM public.blocks b JOIN public.profiles p ON p.id=b.blocked_id WHERE blocker_id=$1 AND ($2::uuid IS NULL OR blocked_id > $2)
        ORDER BY blocked_id LIMIT $3`,
       [actor, query.after ?? null, query.limit + 1],
     );

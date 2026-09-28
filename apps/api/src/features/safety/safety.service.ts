@@ -8,6 +8,10 @@ export class SafetyService {
     private readonly permissions = new SafetyPermissions(),
   ) {}
 
+  async status(actor: string, other?: string) {
+    return this.repository.status(actor, other);
+  }
+
   async ownBlocks(actor: string, query: BlockQuery) {
     const rows = await this.repository.ownBlocks(actor, query);
     const items = rows.slice(0, query.limit);

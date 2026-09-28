@@ -41,11 +41,14 @@ export async function apiRequest<T>(
       },
     );
 
-    const body: unknown = await response.json().catch((error: unknown) => {
-      if (combinedSignal.aborted) throw error;
+    const body: unknown =
+      response.status === 204
+        ? null
+        : await response.json().catch((error: unknown) => {
+            if (combinedSignal.aborted) throw error;
 
-      return undefined;
-    });
+            return undefined;
+          });
 
     if (!response.ok) {
       const parsed = apiErrorSchema.safeParse(body);
