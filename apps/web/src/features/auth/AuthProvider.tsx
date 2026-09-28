@@ -22,6 +22,7 @@ type AuthContextValue = AuthState & {
   client: SupabaseClient | null;
   signOut: () => Promise<void>;
   request: typeof apiRequest;
+  readSignal: AbortSignal;
 };
 
 const AuthContext = createContext<AuthContextValue>({
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextValue>({
   client: null,
   signOut: async () => {},
   request: apiRequest,
+  readSignal: new AbortController().signal,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -163,7 +165,15 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider value={{ ...state, client, signOut, request }}>
+    <AuthContext.Provider
+      value={{
+        ...state,
+        client,
+        signOut,
+        request,
+        readSignal: requestScope.signal,
+      }}
+    >
       <AuthBoundary key={state.generation}>{children}</AuthBoundary>
     </AuthContext.Provider>
   );

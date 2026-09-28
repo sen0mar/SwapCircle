@@ -4,6 +4,7 @@ import { useMemberDiscovery } from './useMemberDiscovery';
 import { useInterests } from '../account/useProfile';
 import { Avatar } from '../account/Avatar';
 import { Button } from '../../components/ui/button';
+import { MessageAction } from '../inbox/MessageAction';
 import { Card } from '../../components/ui/card';
 
 export function MemberDiscovery() {
@@ -112,6 +113,7 @@ export function MemberDiscovery() {
                     ))}
                   </ul>
                   <Link to={`/members/${member.id}`}>View profile</Link>
+                  <MessageAction userId={member.id} />
                 </Card>
               ))}
             </div>

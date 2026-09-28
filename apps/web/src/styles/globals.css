@@ -1242,3 +1242,171 @@
 .safety-report-receipt {
   overflow-wrap: anywhere;
 }
+
+.inbox-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.inbox-list,
+.inbox-placeholder,
+.inbox-thread {
+  min-width: 0;
+  padding: 20px;
+  overflow-wrap: anywhere;
+}
+
+.inbox-list {
+  max-height: min(78dvh, 860px);
+  overflow-y: auto;
+}
+
+.inbox-note,
+.conversation-summary > span,
+.conversation-summary time,
+.message-bubble time,
+.thread-header p,
+.composer-shell p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.conversation-list,
+.message-history {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+}
+
+.conversation-list a {
+  display: flex;
+  gap: 12px;
+  padding: 16px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.conversation-list a:hover,
+.conversation-list a[aria-current='page'] {
+  background: var(--accent-primary-soft);
+}
+
+.conversation-list .profile-avatar,
+.conversation-list .profile-avatar-fallback,
+.thread-header .profile-avatar,
+.thread-header .profile-avatar-fallback {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.conversation-summary {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.inbox-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-block: 12px;
+}
+
+.thread-identity h2,
+.thread-identity p {
+  margin: 0;
+}
+
+.thread-scroll {
+  height: min(52dvh, 520px);
+  min-height: 240px;
+  overflow-y: auto;
+  overflow-anchor: none;
+  padding: 12px;
+  border-block: 1px solid var(--border-default);
+  background: var(--bg-inset);
+  border-radius: 8px;
+}
+
+.message-history {
+  display: grid;
+  gap: 16px;
+}
+
+.message-history li {
+  display: flex;
+}
+
+.message-history .message-own {
+  justify-content: flex-end;
+}
+
+.message-bubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--bg-surface);
+}
+
+.message-own .message-bubble {
+  background: var(--accent-primary-soft);
+}
+
+.message-bubble p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-block: 6px;
+}
+
+.composer-shell {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.composer-shell textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--input);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+@media (max-width: 767px) {
+  .inbox-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inbox-list {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .inbox-placeholder,
+  .has-thread .inbox-list {
+    display: none;
+  }
+
+  .inbox-thread,
+  .inbox-list {
+    padding: 16px;
+  }
+
+  .message-bubble {
+    max-width: 95%;
+  }
+}

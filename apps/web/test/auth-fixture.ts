@@ -60,7 +60,11 @@ export async function signInFixture(
   await page.goto(destination);
   await page.getByRole('button', { name: 'Continue with Google' }).click();
 
-  await expect(
-    page.getByText('Your session is verified.', { exact: false }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(
+    new URL(destination, 'http://127.0.0.1:4173').href,
+  );
+  if (destination === '/account')
+    await expect(
+      page.getByText('Your session is verified.', { exact: false }),
+    ).toBeVisible();
 }

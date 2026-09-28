@@ -1,0 +1,310 @@
+import { useLayoutEffect, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { Button } from '../../components/ui/button';
+import { Avatar } from '../account/Avatar';
+import { ConversationDenied } from './inbox-api';
+import { useInbox, useThread } from './useInbox';
+
+export function MessageTime({ value }: { value: string }) {
+  return (
+    <time dateTime={value}>
+      {new Date(value).toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}
+    </time>
+  );
+}
+
+export function InboxPage() {
+  const { id } = useParams();
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  return (
+    <section aria-labelledby="inbox-title">
+      <h1 id="inbox-title">Messages</h1>
+      <div className={`inbox-layout ${id ? 'has-thread' : ''}`}>
+        <ConversationList selected={id} />
+        {id ? (
+          <Thread
+            key={id}
+            id={id}
+            draft={drafts[id] ?? ''}
+            setDraft={(draft) =>
+              setDrafts((current) => ({ ...current, [id]: draft }))
+            }
+          />
+        ) : (
+          <section className="panel inbox-placeholder">
+            <h2>Your conversations</h2>
+            <p>
+              Choose a conversation to read its history, or use Message on a
+              member’s profile.
+            </p>
+          </section>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ConversationList({ selected }: { selected: string | undefined }) {
+  const inbox = useInbox();
+
+  return (
+    <section
+      className="panel inbox-list"
+      tabIndex={0}
+      aria-labelledby="conversations-title"
+    >
+      <h2 id="conversations-title">Conversations</h2>
+      <p className="inbox-note">Newest conversations first</p>
+      {inbox.isPending ? (
+        <p role="status">Loading conversations…</p>
+      ) : inbox.isError ? (
+        <>
+          <p role="alert">
+            Conversations could not be loaded. Check your connection and retry.
+          </p>
+          <Button onClick={() => void inbox.refetch()}>Retry inbox</Button>
+        </>
+      ) : (
+        <>
+          {!inbox.data.pages[0]?.items.length && (
+            <p>
+              No conversations yet. You can message a member without a trade or
+              shared interests.
+            </p>
+          )}
+          <ul className="conversation-list">
+            {inbox.data.pages
+              .flatMap((page) => page.items)
+              .map(({ conversation, profile, latest }) => {
+                const name =
+                  conversation.type === 'group'
+                    ? 'Group conversation'
+                    : (profile?.displayName ?? 'Member unavailable');
+                return (
+                  <li key={conversation.id}>
+                    <Link
+                      to={`/inbox/${conversation.id}`}
+                      aria-current={
+                        selected === conversation.id ? 'page' : undefined
+                      }
+                    >
+                      <Avatar url={profile?.avatarUrl ?? null} name={name} />
+                      <span className="conversation-summary">
+                        <strong>{name}</strong>
+                        <span>
+                          {conversation.type === 'group'
+                            ? 'Group'
+                            : 'Direct message'}
+                        </span>
+                        <span className="inbox-preview">
+                          {latest?.body ?? 'No messages yet'}
+                        </span>
+                        <MessageTime
+                          value={latest?.created_at ?? conversation.created_at}
+                        />
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+          </ul>
+          {inbox.hasNextPage && (
+            <Button
+              disabled={inbox.isFetchingNextPage}
+              onClick={() => void inbox.fetchNextPage()}
+            >
+              {inbox.isFetchingNextPage
+                ? 'Loading conversations…'
+                : 'More conversations'}
+            </Button>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function Thread({
+  id,
+  draft,
+  setDraft,
+}: {
+  id: string;
+  draft: string;
+  setDraft: (value: string) => void;
+}) {
+  const { conversation, history, messages, profiles, peer, userId } =
+    useThread(id);
+  const scroll = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const anchor = useRef<{ height: number; top: number } | null>(null);
+  const initialized = useRef(false);
+
+  useLayoutEffect(() => {
+    heading.current?.focus();
+  }, []);
+
+  useLayoutEffect(() => {
+    const viewport = scroll.current;
+    if (!viewport || !history.data) return;
+
+    if (anchor.current) {
+      viewport.scrollTop =
+        anchor.current.top + viewport.scrollHeight - anchor.current.height;
+      anchor.current = null;
+    } else if (!initialized.current) {
+      viewport.scrollTop = viewport.scrollHeight;
+      initialized.current = true;
+    }
+  }, [history.data]);
+
+  const older = async () => {
+    const viewport = scroll.current;
+    if (viewport)
+      anchor.current = {
+        height: viewport.scrollHeight,
+        top: viewport.scrollTop,
+      };
+    const result = await history.fetchNextPage();
+    if (result.isError) anchor.current = null;
+  };
+  const denied =
+    conversation.error instanceof ConversationDenied ||
+    history.error instanceof ConversationDenied;
+  const unavailable =
+    conversation.isError || (history.isError && !history.data);
+  const name =
+    conversation.data?.type === 'group'
+      ? 'Group conversation'
+      : peer
+        ? (profiles?.get(peer)?.displayName ?? 'Conversation')
+        : 'Conversation';
+
+  return (
+    <section className="panel inbox-thread" aria-labelledby="thread-title">
+      <header className="thread-header">
+        <Link className="inbox-back" to="/inbox">
+          Back to conversations
+        </Link>
+        <div className="thread-identity">
+          <Avatar
+            url={peer ? (profiles?.get(peer)?.avatarUrl ?? null) : null}
+            name={name}
+          />
+          <div>
+            <h2 id="thread-title" ref={heading} tabIndex={-1}>
+              {denied ? 'Conversation unavailable' : name}
+            </h2>
+            {conversation.data && !denied && (
+              <p>
+                {conversation.data.type === 'group'
+                  ? 'Group conversation'
+                  : 'Direct message'}
+              </p>
+            )}
+          </div>
+        </div>
+      </header>
+      {denied ? (
+        <p role="alert">
+          This conversation cannot be found or you do not have access.
+        </p>
+      ) : unavailable ? (
+        <>
+          <p role="alert">
+            History could not be loaded. Check your connection and retry.
+          </p>
+          <Button
+            onClick={() => {
+              void conversation.refetch();
+              void history.refetch();
+            }}
+          >
+            Retry history
+          </Button>
+        </>
+      ) : conversation.isPending || !history.data ? (
+        <p role="status">Loading history…</p>
+      ) : (
+        <>
+          <div
+            className="thread-scroll"
+            ref={scroll}
+            tabIndex={0}
+            role="region"
+            aria-label="Message history"
+          >
+            {history.hasNextPage && (
+              <Button
+                disabled={history.isFetchingNextPage}
+                onClick={() => void older()}
+              >
+                {history.isFetchingNextPage
+                  ? 'Loading older messages…'
+                  : 'Load older messages'}
+              </Button>
+            )}
+            {history.isError && (
+              <p role="alert">
+                Older history could not be loaded. Retry loading older messages.
+              </p>
+            )}
+            {messages.length ? (
+              <ol className="message-history">
+                {messages.map((message) => {
+                  const sender =
+                    message.sender_id === userId
+                      ? 'You'
+                      : (profiles?.get(message.sender_id)?.displayName ??
+                        'Member unavailable');
+                  return (
+                    <li
+                      key={message.id}
+                      data-message-order={message.message_order}
+                      className={
+                        message.sender_id === userId ? 'message-own' : ''
+                      }
+                    >
+                      <div className="message-bubble">
+                        <strong>{sender}</strong>
+                        <p>{message.body}</p>
+                        <MessageTime value={message.created_at} />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : (
+              <p>No messages yet.</p>
+            )}
+          </div>
+          <div className="composer-shell">
+            <label htmlFor="message-draft">Message draft</label>
+            <textarea
+              id="message-draft"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              maxLength={5000}
+              rows={3}
+              aria-describedby="composer-help"
+            />
+            <div>
+              <p id="composer-help">
+                Sending is not available yet. Your draft is unsent and stays
+                here while you browse conversations. Reloading clears it.
+              </p>
+              <Button disabled>Send unavailable</Button>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
