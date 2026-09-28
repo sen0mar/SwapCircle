@@ -1,11 +1,16 @@
+import type { CatalogQuery } from '@swapcircle/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { getListing, getListings } from './listing-api';
 import { getPublicProfile } from '../account/profile-api';
 
-export function useListings(cursor: string) {
+export function useListings(
+  filters: Partial<CatalogQuery> | string,
+  enabled = true,
+) {
   return useQuery({
-    queryKey: ['listings', cursor],
-    queryFn: ({ signal }) => getListings(cursor, signal),
+    queryKey: ['listings', filters],
+    queryFn: ({ signal }) => getListings(filters, signal),
+    enabled,
     retry: false,
   });
 }

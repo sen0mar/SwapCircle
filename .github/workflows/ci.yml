@@ -49,5 +49,8 @@ jobs:
       - run: pnpm --filter @swapcircle/api test:profiles-local
       - run: pnpm --filter @swapcircle/api test:listings-local
       - run: pnpm --filter @swapcircle/api test:photos-local
+      - run: pnpm --filter @swapcircle/api test:discovery-local
+      - run: pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @swapcircle/web test:catalog-local
       - if: always()
         run: pnpm db:stop

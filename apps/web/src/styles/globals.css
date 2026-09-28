@@ -712,6 +712,7 @@
     font-size: 14px;
   }
   .listing-copy {
+    overflow-wrap: anywhere;
     padding: 16px;
   }
   .listing-copy h3 {
@@ -968,7 +969,7 @@
   font-size: 28px;
   font-weight: 650;
 }
-.catalog-page .listing-copy h2 {
+.listing-copy h2 {
   font-size: 18px;
   font-weight: 600;
 }
@@ -1125,4 +1126,64 @@
   min-height: 44px;
   color: var(--accent-primary-text);
   text-decoration: underline;
+}
+
+.catalog-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.catalog-filters label,
+.member-interest-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.catalog-search {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.catalog-filters select,
+.member-interest-filter select {
+  min-height: 44px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  max-width: 100%;
+}
+
+.member-interest-filter {
+  max-width: 300px;
+  margin-block: 16px;
+}
+
+.member-preview .profile-avatar,
+.member-preview .profile-avatar-fallback {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+}
+
+.member-preview h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.member-preview {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .catalog-filters label {
+    width: 100%;
+  }
 }

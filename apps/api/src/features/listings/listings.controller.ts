@@ -6,6 +6,7 @@ import {
   listingRevisionSchema,
   listingQuerySchema,
   listingCursorSchema,
+  catalogQuerySchema,
 } from '@swapcircle/contracts';
 import type { AuthenticatedLocals } from '../../middleware/authenticate.js';
 import { errorBody } from '../../http/error-response.js';
@@ -103,8 +104,8 @@ export function createListingsController(service: ListingsService) {
       );
     }),
     page: handle(async (request, response) => {
-      const query = listingQuerySchema.parse(request.query);
-      response.json(await service.page(query.limit, parseCursor(query.cursor)));
+      const query = catalogQuerySchema.parse(request.query);
+      response.json(await service.page(query, parseCursor(query.cursor)));
     }),
   };
 }

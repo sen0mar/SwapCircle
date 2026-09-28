@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import type {
+  CatalogQuery,
   Listing,
   ListingCreate,
   ListingCursor,
@@ -94,12 +95,28 @@ export class ListingsRepository {
     return result.rows[0] ?? null;
   }
 
-  async page(limit: number, cursor?: ListingCursor) {
+  async page(query: CatalogQuery, cursor?: ListingCursor) {
+    // Only validated enum values choose SQL operators; all user values are parameters.
+    const direction = query.sort === 'oldest' ? 'ASC' : 'DESC';
+    const comparison = query.sort === 'oldest' ? '>' : '<';
     const result = await this.pool.query<Listing>(
       `SELECT ${projection} FROM public.listings
-      WHERE availability <> 'withdrawn' AND ($2::timestamptz IS NULL OR (created_at, id) < ($2::timestamptz, $3::uuid))
-      ORDER BY created_at DESC, id DESC LIMIT $1`,
-      [limit + 1, cursor?.createdAt ?? null, cursor?.id ?? null],
+      WHERE availability <> 'withdrawn'
+        AND ($4 = 'all' OR availability = $4)
+        AND ($5::text IS NULL OR condition = $5)
+        AND ($6 = '' OR to_tsvector('english', title || ' ' || description) @@ websearch_to_tsquery('english', $6))
+        AND ($7::uuid IS NULL OR owner_id = $7)
+        AND ($2::timestamptz IS NULL OR (created_at, id) ${comparison} ($2::timestamptz, $3::uuid))
+      ORDER BY created_at ${direction}, id ${direction} LIMIT $1`,
+      [
+        query.limit + 1,
+        cursor?.createdAt ?? null,
+        cursor?.id ?? null,
+        query.availability,
+        query.condition ?? null,
+        query.q,
+        query.owner ?? null,
+      ],
     );
 
     return result.rows;
