@@ -71,6 +71,13 @@
       "when": 1790603747959,
       "tag": "0009_remarkable_vulture",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790605788476,
+      "tag": "0010_gorgeous_william_stryker",
+      "breakpoints": true
     }
   ]
 }

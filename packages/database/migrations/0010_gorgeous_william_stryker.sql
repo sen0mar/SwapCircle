@@ -1,0 +1,2 @@
+ALTER TABLE "action_quotas" DROP CONSTRAINT "quota_action_valid";--> statement-breakpoint
+ALTER TABLE "action_quotas" ADD CONSTRAINT "quota_action_valid" CHECK ("action_quotas"."action" IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report', 'conversation', 'message'));
