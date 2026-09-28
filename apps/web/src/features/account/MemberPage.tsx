@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { getPublicProfile } from './profile-api';
 import { MemberListings } from '../browse/MemberListings';
 import { SafetyActions } from '../safety/SafetyActions';
+import { MessageAction } from '../inbox/MessageAction';
 import { Avatar } from './Avatar';
 
 export function MemberPage() {
@@ -52,6 +53,7 @@ export function MemberPage() {
       ) : (
         <p>No interests added yet.</p>
       )}
+      <MessageAction key={`message-${id}`} userId={id} />
       <SafetyActions
         key={id}
         userId={id}

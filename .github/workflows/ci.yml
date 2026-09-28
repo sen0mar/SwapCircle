@@ -55,5 +55,6 @@ jobs:
       - run: pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
       - run: pnpm --filter @swapcircle/web test:catalog-local
       - run: pnpm --filter @swapcircle/web test:safety-local
+      - run: pnpm --filter @swapcircle/web test:inbox-local
       - if: always()
         run: pnpm db:stop
