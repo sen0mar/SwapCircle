@@ -1,9 +1,11 @@
 import { AccountControl } from '../../features/account/AccountControl';
 import { ArrowRightLeft, Search } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
+import { useAuth } from '../../features/auth/AuthProvider';
 import { ThemePicker } from './ThemePicker';
 
 export function Header() {
+  const { session } = useAuth();
   return (
     <header className="site-header">
       <div className="header-inner">
@@ -18,6 +20,7 @@ export function Header() {
             Home
           </NavLink>
           <NavLink to="/browse">Browse</NavLink>
+          {session && <NavLink to="/inbox">Messages</NavLink>}
         </nav>
         <Link
           className="search-entry"

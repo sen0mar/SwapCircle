@@ -3,7 +3,7 @@ import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
 import { SafetyActions } from '../safety/SafetyActions';
-import { MessageUnavailable } from '../home/Previews';
+import { MessageAction } from '../inbox/MessageAction';
 import { useListing, useListingOwner } from './useListings';
 import { conditions, ListingPlaceholder, ListingRetry } from './ListingContent';
 import {
@@ -116,7 +116,7 @@ export function ListingPage() {
             targetType="listing"
             targetId={item.id}
           />
-          <MessageUnavailable />
+          <MessageAction userId={item.ownerId} />
           <div className="message-action">
             <Button disabled aria-describedby="trade-unavailable">
               Propose a trade
