@@ -176,3 +176,75 @@ export const listingPhotos = pgTable(
     ),
   ],
 );
+
+export const blocks = pgTable(
+  'blocks',
+  {
+    blockerId: uuid('blocker_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    blockedId: uuid('blocked_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.blockerId, table.blockedId] }),
+    index('blocks_blocked_idx').on(table.blockedId),
+    check(
+      'blocks_distinct_users',
+      sql`${table.blockerId} <> ${table.blockedId}`,
+    ),
+  ],
+);
+
+export const reports = pgTable(
+  'reports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    reporterId: uuid('reporter_id')
+      .notNull()
+      .references(() => profiles.id),
+    clientReportId: uuid('client_report_id').notNull(),
+    reportedUserId: uuid('reported_user_id').references(() => profiles.id),
+    listingId: uuid('listing_id').references(() => listings.id),
+    reason: varchar('reason', { length: 2000 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('reports_retry_unique').on(table.reporterId, table.clientReportId),
+    index('reports_member_idx').on(table.reportedUserId),
+    index('reports_listing_idx').on(table.listingId),
+    check(
+      'reports_one_target',
+      sql`(${table.reportedUserId} IS NOT NULL) <> (${table.listingId} IS NOT NULL)`,
+    ),
+    check('reports_reason_nonempty', sql`length(trim(${table.reason})) > 0`),
+  ],
+);
+
+export const actionQuotas = pgTable(
+  'action_quotas',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    action: varchar('action', { length: 32 }).notNull(),
+    windowStartedAt: timestamp('window_started_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    used: integer('used').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.action] }),
+    check('quota_used_positive', sql`${table.used} > 0`),
+    check(
+      'quota_action_valid',
+      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report')`,
+    ),
+  ],
+);

@@ -21,12 +21,11 @@ export class ListingsService {
 
   create(actor: string, input: ListingCreate) {
     return this.repository.transaction(async (client) => {
-      if (await this.repository.restricted(client, actor))
-        throw new ListingError(
-          403,
-          'ACCOUNT_RESTRICTED',
-          'This account cannot change listings.',
-        );
+      await this.repository.permissions.authorizeWrite(
+        client,
+        actor,
+        'listing',
+      );
 
       return this.repository.create(client, actor, input);
     });
@@ -34,12 +33,11 @@ export class ListingsService {
 
   change(actor: string, id: string, revision: number, input?: ListingUpdate) {
     return this.repository.transaction(async (client) => {
-      if (await this.repository.restricted(client, actor))
-        throw new ListingError(
-          403,
-          'ACCOUNT_RESTRICTED',
-          'This account cannot change listings.',
-        );
+      await this.repository.permissions.authorizeWrite(
+        client,
+        actor,
+        'listing',
+      );
 
       const listing = await this.repository.lock(client, id);
 

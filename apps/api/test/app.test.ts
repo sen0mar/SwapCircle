@@ -39,6 +39,12 @@ test('startup rejects missing/unsafe configuration without exposing values', () 
       CORS_ORIGINS: 'http://127.0.0.1:5173, https://example.org',
     }),
     {
+      limits: {
+        allowance: 120,
+        windowSeconds: 3600,
+        burstMax: 60,
+        burstWindowMs: 60000,
+      },
       port: 3001,
       supabaseUrl: 'http://127.0.0.1:55431',
       supabasePublishableKey: 'test-public-key',

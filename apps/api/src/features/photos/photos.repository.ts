@@ -1,3 +1,4 @@
+import { SafetyPermissions } from '../safety/safety.permissions.js';
 import type { Pool, PoolClient } from 'pg';
 
 export type PhotoRow = {
@@ -15,7 +16,10 @@ export type PhotoRow = {
 const projection = `id, listing_id AS "listingId", owner_id AS "ownerId", storage_key AS "storageKey", position, state, width, height, bytes`;
 
 export class PhotosRepository {
-  constructor(private readonly pool: Pool) {}
+  constructor(
+    private readonly pool: Pool,
+    readonly permissions = new SafetyPermissions(),
+  ) {}
 
   async transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
@@ -44,14 +48,6 @@ export class PhotosRepository {
     return result.rows[0];
   }
 
-  async restricted(client: PoolClient, actor: string) {
-    const result = await client.query(
-      'SELECT 1 FROM public.account_restrictions WHERE user_id=$1',
-      [actor],
-    );
-    return Boolean(result.rowCount);
-  }
-
   async occupied(client: PoolClient, listingId: string) {
     const result = await client.query<{ position: number }>(
       'SELECT position FROM public.listing_photos WHERE listing_id=$1 ORDER BY position',
@@ -76,12 +72,23 @@ export class PhotosRepository {
   }
 
   async activate(id: string, width: number, height: number, bytes: number) {
-    const result = await this.pool.query<PhotoRow>(
-      `UPDATE public.listing_photos SET state='active', width=$2, height=$3, bytes=$4
-       WHERE id=$1 AND state='pending' RETURNING ${projection}`,
-      [id, width, height, bytes],
-    );
-    return result.rows[0];
+    return this.transaction(async (client) => {
+      const pending = await client.query<PhotoRow>(
+        `SELECT ${projection} FROM public.listing_photos WHERE id=$1`,
+        [id],
+      );
+      const photo = pending.rows[0];
+      if (!photo) return undefined;
+      const listing = await this.owner(client, photo.listingId);
+      await this.permissions.assertUnrestricted(client, [photo.ownerId]);
+      if (listing?.availability !== 'available') return undefined;
+      const result = await client.query<PhotoRow>(
+        `UPDATE public.listing_photos SET state='active', width=$2, height=$3, bytes=$4
+         WHERE id=$1 AND state='pending' RETURNING ${projection}`,
+        [id, width, height, bytes],
+      );
+      return result.rows[0];
+    });
   }
 
   async lockPhoto(client: PoolClient, listingId: string, id: string) {
