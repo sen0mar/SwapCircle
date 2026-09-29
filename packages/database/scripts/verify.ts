@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      13,
+      14,
     );
 
     const publication = await pool.query<{ tablename: string }>(
@@ -97,6 +97,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
         'conversation_reads',
         'conversations',
         'messages',
+        'notifications',
       ],
     );
 
@@ -115,6 +116,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'conversation_members',
       'conversation_reads',
       'messages',
+      'notifications',
     ]) {
       const protection = await pool.query<{ relrowsecurity: boolean }>(
         'select relrowsecurity from pg_class where oid = $1::regclass',
@@ -138,6 +140,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
               'conversation_members',
               'conversation_reads',
               'messages',
+              'notifications',
             ].includes(table),
           write: false,
         });
@@ -167,6 +170,14 @@ export async function verify(pool: Pool, runtimeUrl: string) {
     for (const role of ['anon', 'authenticated', 'service_role']) {
       const result = await pool.query<{ execute: boolean }>(
         "SELECT has_function_privilege($1, 'private.lock_conversation_reader(uuid,uuid)', 'EXECUTE') AS execute",
+        [role],
+      );
+      assert.equal(result.rows[0]?.execute, false);
+    }
+
+    for (const role of ['anon', 'service_role', 'swapcircle_runtime']) {
+      const result = await pool.query<{ execute: boolean }>(
+        "SELECT has_function_privilege($1, 'private.can_read_notifications()', 'EXECUTE') AS execute",
         [role],
       );
       assert.equal(result.rows[0]?.execute, false);

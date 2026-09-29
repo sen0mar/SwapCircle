@@ -272,7 +272,7 @@ try {
     history(peer).getByText('After reconnect', { exact: true }),
   ).toHaveCount(1);
   // SDK auth refresh must update an existing channel, without opening another.
-  let refreshedEvents = 0;
+  const refreshedEvents = [];
   const refreshedChannel = bob.client.channel('local-refresh-verification').on(
     'postgres_changes',
     {
@@ -281,7 +281,7 @@ try {
       table: 'messages',
       filter: `conversation_id=eq.${direct.id}`,
     },
-    () => refreshedEvents++,
+    (event) => refreshedEvents.push(event.new.id),
   );
   await new Promise((resolve, reject) =>
     refreshedChannel.subscribe((status) => {
@@ -291,8 +291,26 @@ try {
     }),
   );
   assert.equal((await bob.client.auth.refreshSession()).error, null);
+  const refreshedReceipt = page.waitForResponse(endpoint);
   await send(page, 'After auth refresh');
-  await expect.poll(() => refreshedEvents).toBe(1);
+  const refreshedResponse = await refreshedReceipt;
+  assert.ok(refreshedResponse.ok());
+  const refreshedMessage = await refreshedResponse.json();
+  // The tenant's WAL catch-up may deliver older commits to this new channel.
+  // Require exactly one event for the actual post-refresh save on the same channel.
+  await expect
+    .poll(
+      () => refreshedEvents.filter((id) => id === refreshedMessage.id).length,
+    )
+    .toBe(1);
+  for (const current of [page, peer]) {
+    await expect(
+      history(current).getByText('After auth refresh', { exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      current.locator(`[data-message-id="${refreshedMessage.id}"]`),
+    ).toHaveCount(1);
+  }
   assert.equal(outsiderEvents, 0);
   await stranger.client.removeChannel(outsiderChannel);
   await bob.client.removeChannel(refreshedChannel);

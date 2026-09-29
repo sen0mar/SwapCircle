@@ -1,3 +1,5 @@
+import { NotificationsService } from '../dist/features/notifications/notifications.service.js';
+import { NotificationsRepository } from '../dist/features/notifications/notifications.repository.js';
 import { ConversationsService } from '../dist/features/conversations/conversations.service.js';
 import { ConversationsRepository } from '../dist/features/conversations/conversations.repository.js';
 // Synthetic accounts only; this fixture refuses every target except the isolated local stack.
@@ -54,6 +56,10 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
   const makeApp = (limits = developmentLimits) => {
     const permissions = new SafetyPermissions(limits);
     return createApp({
+      notifications: new NotificationsService(
+        new NotificationsRepository(runtime),
+        permissions,
+      ),
       conversations: new ConversationsService(
         new ConversationsRepository(runtime),
         permissions,

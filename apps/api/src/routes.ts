@@ -1,3 +1,5 @@
+import { createNotificationsRouter } from './features/notifications/notifications.routes.js';
+import type { NotificationsService } from './features/notifications/notifications.service.js';
 import type { ConversationsService } from './features/conversations/conversations.service.js';
 import { createConversationsRouter } from './features/conversations/conversations.routes.js';
 import type { SafetyService } from './features/safety/safety.service.js';
@@ -20,6 +22,7 @@ export function createApiRouter(
   photos?: PhotosService,
   safety?: SafetyService,
   conversations?: ConversationsService,
+  notifications?: NotificationsService,
 ): Router {
   const api = Router();
 
@@ -35,6 +38,9 @@ export function createApiRouter(
 
   if (conversations)
     api.use(createConversationsRouter(verifyToken, conversations));
+
+  if (notifications)
+    api.use(createNotificationsRouter(verifyToken, notifications));
 
   return api;
 }
