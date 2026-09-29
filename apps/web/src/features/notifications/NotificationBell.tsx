@@ -26,6 +26,8 @@ export function NotificationBell() {
   const location = useLocation();
   const unread = notifications.data?.filter((item) => !item.read_at) ?? [];
   const count = notifications.isSuccess ? unread.length : null;
+  const intended = new Set(read.variables?.ids ?? []);
+  const hasUnreadIntended = unread.some((item) => intended.has(item.id));
 
   useEffect(() => setOpen(false), [location.key]);
 
@@ -87,7 +89,7 @@ export function NotificationBell() {
                 {read.isPending ? 'Saving read state…' : 'Mark all read'}
               </Button>
             </div>
-            {read.isError && (
+            {read.isError && hasUnreadIntended && (
               <div>
                 <p role="alert">
                   Some read state could not be saved. Retry the same
