@@ -130,3 +130,26 @@ export function submitMessage(
     body: JSON.stringify(payload),
   });
 }
+
+// Ascending exclusive server positions recover every missed row, including gaps
+// before a send receipt. Each request is bounded; callers cancel on navigation.
+export async function readMessagesAfter(
+  client: SupabaseClient,
+  id: string,
+  after: number,
+  signal: AbortSignal,
+) {
+  const { data, error } = await client
+    .from('messages')
+    .select(messageColumns)
+    .eq('conversation_id', id)
+    .gt('message_order', after)
+    .order('message_order', { ascending: true })
+    .limit(historyPageSize)
+    .abortSignal(signal)
+    .retry(false);
+  signal.throwIfAborted();
+  if (error) throw new Error('History unavailable');
+
+  return messageReadSchema.array().parse(data);
+}
