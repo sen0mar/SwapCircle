@@ -107,6 +107,7 @@ function fixture(initial = true) {
     status,
   });
   return {
+    listeners,
     queries,
     state,
     reads,
@@ -259,4 +260,17 @@ test('navigation alone cancels a pending recovery and removes the channel', asyn
   await delay(150);
   expect(f.queries.getQueryCache().getAll()).toHaveLength(0);
   expect(f.remove).toHaveBeenCalledTimes(1);
+});
+
+test('owner read-position events refresh inbox without publishing seen receipts into history', async () => {
+  const f = fixture();
+  const invalidate = vi.spyOn(f.queries, 'invalidateQueries');
+  f.listeners.get('conversation_reads')?.({
+    new: { conversation_id: thread, user_id: alice, last_viewed_order: 3 },
+  });
+  expect(invalidate).toHaveBeenCalledWith({
+    queryKey: ['private', alice, 'inbox'],
+  });
+  expect(f.queries.getQueryData(key)).toEqual(history([1, 3]));
+  f.connection.stop();
 });

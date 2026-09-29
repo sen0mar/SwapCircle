@@ -229,3 +229,15 @@ export const messageReceiptSchema = messageReadSchema.extend({
 });
 export type MessageSubmission = z.infer<typeof messageSubmissionSchema>;
 export type MessageReceipt = z.infer<typeof messageReceiptSchema>;
+
+export const conversationReadUpdateSchema = z.strictObject({
+  conversation_id: z.uuid(),
+  message_id: z.uuid(),
+});
+export type ConversationReadUpdate = z.infer<
+  typeof conversationReadUpdateSchema
+>;
+export const unreadStateSchema = z.object({
+  lastViewedOrder: z.number().int().nonnegative(),
+  unreadCount: z.number().int().nonnegative(),
+});

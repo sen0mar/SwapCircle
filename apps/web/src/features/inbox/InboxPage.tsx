@@ -5,6 +5,8 @@ import { Avatar } from '../account/Avatar';
 import { ConversationDenied } from './inbox-api';
 import { useInbox, useThread } from './useInbox';
 import { useInboxRealtime } from './useInboxRealtime';
+import { useVisibleRead } from './useVisibleRead';
+import { UnreadBadge } from './UnreadBadge';
 import { useComposer } from './MessageComposerProvider';
 
 export function MessageTime({ value }: { value: string }) {
@@ -80,6 +82,13 @@ function ConversationList({ selected }: { selected: string | undefined }) {
         </>
       ) : (
         <>
+          {inbox.data.pages.some((page) =>
+            page.items.some((item) => item.unreadCount === null),
+          ) && (
+            <Button onClick={() => void inbox.refetch()}>
+              Retry unread counts
+            </Button>
+          )}
           {!inbox.data.pages[0]?.items.length && (
             <p>
               No conversations yet. You can message a member without a trade or
@@ -89,7 +98,7 @@ function ConversationList({ selected }: { selected: string | undefined }) {
           <ul className="conversation-list">
             {inbox.data.pages
               .flatMap((page) => page.items)
-              .map(({ conversation, profile, latest }) => {
+              .map(({ conversation, profile, latest, unreadCount }) => {
                 const name =
                   conversation.type === 'group'
                     ? 'Group conversation'
@@ -105,6 +114,7 @@ function ConversationList({ selected }: { selected: string | undefined }) {
                       <Avatar url={profile?.avatarUrl ?? null} name={name} />
                       <span className="conversation-summary">
                         <strong>{name}</strong>
+                        <UnreadBadge count={unreadCount} />
                         <span>
                           {conversation.type === 'group'
                             ? 'Group'
@@ -172,6 +182,12 @@ function Thread({
     )
     .join(',');
   const scroll = useRef<HTMLDivElement>(null);
+  const read = useVisibleRead(
+    id,
+    scroll,
+    messages,
+    conversation.isSuccess && !conversation.isError && !history.isError,
+  );
   const heading = useRef<HTMLHeadingElement>(null);
   const anchor = useRef<{ height: number; top: number } | null>(null);
   const initialized = useRef(false);
@@ -313,6 +329,7 @@ function Thread({
                     <li
                       key={message.id}
                       data-message-order={message.message_order}
+                      data-message-id={message.id}
                       className={
                         message.sender_id === userId ? 'message-own' : ''
                       }
@@ -360,6 +377,15 @@ function Thread({
               <p>No messages yet.</p>
             )}
           </div>
+          {read.error && (
+            <div>
+              <p role="status">
+                Read progress could not be saved. Unread counts may be out of
+                date.
+              </p>
+              <Button onClick={read.retry}>Retry read progress</Button>
+            </div>
+          )}
           <form
             className="composer-shell"
             onSubmit={(event) => {

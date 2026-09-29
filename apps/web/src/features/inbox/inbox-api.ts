@@ -2,6 +2,7 @@ import type { apiRequest } from '../../lib/api-client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   conversationReadSchema,
+  unreadStateSchema,
   messageReceiptSchema,
   type MessageSubmission,
   messageReadSchema,
@@ -152,4 +153,28 @@ export async function readMessagesAfter(
   if (error) throw new Error('History unavailable');
 
   return messageReadSchema.array().parse(data);
+}
+
+export function readUnread(
+  request: typeof apiRequest,
+  id: string,
+  signal: AbortSignal,
+) {
+  return request(`/api/v1/conversations/${id}/unread`, unreadStateSchema, {
+    signal,
+  });
+}
+
+export function acknowledgeRead(
+  request: typeof apiRequest,
+  id: string,
+  message: string,
+  signal: AbortSignal,
+) {
+  return request('/api/v1/conversations/read', unreadStateSchema, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ conversation_id: id, message_id: message }),
+    signal,
+  });
 }
