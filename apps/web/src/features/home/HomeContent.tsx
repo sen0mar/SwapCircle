@@ -3,6 +3,7 @@ import { ArrowRight, Leaf, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
+import { PrivateConversationPreview } from '../inbox/PrivateConversationPreview';
 import cafe from '../../assets/cafe.jpg';
 import {
   CollectionNotice,
@@ -146,6 +147,7 @@ export function HomeContent({
             </p>
           )}
         </Card>
+        {live && <PrivateConversationPreview />}
         {!live && (
           <section aria-labelledby="conversations-title">
             <div className="section-heading">
