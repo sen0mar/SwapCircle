@@ -361,3 +361,41 @@ export const conversationReads = pgTable(
     check('read_order_positive', sql`${table.lastViewedOrder} > 0`),
   ],
 );
+
+// References are typed UUIDs, not authorization grants. Target tables/services
+// arrive with their domains; readers must reauthorize any target before opening it.
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    recipientId: uuid('recipient_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    domainEventId: uuid('domain_event_id').notNull(),
+    eventType: varchar('event_type', { length: 32 }).notNull(),
+    resourceType: varchar('resource_type', { length: 32 }).notNull(),
+    resourceId: uuid('resource_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique('notifications_event_recipient_unique').on(
+      table.domainEventId,
+      table.recipientId,
+    ),
+    index('notifications_recipient_created_idx').on(
+      table.recipientId,
+      table.createdAt,
+      table.id,
+    ),
+    index('notifications_recipient_unread_idx')
+      .on(table.recipientId)
+      .where(sql`${table.readAt} IS NULL`),
+    check(
+      'notification_resource_valid',
+      sql`(${table.eventType} IN ('trade_invitation', 'trade_status', 'trade_revision') AND ${table.resourceType} = 'trade') OR (${table.eventType} = 'group_invitation' AND ${table.resourceType} = 'conversation') OR (${table.eventType} IN ('coffee_invitation', 'coffee_response') AND ${table.resourceType} = 'coffee_invitation') OR (${table.eventType} = 'meeting_change' AND ${table.resourceType} = 'meetup')`,
+    ),
+  ],
+);

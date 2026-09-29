@@ -1,3 +1,5 @@
+import { NotificationsService } from './features/notifications/notifications.service.js';
+import { NotificationsRepository } from './features/notifications/notifications.repository.js';
 import { ConversationsService } from './features/conversations/conversations.service.js';
 import { ConversationsRepository } from './features/conversations/conversations.repository.js';
 import { SafetyPermissions } from './features/safety/safety.permissions.js';
@@ -22,6 +24,10 @@ const pool = new Pool(databaseConfig(config.databaseUrl));
 const permissions = new SafetyPermissions(config.limits);
 
 createApp({
+  notifications: new NotificationsService(
+    new NotificationsRepository(pool),
+    permissions,
+  ),
   conversations: new ConversationsService(
     new ConversationsRepository(pool),
     permissions,
