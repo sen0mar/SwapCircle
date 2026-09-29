@@ -2,12 +2,31 @@ import type { Request, Response } from 'express';
 import {
   directConversationStartSchema,
   messageSubmissionSchema,
+  conversationReadUpdateSchema,
 } from '@swapcircle/contracts';
 import type { AuthenticatedLocals } from '../../middleware/authenticate.js';
 import type { ConversationsService } from './conversations.service.js';
 
 export function createConversationsController(service: ConversationsService) {
   return {
+    unread: async (
+      request: Request,
+      response: Response<unknown, AuthenticatedLocals>,
+    ) => {
+      const id = conversationReadUpdateSchema.shape.conversation_id.parse(
+        request.params.id,
+      );
+      response.json(await service.unread(response.locals.identity.userId, id));
+    },
+    markRead: async (
+      request: Request,
+      response: Response<unknown, AuthenticatedLocals>,
+    ) => {
+      const input = conversationReadUpdateSchema.parse(request.body);
+      response.json(
+        await service.markRead(response.locals.identity.userId, input),
+      );
+    },
     send: async (
       request: Request,
       response: Response<unknown, AuthenticatedLocals>,

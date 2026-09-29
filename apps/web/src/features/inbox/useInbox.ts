@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
 import { getPublicProfile } from '../account/profile-api';
 import {
@@ -7,10 +8,11 @@ import {
   readConversation,
   readConversations,
   readHistory,
+  readUnread,
 } from './inbox-api';
 
 export function useInbox() {
-  const { session, client, readSignal } = useAuth();
+  const { session, client, readSignal, request } = useAuth();
   const userId = session?.user.id ?? '';
 
   return useInfiniteQuery({
@@ -28,11 +30,27 @@ export function useInbox() {
       const items = await Promise.all(
         page.items.map(async (conversation) => {
           const peer = directPeer(conversation, userId);
-          const [profile, history] = await Promise.all([
+          const [profile, history, unread] = await Promise.all([
             peer ? getPublicProfile(peer, signal).catch(() => null) : null,
             readHistory(sdk, conversation.id, undefined, signal, 1),
+            readUnread(request, conversation.id, signal).catch(
+              (error: unknown) => {
+                if (
+                  signal.aborted ||
+                  (error instanceof ApiError &&
+                    (error.status === 401 || error.status === 403))
+                )
+                  throw error;
+                return null;
+              },
+            ),
           ]);
-          return { conversation, profile, latest: history.items[0] };
+          return {
+            conversation,
+            profile,
+            latest: history.items[0],
+            unreadCount: unread?.unreadCount ?? null,
+          };
         }),
       );
       signal.throwIfAborted();

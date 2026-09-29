@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      12,
+      13,
     );
 
     const publication = await pool.query<{ tablename: string }>(
@@ -92,7 +92,12 @@ export async function verify(pool: Pool, runtimeUrl: string) {
     );
     assert.deepEqual(
       publication.rows.map((row) => row.tablename),
-      ['conversation_members', 'conversations', 'messages'],
+      [
+        'conversation_members',
+        'conversation_reads',
+        'conversations',
+        'messages',
+      ],
     );
 
     for (const table of [
@@ -108,6 +113,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'action_quotas',
       'conversations',
       'conversation_members',
+      'conversation_reads',
       'messages',
     ]) {
       const protection = await pool.query<{ relrowsecurity: boolean }>(
@@ -127,9 +133,12 @@ export async function verify(pool: Pool, runtimeUrl: string) {
         assert.deepEqual(access.rows[0], {
           read:
             role === 'authenticated' &&
-            ['conversations', 'conversation_members', 'messages'].includes(
-              table,
-            ),
+            [
+              'conversations',
+              'conversation_members',
+              'conversation_reads',
+              'messages',
+            ].includes(table),
           write: false,
         });
       }
@@ -153,6 +162,14 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
         assert.equal(access.rows[0]?.execute, false);
       }
+    }
+
+    for (const role of ['anon', 'authenticated', 'service_role']) {
+      const result = await pool.query<{ execute: boolean }>(
+        "SELECT has_function_privilege($1, 'private.lock_conversation_reader(uuid,uuid)', 'EXECUTE') AS execute",
+        [role],
+      );
+      assert.equal(result.rows[0]?.execute, false);
     }
 
     const searchIndex = await pool.query<{ indexdef: string }>(

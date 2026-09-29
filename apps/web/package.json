@@ -13,7 +13,8 @@
     "test:safety-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-safety-ui.mjs",
     "test:inbox-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-inbox.mjs",
     "test:composer-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-composer.mjs",
-    "test:realtime-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-realtime.mjs"
+    "test:realtime-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-realtime.mjs",
+    "test:unread-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-unread.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

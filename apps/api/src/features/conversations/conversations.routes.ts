@@ -22,5 +22,16 @@ export function createConversationsRouter(
     controller.send,
   );
 
+  router.get(
+    '/conversations/:id/unread',
+    authenticate(verifyToken),
+    controller.unread,
+  );
+  router.put(
+    '/conversations/read',
+    authenticate(verifyToken),
+    controller.markRead,
+  );
+
   return router;
 }

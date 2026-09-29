@@ -340,3 +340,24 @@ export const messages = pgTable(
     check('message_order_positive', sql`${table.messageOrder} > 0`),
   ],
 );
+
+// Read progress is private even from other members of the same conversation.
+export const conversationReads = pgTable(
+  'conversation_reads',
+  {
+    conversationId: uuid('conversation_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    lastViewedOrder: integer('last_viewed_order').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.conversationId, table.userId] }),
+    foreignKey({
+      columns: [table.conversationId, table.userId],
+      foreignColumns: [
+        conversationMembers.conversationId,
+        conversationMembers.userId,
+      ],
+    }).onDelete('cascade'),
+    check('read_order_positive', sql`${table.lastViewedOrder} > 0`),
+  ],
+);

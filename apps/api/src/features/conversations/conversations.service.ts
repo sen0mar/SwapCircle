@@ -1,4 +1,7 @@
-import type { MessageSubmission } from '@swapcircle/contracts';
+import type {
+  MessageSubmission,
+  ConversationReadUpdate,
+} from '@swapcircle/contracts';
 import type { ConversationsRepository } from './conversations.repository.js';
 import {
   SafetyError,
@@ -10,6 +13,38 @@ export class ConversationsService {
     private readonly repository: ConversationsRepository,
     private readonly permissions = new SafetyPermissions(),
   ) {}
+
+  async unread(actor: string, id: string, message?: string) {
+    return this.repository.transaction(async (client) => {
+      await this.permissions.lockPair(client, actor, actor);
+      await this.permissions.assertUnrestricted(client, [actor]);
+      const members = await this.repository.activeMembers(client, id);
+      if (
+        !members.includes(actor) ||
+        !(await this.repository.lockReader(client, actor, id))
+      )
+        throw new SafetyError(
+          403,
+          'CONVERSATION_UNAVAILABLE',
+          'This conversation is unavailable.',
+        );
+
+      if (
+        message &&
+        !(await this.repository.advanceRead(client, actor, id, message))
+      )
+        throw new SafetyError(
+          403,
+          'CONVERSATION_UNAVAILABLE',
+          'This conversation is unavailable.',
+        );
+      return this.repository.readState(client, actor, id);
+    });
+  }
+
+  async markRead(actor: string, input: ConversationReadUpdate) {
+    return this.unread(actor, input.conversation_id, input.message_id);
+  }
 
   async send(actor: string, input: MessageSubmission) {
     return this.repository.transaction(async (client) => {
