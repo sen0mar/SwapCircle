@@ -5,7 +5,12 @@ export default defineConfig({
   workers: process.env.CI ? 2 : '50%',
   reporter: 'list',
   testMatch: '*.browser.spec.ts',
-  use: { baseURL: 'http://127.0.0.1:4173', browserName: 'chromium' },
+  use: {
+    baseURL: 'http://127.0.0.1:4173',
+    browserName: 'chromium',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+  },
   webServer: [
     {
       command: 'pnpm dev --port 4173 --strictPort',

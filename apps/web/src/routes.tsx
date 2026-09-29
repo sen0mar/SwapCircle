@@ -13,6 +13,7 @@ import { BrowsePage } from './features/browse/BrowsePage';
 import { ListingEditorPage } from './features/listings/ListingEditorPage';
 import { MyShelfPage } from './features/listings/MyShelfPage';
 import { InboxPage } from './features/inbox/InboxPage';
+import { NotificationPage } from './features/notifications/NotificationPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const ApiStatus = import.meta.env.DEV
@@ -25,6 +26,7 @@ export function AppRoutes() {
       <Route path="/sign-in" element={<SignInPage />} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route element={<RequireAuth />}>
+        <Route path="/notifications/:id" element={<NotificationPage />} />
         <Route path="/inbox" element={<InboxPage />} />
         <Route path="/inbox/:id" element={<InboxPage />} />
         <Route path="/account" element={<AccountPage />} />
