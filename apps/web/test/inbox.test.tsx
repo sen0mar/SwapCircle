@@ -12,6 +12,10 @@ import { InboxPage } from '../src/features/inbox/InboxPage';
 import { authorizeRead } from '../src/features/inbox/inbox-api';
 import { safeDestination } from '../src/features/auth/safe-destination';
 
+vi.mock('../src/features/inbox/useInboxRealtime', () => ({
+  useInboxRealtime: () => ({ status: null, retry: () => {} }),
+}));
+
 const alice = '10000000-0000-4000-8000-000000000001';
 const bob = '10000000-0000-4000-8000-000000000002';
 const thread = '20000000-0000-4000-8000-000000000001';
