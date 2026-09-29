@@ -157,6 +157,19 @@ export function startInboxRealtime({
         if (!signal.aborted) void reconcile();
       },
     )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'conversation_reads',
+        filter: `user_id=eq.${userId}`,
+      },
+      () => {
+        if (!signal.aborted)
+          void queries.invalidateQueries({ queryKey: inboxKey });
+      },
+    )
     .subscribe((value) => {
       if (signal.aborted) return;
       if (value === 'SUBSCRIBED') void reconcile();

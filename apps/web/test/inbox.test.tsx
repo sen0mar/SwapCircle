@@ -595,3 +595,35 @@ test('manual refresh failure retains current history and unsent draft, then reco
     'Draft during refresh',
   );
 });
+
+test('unavailable unread service preserves authorized conversation links and explicitly retries counts', async () => {
+  let available = false;
+  server.use(
+    http.get('*/api/v1/conversations/:id/unread', () =>
+      available
+        ? HttpResponse.json({ lastViewedOrder: 0, unreadCount: 2 })
+        : HttpResponse.json(
+            {
+              error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Unavailable',
+                requestId: thread,
+              },
+            },
+            { status: 503 },
+          ),
+    ),
+  );
+  fixture();
+  await screen.findAllByText('Unread count unavailable');
+  expect(
+    screen
+      .getAllByRole('link', { name: /Reader Bob/ })
+      .some((link) => link.getAttribute('href') === `/inbox/${thread}`),
+  ).toBe(true);
+  available = true;
+  await userEvent
+    .setup()
+    .click(screen.getByRole('button', { name: 'Retry unread counts' }));
+  await screen.findAllByText('2 unread');
+});

@@ -53,11 +53,13 @@ jobs:
       - run: pnpm --filter @swapcircle/api test:safety-local
       - run: pnpm --filter @swapcircle/api test:conversations-local
       - run: pnpm --filter @swapcircle/api test:messages-local
+      - run: pnpm --filter @swapcircle/api test:unread-local
       - run: pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
       - run: pnpm --filter @swapcircle/web test:catalog-local
       - run: pnpm --filter @swapcircle/web test:safety-local
       - run: pnpm --filter @swapcircle/web test:inbox-local
       - run: pnpm --filter @swapcircle/web test:composer-local
       - run: pnpm --filter @swapcircle/web test:realtime-local
+      - run: pnpm --filter @swapcircle/web test:unread-local
       - if: always()
         run: pnpm db:stop

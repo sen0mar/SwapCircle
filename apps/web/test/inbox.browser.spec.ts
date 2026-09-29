@@ -33,6 +33,12 @@ test('private deep link requires sign-in and returns to its stable URL; switchin
   await page.route('**/api/v1/members/*', (route) =>
     route.fulfill({ json: profile(bob) }),
   );
+  await page.route('**/api/v1/conversations/*/unread', (route) =>
+    route.fulfill({ json: { lastViewedOrder: 0, unreadCount: 0 } }),
+  );
+  await page.route('**/api/v1/conversations/read', (route) =>
+    route.fulfill({ json: { lastViewedOrder: 32, unreadCount: 0 } }),
+  );
   await page.route('**/rest/v1/conversations?*', async (route) => {
     const url = new URL(route.request().url());
     if (url.searchParams.get('id') === `eq.${denied}`) {

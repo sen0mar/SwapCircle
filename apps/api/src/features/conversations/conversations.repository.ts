@@ -20,6 +20,42 @@ export class ConversationsRepository {
     }
   }
 
+  async lockReader(client: PoolClient, actor: string, id: string) {
+    const result = await client.query<{ allowed: boolean }>(
+      'SELECT private.lock_conversation_reader($1,$2) AS allowed',
+      [id, actor],
+    );
+    return result.rows[0]?.allowed ?? false;
+  }
+
+  async readState(client: PoolClient, actor: string, id: string) {
+    const result = await client.query<{
+      lastViewedOrder: number;
+      unreadCount: number;
+    }>(
+      `SELECT COALESCE((SELECT last_viewed_order FROM public.conversation_reads WHERE conversation_id=$1 AND user_id=$2),0) AS "lastViewedOrder",
+      (SELECT count(*)::int FROM public.messages WHERE conversation_id=$1 AND sender_id<>$2 AND message_order>COALESCE((SELECT last_viewed_order FROM public.conversation_reads WHERE conversation_id=$1 AND user_id=$2),0)) AS "unreadCount"`,
+      [id, actor],
+    );
+    return result.rows[0]!;
+  }
+
+  async advanceRead(
+    client: PoolClient,
+    actor: string,
+    id: string,
+    message: string,
+  ) {
+    const result = await client.query(
+      `INSERT INTO public.conversation_reads (conversation_id,user_id,last_viewed_order)
+       SELECT $1,$2,message_order FROM public.messages WHERE conversation_id=$1 AND id=$3
+       ON CONFLICT (conversation_id,user_id) DO UPDATE SET last_viewed_order=GREATEST(conversation_reads.last_viewed_order,EXCLUDED.last_viewed_order)
+       RETURNING last_viewed_order`,
+      [id, actor, message],
+    );
+    return !!result.rowCount;
+  }
+
   async identity(client: PoolClient, id: string) {
     const result = await client.query<{
       type: 'direct' | 'group';
