@@ -64,7 +64,7 @@ export function NotificationContent({
           </Button>
         )}
       </div>
-      {read.isError && (
+      {read.isError && !item.read_at && (
         <div>
           <p role="alert">Read state could not be saved. Please retry.</p>
           <Button onClick={read.retry} disabled={read.isPending}>

@@ -426,3 +426,33 @@ test('a partially saved mark-all retries the same bounded set after a later batc
   expect(writes.map((batch) => batch.length)).toEqual([100, 1, 100, 1]);
   expect(writes.slice(0, 2).flat()).toEqual(writes.slice(2).flat());
 });
+
+test('persisted read reconciliation clears single/all retry warnings after a lost response', async () => {
+  for (const all of [false, true]) {
+    const f = fixture();
+    server.use(
+      http.put(`*/api/v1/notifications/${all ? 'read-all' : 'read'}`, () => {
+        f.rows[0]!.read_at = '2026-09-29T01:00:00Z';
+        return HttpResponse.error();
+      }),
+    );
+    const view = render(
+      <QueryClientProvider client={f.queries}>
+        <MemoryRouter>
+          <NotificationBell />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByRole('button', { name: 'Open notifications, 1 unread' });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open notifications, 1 unread' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: all ? 'Mark all read' : 'Mark read' }),
+    );
+    await screen.findByText('0 unread notifications');
+    expect(screen.getByText('Read', { exact: true })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /Retry mark/ })).toBeNull();
+    view.unmount();
+  }
+});

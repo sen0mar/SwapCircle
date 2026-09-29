@@ -415,6 +415,31 @@ try {
     (await api(`/conversations/${direct.id}/unread`, alice)).unreadCount,
     1,
   );
+  // An acknowledgement can commit before its response is lost. Authoritative
+  // reconciliation confirms the timestamp and clears the now-unneeded retry.
+  const uncertain = await seed(alice, 'coffee_invitation', 'coffee_invitation');
+  await expect(
+    panel(page).getByText('4 unread notifications', { exact: true }),
+  ).toBeVisible();
+  await page.route('**/api/v1/notifications/read', async (route) => {
+    const response = await route.fetch();
+    assert.ok(response.ok());
+    await route.abort('failed');
+  });
+  await item(page, uncertain)
+    .getByRole('button', { name: 'Mark read' })
+    .click();
+  await expect(
+    panel(page).getByText('3 unread notifications', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    item(page, uncertain).getByText('Read', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    item(page, uncertain).getByRole('button', { name: 'Retry mark read' }),
+  ).toHaveCount(0);
+  assert.ok(await saved(uncertain));
+  await page.unroute('**/api/v1/notifications/read');
   // Mark-all >100: delay its first request while a new arrival is committed.
   for (let i = 0; i < 101; i++) await seed(alice, 'trade_revision');
   await expect(
@@ -481,6 +506,26 @@ try {
   );
   await page.unroute('**/api/v1/notifications/read-all');
   await expect(bell(device, 1)).toBeVisible();
+  await page.route('**/api/v1/notifications/read-all', async (route) => {
+    const response = await route.fetch();
+    assert.ok(response.ok());
+    await route.abort('failed');
+  });
+  await panel(page)
+    .getByRole('button', { name: 'Mark all read', exact: true })
+    .click();
+  await expect(
+    panel(page).getByText('0 unread notifications', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel(page).getByRole('button', { name: 'Retry mark all read' }),
+  ).toHaveCount(0);
+  assert.ok(await saved(arrived));
+  await page.unroute('**/api/v1/notifications/read-all');
+  await seed(alice, 'coffee_response', 'coffee_invitation');
+  await expect(
+    panel(page).getByText('1 unread notifications', { exact: true }),
+  ).toBeVisible();
   // Session token refresh keeps one subscription; normal route navigation also
   // keeps the shared-header connection and closes any open panel.
   const beforeJoins = joins;
@@ -647,7 +692,7 @@ try {
   await bob.client.removeChannel(malicious);
   assert.deepEqual(errors, []);
   console.log(
-    'Local notification production passed: cold-ready actual INSERT/UPDATE; recipient RLS/forged outsider filter; durable single/batched snapshot read and same-set retry/new-arrival exclusion; separate message count; authorized/missing/pending/deferred/foreign links without acceptance; keyboard trap/Escape/restore; offline reconnect/devices/tab/account cleanup; SDK auth refresh; loading/error/retry/empty; Light/Dark 360/768/800/1280/1600px overflow and axe.',
+    'Local notification production passed: cold-ready actual INSERT/UPDATE; recipient RLS/forged outsider filter; durable single/batched snapshot read and same-set retry/new-arrival exclusion; lost-response commit reconciliation; separate message count; authorized/missing/pending/deferred/foreign links without acceptance; keyboard trap/Escape/restore; offline reconnect/devices/tab/account cleanup; SDK auth refresh; loading/error/retry/empty; Light/Dark 360/768/800/1280/1600px overflow and axe.',
   );
 } finally {
   if (browser) await browser.close();
