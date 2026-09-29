@@ -100,6 +100,12 @@ export function useThread(id: string) {
     },
     getNextPageParam: (page) => page.nextCursor,
     enabled: conversation.isSuccess && !conversation.isFetching,
+    // Receipts and authorized Realtime recovery maintain the loaded union.
+    // Automatic latest-page refetch can truncate it during access revalidation.
+    // Access keeps revalidating separately; explicit refresh/pagination still read.
+    staleTime: Infinity,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
     retry: false,
     gcTime: 0,
   });

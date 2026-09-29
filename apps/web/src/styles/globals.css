@@ -489,6 +489,9 @@
     .theme-picker {
       order: 0;
     }
+    .header-controls .account-button {
+      order: 0;
+    }
     nav {
       order: 1;
       margin-right: auto;
@@ -1426,4 +1429,56 @@
   color: var(--text-primary);
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.notification-bell {
+  position: relative;
+}
+.notification-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding-inline: 3px;
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  color: var(--accent-primary-text);
+  font-size: 11px;
+  font-weight: 600;
+}
+.notification-panel {
+  width: min(460px, 100%);
+}
+.notification-toolbar,
+.notification-heading,
+.notification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.notification-list {
+  list-style: none;
+  padding: 0;
+}
+.notification-list > li {
+  display: grid;
+  gap: 12px;
+  padding-block: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+.notification-heading h3 {
+  font-size: 16px;
+}
+.notification-list time,
+.notification-read {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.notification-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent-primary-text);
+  text-decoration: underline;
 }

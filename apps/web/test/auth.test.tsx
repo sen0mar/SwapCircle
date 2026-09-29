@@ -82,6 +82,9 @@ test('safe destinations preserve implemented routes and reject external or auth-
     expect(safeDestination(value)).toBe('/account');
 
   expect(safeDestination('/browse?q=books#list')).toBe('/browse?q=books#list');
+  const notification =
+    '/notifications/10000000-0000-4000-8000-000000000001?source=bell#notice';
+  expect(safeDestination(notification)).toBe(notification);
 });
 
 test('restoration cannot overwrite newer account events; transitions cancel requests, clear caches/drafts and unsubscribe', async () => {

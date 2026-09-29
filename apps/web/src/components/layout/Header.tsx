@@ -2,6 +2,7 @@ import { AccountControl } from '../../features/account/AccountControl';
 import { ArrowRightLeft, Search } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthProvider';
+import { NotificationBell } from '../../features/notifications/NotificationBell';
 import { ThemePicker } from './ThemePicker';
 
 export function Header() {
@@ -31,6 +32,7 @@ export function Header() {
           <span>Search items</span>
         </Link>
         <div className="header-controls">
+          <NotificationBell />
           <AccountControl />
           <ThemePicker />
         </div>

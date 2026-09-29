@@ -1,7 +1,12 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  onlineManager,
+  focusManager,
+} from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, Link } from 'react-router-dom';
 import { createClient, type Session } from '@supabase/supabase-js';
 import { http, HttpResponse, delay } from 'msw';
@@ -627,3 +632,113 @@ test('unavailable unread service preserves authorized conversation links and exp
     .click(screen.getByRole('button', { name: 'Retry unread counts' }));
   await screen.findAllByText('2 unread');
 });
+
+test.each(['access revalidation', 'reconnect', 'focus'] as const)(
+  '%s cannot replace recovered history with the latest partial page',
+  async (trigger) => {
+    const { queries } = fixture();
+    let total = 3;
+    server.use(
+      http.get(
+        'http://127.0.0.1:55439/rest/v1/conversations',
+        async ({ request }) => {
+          const url = new URL(request.url);
+          if (url.searchParams.has('id')) {
+            await delay(30);
+            return HttpResponse.json(conversation(thread));
+          }
+          return HttpResponse.json([conversation(thread)]);
+        },
+      ),
+      http.get('http://127.0.0.1:55439/rest/v1/messages', ({ request }) => {
+        const url = new URL(request.url);
+        const before = Number(
+          url.searchParams.get('message_order')?.slice(3) ?? total + 1,
+        );
+        const rows =
+          url.searchParams.get('conversation_id') === `eq.${thread}`
+            ? Array.from({ length: total }, (_, i) => message(total - i))
+            : [];
+        return HttpResponse.json(
+          rows
+            .filter((row) => row.message_order < before)
+            .slice(0, Number(url.searchParams.get('limit'))),
+        );
+      }),
+    );
+    const history = () =>
+      screen.getByRole('region', { name: 'Message history' });
+    await screen.findByText('Message 1');
+    const key = ['private', alice, 'thread', thread, 'history'];
+    total = 38;
+    // The existing Realtime reconciler has recovered 35 missed rows into the
+    // loaded page. Automatic latest-page refetch must not erase that union.
+    act(() =>
+      queries.setQueryData(key, {
+        pages: [
+          {
+            items: Array.from({ length: 38 }, (_, i) => message(38 - i)),
+            nextCursor: undefined,
+          },
+        ],
+        pageParams: [undefined],
+      }),
+    );
+    await waitFor(() =>
+      expect(history().querySelectorAll('[data-message-order]')).toHaveLength(
+        38,
+      ),
+    );
+    try {
+      if (trigger === 'access revalidation')
+        act(() => {
+          void queries.invalidateQueries({
+            queryKey: ['private', alice, 'thread', thread, 'access'],
+            exact: true,
+          });
+        });
+      else if (trigger === 'reconnect') {
+        act(() => onlineManager.setOnline(false));
+        await act(async () => onlineManager.setOnline(true));
+      } else {
+        act(() => focusManager.setFocused(false));
+        await act(async () => focusManager.setFocused(true));
+      }
+      await act(async () => {
+        await delay(80);
+      });
+      await waitFor(() =>
+        expect(queries.getQueryState(key)?.fetchStatus).toBe('idle'),
+      );
+      expect(
+        [...history().querySelectorAll('[data-message-order]')].map((node) =>
+          Number(node.getAttribute('data-message-order')),
+        ),
+      ).toEqual(Array.from({ length: 38 }, (_, i) => i + 1));
+      // Explicit user refresh remains available and returns the current bounded
+      // persisted page, with older history reachable through its cursor.
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'Refresh history' }));
+      await waitFor(() =>
+        expect(history().querySelectorAll('[data-message-order]')).toHaveLength(
+          30,
+        ),
+      );
+      expect(
+        screen.getByRole('button', { name: 'Load older messages' }),
+      ).toBeVisible();
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'Load older messages' }));
+      await waitFor(() =>
+        expect(history().querySelectorAll('[data-message-order]')).toHaveLength(
+          38,
+        ),
+      );
+    } finally {
+      onlineManager.setOnline(true);
+      focusManager.setFocused(undefined);
+    }
+  },
+);
