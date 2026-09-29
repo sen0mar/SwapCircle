@@ -241,3 +241,76 @@ export const unreadStateSchema = z.object({
   lastViewedOrder: z.number().int().nonnegative(),
   unreadCount: z.number().int().nonnegative(),
 });
+
+// Domain notifications deliberately exclude ordinary messages and private text.
+export const notificationEventTypeSchema = z.enum([
+  'trade_invitation',
+  'trade_status',
+  'trade_revision',
+  'group_invitation',
+  'coffee_invitation',
+  'coffee_response',
+  'meeting_change',
+]);
+export const notificationResourceTypeSchema = z.enum([
+  'trade',
+  'conversation',
+  'coffee_invitation',
+  'meetup',
+]);
+export const notificationCreationSchema = z
+  .strictObject({
+    recipient_id: z.uuid().transform((value) => value.toLowerCase()),
+    domain_event_id: z.uuid().transform((value) => value.toLowerCase()),
+    event_type: notificationEventTypeSchema,
+    resource_type: notificationResourceTypeSchema,
+    resource_id: z.uuid().transform((value) => value.toLowerCase()),
+  })
+  .refine((value) => {
+    const resource = {
+      trade_invitation: 'trade',
+      trade_status: 'trade',
+      trade_revision: 'trade',
+      group_invitation: 'conversation',
+      coffee_invitation: 'coffee_invitation',
+      coffee_response: 'coffee_invitation',
+      meeting_change: 'meetup',
+    } as const;
+
+    return resource[value.event_type] === value.resource_type;
+  });
+export type NotificationCreation = z.infer<typeof notificationCreationSchema>;
+export const notificationReadSchema = z.object({
+  id: z.uuid(),
+  recipient_id: z.uuid(),
+  domain_event_id: z.uuid(),
+  event_type: notificationEventTypeSchema,
+  resource_type: notificationResourceTypeSchema,
+  resource_id: z.uuid(),
+  created_at: z.string().datetime({ offset: true }),
+  read_at: z.string().datetime({ offset: true }).nullable(),
+});
+export type NotificationRead = z.infer<typeof notificationReadSchema>;
+
+export const notificationMarkReadSchema = z.strictObject({
+  notification_id: z.uuid().transform((value) => value.toLowerCase()),
+});
+// Explicit IDs acknowledge the intended existing set, including on delayed retry.
+// Larger sets can be sent in bounded batches; a timestamp cutoff can consume late commits.
+export const notificationsMarkAllReadSchema = z.strictObject({
+  notification_ids: z
+    .array(z.uuid().transform((value) => value.toLowerCase()))
+    .min(1)
+    .max(100)
+    .refine((ids) => new Set(ids).size === ids.length),
+});
+export const notificationsReadReceiptSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        read_at: z.string().datetime({ offset: true }),
+      }),
+    )
+    .max(100),
+});
