@@ -170,8 +170,10 @@ try {
     assert.deepEqual(await read(user, 'conversations', 'id', group), []);
     assert.deepEqual(await read(user, 'messages', 'id', groupMessage.id), []);
     assert.deepEqual(
-      await read(user, 'conversation_members', 'conversation_id', group),
-      [],
+      (await read(user, 'conversation_members', 'conversation_id', group)).map(
+        (row) => ({ user_id: row.user_id, active: row.active }),
+      ),
+      user === dan ? [{ user_id: dan.id, active: false }] : [],
     );
   }
   // Both membership revocation and current restrictions take effect on the next read.
@@ -182,9 +184,14 @@ try {
   for (const [table, column, id] of [
     ['conversations', 'id', direct.id],
     ['messages', 'id', first.id],
-    ['conversation_members', 'conversation_id', direct.id],
   ])
     assert.deepEqual(await read(bob, table, column, id), []);
+  assert.deepEqual(
+    (await read(bob, 'conversation_members', 'conversation_id', direct.id)).map(
+      (row) => ({ user_id: row.user_id, active: row.active }),
+    ),
+    [{ user_id: bob.id, active: false }],
+  );
   await start(bob, alice).expect(403);
   await start(alice, bob).expect(403);
   await assert.rejects(insertMessage(runtime, direct.id, bob), {
@@ -529,7 +536,7 @@ try {
   await start(dan, bob, limited).expect(429);
   assert.equal((await read(dan, 'conversations', 'id', fresh.id)).length, 1);
   console.info(
-    'Local conversations: canonical concurrent DM creation, restrictions/blocks and racing block, active-only private Supabase reads, stranger/guessed-ID/group isolation, browser writes/RPC and accidental-grant denials, constraints/deduplication, commit-ordered allocation/rollback/concurrency and persistent quotas passed.',
+    'Local conversations: canonical concurrent DM creation, restrictions/blocks and racing block, active-only private history and own revoked/pending membership status, stranger/guessed-ID/group isolation, browser writes/RPC and accidental-grant denials, constraints/deduplication, commit-ordered allocation/rollback/concurrency and persistent quotas passed.',
   );
 } finally {
   await fixture.cleanup();

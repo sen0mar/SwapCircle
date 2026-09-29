@@ -84,7 +84,15 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      11,
+      12,
+    );
+
+    const publication = await pool.query<{ tablename: string }>(
+      "SELECT tablename FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' ORDER BY tablename",
+    );
+    assert.deepEqual(
+      publication.rows.map((row) => row.tablename),
+      ['conversation_members', 'conversations', 'messages'],
     );
 
     for (const table of [
