@@ -21,7 +21,7 @@ export function safeDestination(value: string | null): string {
         '/account/profile',
         '/account/settings',
       ].includes(url.pathname) &&
-        !/^\/(members|inbox)\/[0-9a-f-]{36}$/i.test(url.pathname))
+        !/^\/(members|inbox|notifications)\/[0-9a-f-]{36}$/i.test(url.pathname))
     )
       return '/account';
 
