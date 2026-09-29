@@ -294,8 +294,15 @@ try {
   }
 
   // Each first request really commits through Express/PostgreSQL, then its response
-  // is withheld past the browser's 15s timeout. Retry and refresh cover both arrival orders.
+  // is withheld past the browser's 15s timeout. Also interrupt direct history reads
+  // so Realtime/polling cannot confirm the save before the explicit recovery action.
+  let allowRecoveryReads = false;
+  const historyEndpoint = `${fixture.publicAuth.url}/rest/v1/messages?*`;
+  await page.route(historyEndpoint, (route) =>
+    allowRecoveryReads ? route.continue() : route.abort('failed'),
+  );
   for (const refreshFirst of [false, true]) {
+    allowRecoveryReads = false;
     const payloads = [];
     let release;
     const gate = new Promise((resolve) => {
@@ -339,6 +346,7 @@ try {
     await expect(
       page.getByRole('button', { name: 'Retry message' }),
     ).toBeVisible({ timeout: 18000 });
+    allowRecoveryReads = true;
     if (refreshFirst) {
       await page.getByRole('button', { name: 'Refresh history' }).click();
       await expect(
@@ -365,6 +373,7 @@ try {
     );
     assert.equal(count.rows[0].count, 1);
   }
+  await page.unroute(historyEndpoint);
   // A fresh operation uses a fresh key even for identical body text.
   await send(page, 'Durable greeting');
   await expect(

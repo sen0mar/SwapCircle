@@ -6,14 +6,15 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   messageSubmissionSchema,
   type MessageRead,
   type MessageSubmission,
 } from '@swapcircle/contracts';
 import { useAuth } from '../auth/AuthProvider';
-import { readHistory, submitMessage } from './inbox-api';
+import { submitMessage } from './inbox-api';
+import { mergeMessage, type HistoryData } from './message-cache';
 
 type LocalMessage = {
   payload: MessageSubmission;
@@ -84,45 +85,14 @@ export function MessageComposerProvider({ children }: { children: ReactNode }) {
       // A read begun before this commit must not overwrite the saved receipt later.
       await queries.cancelQueries({ queryKey: historyKey, exact: true });
       if (readSignal.aborted) return;
-      queries.setQueryData<
-        InfiniteData<
-          Awaited<ReturnType<typeof readHistory>>,
-          number | undefined
-        >
-      >(historyKey, (current) => {
-        if (!current)
-          return {
-            pages: [{ items: [saved], nextCursor: undefined }],
-            pageParams: [undefined],
-          };
-        // The response or history may arrive first. Identity, never body text, deduplicates.
-        const existingPage = current.pages.findIndex((page) =>
-          page.items.some(
-            (message) =>
-              message.id === saved.id ||
-              (message.sender_id === saved.sender_id &&
-                message.client_message_id === key),
-          ),
-        );
-        const pages = current.pages.map((page) => ({
-          ...page,
-          items: page.items.filter(
-            (message) =>
-              message.id !== saved.id &&
-              !(
-                message.sender_id === saved.sender_id &&
-                message.client_message_id === key
-              ),
-          ),
-        }));
-        const target = pages[existingPage < 0 ? 0 : existingPage];
-        if (target)
-          target.items = [...target.items, saved].sort(
-            (a, b) => b.message_order - a.message_order,
-          );
-
-        return { ...current, pages };
-      });
+      queries.setQueryData<HistoryData>(historyKey, (current) =>
+        current
+          ? mergeMessage(current, saved)
+          : {
+              pages: [{ items: [saved], nextCursor: undefined }],
+              pageParams: [undefined],
+            },
+      );
       if (!hadHistory)
         void queries.invalidateQueries({ queryKey: historyKey, exact: true });
       setOutbox((current) =>

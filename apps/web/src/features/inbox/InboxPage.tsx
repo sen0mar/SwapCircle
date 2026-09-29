@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Avatar } from '../account/Avatar';
 import { ConversationDenied } from './inbox-api';
 import { useInbox, useThread } from './useInbox';
+import { useInboxRealtime } from './useInboxRealtime';
 import { useComposer } from './MessageComposerProvider';
 
 export function MessageTime({ value }: { value: string }) {
@@ -23,10 +24,17 @@ export function MessageTime({ value }: { value: string }) {
 export function InboxPage() {
   const { id } = useParams();
   const { drafts, setDraft } = useComposer();
+  const live = useInboxRealtime(id);
 
   return (
     <section aria-labelledby="inbox-title">
       <h1 id="inbox-title">Messages</h1>
+      {live.status && (
+        <div>
+          <p role="status">{live.status}</p>
+          <Button onClick={live.retry}>Retry live updates</Button>
+        </div>
+      )}
       <div className={`inbox-layout ${id ? 'has-thread' : ''}`}>
         <ConversationList selected={id} />
         {id ? (
@@ -370,9 +378,9 @@ function Thread({
             />
             <div>
               <p id="composer-help">
-                Sent means saved by the server. Refresh history to see new
-                messages. Drafts and failed sends stay while you browse;
-                reloading clears them.
+                Sent means saved by the server. New messages update live;
+                refresh history if your connection is interrupted. Drafts and
+                failed sends stay while you browse; reloading clears them.
               </p>
               <Button type="submit" disabled={!draft.trim()}>
                 Send message
