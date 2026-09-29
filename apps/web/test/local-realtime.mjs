@@ -161,6 +161,8 @@ try {
         const frame = JSON.parse(String(payload));
         const event = Array.isArray(frame) ? frame[3] : frame.event;
         const data = Array.isArray(frame) ? frame[4] : frame.payload;
+        const topic = Array.isArray(frame) ? frame[2] : frame.topic;
+        if (topic !== `realtime:inbox:${bob.id}:${direct.id}`) return;
         if (event === 'postgres_changes') peerEvents++;
         if (event === 'system' && data?.status === 'ok') peerReady = true;
       } catch {
@@ -235,6 +237,10 @@ try {
   await expect(
     history(page).getByText('Event before response', { exact: true }),
   ).toHaveCount(1);
+  await expect(
+    history(peer).getByText('Event before response', { exact: true }),
+  ).toHaveCount(1);
+  await expect(peer.locator('[data-message-order]')).toHaveCount(3);
   // Real transport loss; > one recovery page must arrive in server order.
   await otherContext.setOffline(true);
   for (let i = 1; i <= 35; i++)
