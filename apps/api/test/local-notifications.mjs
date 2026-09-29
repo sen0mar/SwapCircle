@@ -194,27 +194,36 @@ try {
   await bob.client.realtime.setAuth(bob.token);
   const ownerEvents = [];
   const peerEvents = [];
+  // A channel join alone does not guarantee the cold replication slot is ready.
   const channels = [
-    alice.client.channel(`notification-owner-${randomUUID()}`).on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'notifications',
-        filter: `recipient_id=eq.${alice.id}`,
-      },
-      (event) => ownerEvents.push(event),
-    ),
-    bob.client.channel(`notification-peer-${randomUUID()}`).on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'notifications',
-        filter: `recipient_id=eq.${alice.id}`,
-      },
-      (event) => peerEvents.push(event),
-    ),
+    alice.client
+      .channel(`notification-owner-${randomUUID()}`, {
+        config: { postgres_changes_options: { wait: true } },
+      })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_id=eq.${alice.id}`,
+        },
+        (event) => ownerEvents.push(event),
+      ),
+    bob.client
+      .channel(`notification-peer-${randomUUID()}`, {
+        config: { postgres_changes_options: { wait: true } },
+      })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_id=eq.${alice.id}`,
+        },
+        (event) => peerEvents.push(event),
+      ),
   ];
   try {
     await Promise.all(
@@ -223,7 +232,7 @@ try {
           new Promise((resolve, reject) => {
             const timer = globalThis.setTimeout(
               () => reject(new Error('Notification subscription timeout')),
-              15000,
+              25000,
             );
             channel.subscribe((status) => {
               if (status === 'SUBSCRIBED') {
@@ -241,7 +250,7 @@ try {
     await read(alice, live).expect(200);
     for (
       let attempt = 0;
-      attempt < 100 &&
+      attempt < 200 &&
       ownerEvents.filter((event) => event.new.id === live).length < 2;
       attempt++
     )
