@@ -385,6 +385,16 @@ export const proposalDraftSchema = z
   });
 
 export type ProposalDraft = z.infer<typeof proposalDraftSchema>;
+export const proposalCreationSchema = proposalDraftSchema.safeExtend({
+  operationKey: z.uuid(),
+  expiresAt: z.iso.datetime({ offset: true }),
+});
+export type ProposalCreation = z.infer<typeof proposalCreationSchema>;
+export const proposalCreationResultSchema = z.object({
+  id: z.uuid(),
+  currentVersion: z.number().int().positive(),
+  status: tradeStatusSchema,
+});
 export const tradePageQuerySchema = z.strictObject({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   after: z.uuid().optional(),
