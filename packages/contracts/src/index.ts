@@ -329,6 +329,62 @@ export const tradeInvitationStatusSchema = z.enum([
   'joined',
   'declined',
 ]);
+export const proposalDraftSchema = z
+  .strictObject({
+    participantIds: z.array(z.uuid()).min(2),
+    transfers: z.array(
+      z.strictObject({
+        listingId: z.uuid(),
+        ownerId: z.uuid(),
+        recipientId: z.uuid(),
+      }),
+    ),
+    meetingMode: z.literal('meet_to_swap'),
+  })
+  .superRefine((draft, context) => {
+    const participants = new Set(draft.participantIds);
+
+    if (participants.size !== draft.participantIds.length)
+      context.addIssue({ code: 'custom', message: 'Choose each person once.' });
+
+    const offered = new Set<string>();
+    const listings = new Set<string>();
+
+    for (const transfer of draft.transfers) {
+      if (
+        !participants.has(transfer.ownerId) ||
+        !participants.has(transfer.recipientId)
+      )
+        context.addIssue({
+          code: 'custom',
+          message: 'Every giver and recipient must be included.',
+        });
+
+      if (transfer.ownerId === transfer.recipientId)
+        context.addIssue({
+          code: 'custom',
+          message: 'Choose a different recipient for each item.',
+        });
+
+      if (listings.has(transfer.listingId))
+        context.addIssue({
+          code: 'custom',
+          message: 'Choose each item only once.',
+        });
+
+      offered.add(transfer.ownerId);
+      listings.add(transfer.listingId);
+    }
+
+    for (const id of participants)
+      if (!offered.has(id))
+        context.addIssue({
+          code: 'custom',
+          message: 'Each person needs at least one offered item.',
+        });
+  });
+
+export type ProposalDraft = z.infer<typeof proposalDraftSchema>;
 export const tradePageQuerySchema = z.strictObject({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   after: z.uuid().optional(),
