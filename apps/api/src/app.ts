@@ -1,4 +1,5 @@
 import type { NotificationsService } from './features/notifications/notifications.service.js';
+import type { TradesService } from './features/trades/trades.service.js';
 import type { ConversationsService } from './features/conversations/conversations.service.js';
 import { rateLimit } from 'express-rate-limit';
 import { errorBody } from './http/error-response.js';
@@ -29,6 +30,7 @@ export function createApp({
   safety,
   conversations,
   notifications,
+  trades,
   limits = developmentLimits,
 }: {
   allowedOrigins: readonly string[];
@@ -39,6 +41,7 @@ export function createApp({
   safety?: SafetyService;
   conversations?: ConversationsService;
   notifications?: NotificationsService;
+  trades?: TradesService;
   limits?: SafetyLimits;
 }): Express {
   const app = express();
@@ -94,6 +97,7 @@ export function createApp({
       safety,
       conversations,
       notifications,
+      trades,
     ),
   );
   app.use(notFound);

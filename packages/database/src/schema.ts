@@ -399,3 +399,190 @@ export const notifications = pgTable(
     ),
   ],
 );
+
+export const trades = pgTable(
+  'trades',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    creatorId: uuid('creator_id')
+      .notNull()
+      .references(() => profiles.id),
+    status: varchar('status', { length: 16 }).notNull().default('proposed'),
+    currentVersion: integer('current_version').notNull().default(1),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('trades_creator_idx').on(table.creatorId),
+    check(
+      'trade_status_valid',
+      sql`${table.status} IN ('proposed','confirmed','completed','declined','expired','cancelled','disputed')`,
+    ),
+    check('trade_version_positive', sql`${table.currentVersion} > 0`),
+    check(
+      'trade_expiry_after_creation',
+      sql`${table.expiresAt} > ${table.createdAt}`,
+    ),
+  ],
+);
+
+export const tradeVersions = pgTable(
+  'trade_versions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tradeId: uuid('trade_id')
+      .notNull()
+      .references(() => trades.id),
+    version: integer('version').notNull(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => profiles.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('trade_versions_number_unique').on(table.tradeId, table.version),
+    unique('trade_versions_id_trade_unique').on(table.id, table.tradeId),
+    check('trade_versions_positive', sql`${table.version} > 0`),
+  ],
+);
+
+export const tradeParticipants = pgTable(
+  'trade_participants',
+  {
+    tradeId: uuid('trade_id')
+      .notNull()
+      .references(() => trades.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id),
+    invitationStatus: varchar('invitation_status', { length: 16 })
+      .notNull()
+      .default('invited'),
+    invitedAt: timestamp('invited_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    respondedAt: timestamp('responded_at', { withTimezone: true }),
+    acceptedVersion: integer('accepted_version'),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.tradeId, table.userId] }),
+    index('trade_participants_user_idx').on(table.userId, table.tradeId),
+    check(
+      'trade_invitation_valid',
+      sql`${table.invitationStatus} IN ('invited','joined','declined')`,
+    ),
+    check(
+      'trade_acceptance_pair_valid',
+      sql`(${table.acceptedVersion} IS NULL AND ${table.acceptedAt} IS NULL) OR (${table.acceptedVersion} > 0 AND ${table.acceptedAt} IS NOT NULL)`,
+    ),
+    foreignKey({
+      columns: [table.tradeId, table.acceptedVersion],
+      foreignColumns: [tradeVersions.tradeId, tradeVersions.version],
+    }),
+  ],
+);
+
+export const tradeItems = pgTable(
+  'trade_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tradeId: uuid('trade_id').notNull(),
+    versionId: uuid('version_id').notNull(),
+    listingId: uuid('listing_id').notNull(),
+    ownerId: uuid('owner_id').notNull(),
+    recipientId: uuid('recipient_id').notNull(),
+    listingRevision: integer('listing_revision').notNull(),
+    titleSnapshot: varchar('title_snapshot', { length: 120 }).notNull(),
+    descriptionSnapshot: varchar('description_snapshot', {
+      length: 5000,
+    }).notNull(),
+    conditionSnapshot: varchar('condition_snapshot', { length: 20 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('trade_items_version_listing_unique').on(
+      table.versionId,
+      table.listingId,
+    ),
+    index('trade_items_owner_idx').on(table.ownerId),
+    index('trade_items_recipient_idx').on(table.recipientId),
+    foreignKey({
+      columns: [table.versionId, table.tradeId],
+      foreignColumns: [tradeVersions.id, tradeVersions.tradeId],
+    }),
+    foreignKey({
+      columns: [table.listingId, table.ownerId],
+      foreignColumns: [listings.id, listings.ownerId],
+    }),
+    foreignKey({
+      columns: [table.tradeId, table.ownerId],
+      foreignColumns: [tradeParticipants.tradeId, tradeParticipants.userId],
+    }),
+    foreignKey({
+      columns: [table.tradeId, table.recipientId],
+      foreignColumns: [tradeParticipants.tradeId, tradeParticipants.userId],
+    }),
+    check(
+      'trade_item_distinct_users',
+      sql`${table.ownerId} <> ${table.recipientId}`,
+    ),
+    check('trade_item_revision_positive', sql`${table.listingRevision} > 0`),
+    check(
+      'trade_item_title_nonempty',
+      sql`length(trim(${table.titleSnapshot})) > 0`,
+    ),
+    check(
+      'trade_item_description_nonempty',
+      sql`length(trim(${table.descriptionSnapshot})) > 0`,
+    ),
+    check(
+      'trade_item_condition_valid',
+      sql`${table.conditionSnapshot} IN ('like_new','good','fair','poor')`,
+    ),
+  ],
+);
+
+export const tradeEvents = pgTable(
+  'trade_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tradeId: uuid('trade_id')
+      .notNull()
+      .references(() => trades.id),
+    versionId: uuid('version_id').notNull(),
+    actorId: uuid('actor_id').notNull(),
+    eventType: varchar('event_type', { length: 32 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('trade_events_trade_created_idx').on(
+      table.tradeId,
+      table.createdAt,
+      table.id,
+    ),
+    foreignKey({
+      columns: [table.versionId, table.tradeId],
+      foreignColumns: [tradeVersions.id, tradeVersions.tradeId],
+    }),
+    foreignKey({
+      columns: [table.tradeId, table.actorId],
+      foreignColumns: [tradeParticipants.tradeId, tradeParticipants.userId],
+    }),
+    check(
+      'trade_event_type_valid',
+      sql`${table.eventType} IN ('proposed','revised','confirmed','completed','declined','expired','cancelled','disputed')`,
+    ),
+  ],
+);

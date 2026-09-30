@@ -1,4 +1,6 @@
 import { NotificationsService } from './features/notifications/notifications.service.js';
+import { TradesService } from './features/trades/trades.service.js';
+import { TradesRepository } from './features/trades/trades.repository.js';
 import { NotificationsRepository } from './features/notifications/notifications.repository.js';
 import { ConversationsService } from './features/conversations/conversations.service.js';
 import { ConversationsRepository } from './features/conversations/conversations.repository.js';
@@ -24,6 +26,7 @@ const pool = new Pool(databaseConfig(config.databaseUrl));
 const permissions = new SafetyPermissions(config.limits);
 
 createApp({
+  trades: new TradesService(new TradesRepository(pool)),
   notifications: new NotificationsService(
     new NotificationsRepository(pool),
     permissions,
