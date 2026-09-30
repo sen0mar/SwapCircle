@@ -230,9 +230,7 @@ try {
   ).toBeVisible();
   releaseInitial();
   await page.unroute('**/rest/v1/notifications?*');
-  await expect(
-    page.getByText(/related feature is not available yet/),
-  ).toBeVisible();
+  await expect(page.getByRole('link', { name: 'View swap' })).toBeVisible();
   await signIn(device, alice);
   await page.goto(`${origin}/`);
   const bell = (current, count) =>
@@ -278,13 +276,14 @@ try {
   await page.keyboard.press('Escape');
   await expect(bell(page, 4)).toBeFocused();
   await bell(page, 4).click();
-  await item(page, deferred)
-    .getByRole('link', { name: 'View notification' })
-    .click();
-  await expect(page).toHaveURL(`${origin}/notifications/${deferred}`);
+  await item(page, deferred).getByRole('link', { name: 'View swap' }).click();
+  await expect(page).toHaveURL(/\/swaps\/[0-9a-f-]+$/);
   await expect(
-    page.getByText(/related feature is not available yet/),
+    page.getByText('This swap cannot be found or you do not have access.'),
   ).toBeVisible();
+  await page.goto(`${origin}/notifications/${deferred}`);
+  await expect(page).toHaveURL(`${origin}/notifications/${deferred}`);
+  await expect(page.getByRole('link', { name: 'View swap' })).toBeVisible();
   assert.equal(await saved(deferred), null);
   await page.getByRole('button', { name: 'Mark read', exact: true }).click();
   await expect(bell(page, 3)).toBeVisible();

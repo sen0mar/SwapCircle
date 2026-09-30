@@ -239,9 +239,10 @@ export class TradesRepository {
       `SELECT i.id, i.listing_id AS "listingId", i.owner_id AS "ownerId",
         i.recipient_id AS "recipientId", i.listing_revision AS "listingRevision",
         i.title_snapshot AS "titleSnapshot", i.description_snapshot AS "descriptionSnapshot",
-        i.condition_snapshot AS "conditionSnapshot"
+        i.condition_snapshot AS "conditionSnapshot", l.availability AS "currentAvailability"
        FROM public.trade_items i JOIN public.trade_versions v ON v.id=i.version_id
        JOIN public.trades t ON t.id=v.trade_id
+       LEFT JOIN public.listings l ON l.id=i.listing_id
        WHERE t.id=$1 AND v.version=t.current_version ORDER BY i.id`,
       [id],
     );

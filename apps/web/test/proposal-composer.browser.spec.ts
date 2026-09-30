@@ -104,7 +104,7 @@ async function setup(page: import('@playwright/test').Page) {
   return () => writes;
 }
 
-test('mobile direct and group proposal previews preserve readable terms without writes', async ({
+test('mobile direct and group proposals preserve readable terms before sending', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 360, height: 800 });
@@ -112,7 +112,7 @@ test('mobile direct and group proposal previews preserve readable terms without 
   await page.getByRole('button', { name: 'Propose a trade' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('checkbox', { name: 'Desk lamp' }).check();
-  await page.getByRole('button', { name: 'Review preview' }).click();
+  await page.getByRole('button', { name: 'Review proposal' }).click();
   await expect(
     page.getByRole('list', { name: 'Trade transfers' }).getByRole('listitem'),
   ).toHaveCount(2);
@@ -134,12 +134,12 @@ test('mobile direct and group proposal previews preserve readable terms without 
     path: 'test-results/proposal-group-edit-mobile.png',
   });
   await page
-    .getByRole('button', { name: 'Review preview' })
+    .getByRole('button', { name: 'Review proposal' })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: 'test-results/proposal-group-edit-mobile-bottom.png',
   });
-  await page.getByRole('button', { name: 'Review preview' }).click();
+  await page.getByRole('button', { name: 'Review proposal' }).click();
   await expect(
     page.getByRole('list', { name: 'Trade transfers' }).getByRole('listitem'),
   ).toHaveCount(5);
@@ -157,12 +157,13 @@ test('mobile direct and group proposal previews preserve readable terms without 
         path: `test-results/proposal-group-${width}.png`,
       });
   }
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Edit draft' }).click();
+  await page.getByRole('button', { name: 'Keep draft and close' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByLabel('Theme').selectOption('dark');
   await page.setViewportSize({ width: 360, height: 900 });
   await page.getByRole('button', { name: 'Propose a trade' }).click();
-  await page.getByRole('button', { name: 'Review preview' }).click();
+  await page.getByRole('button', { name: 'Review proposal' }).click();
   await expect(
     page.getByRole('list', { name: 'Trade transfers' }).getByRole('listitem'),
   ).toHaveCount(5);

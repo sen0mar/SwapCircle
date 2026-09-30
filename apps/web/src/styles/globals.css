@@ -1175,6 +1175,27 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 20px;
 }
+.swaps-grid,
+.trade-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 20px;
+}
+.swap-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.trade-detail {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.trade-detail li {
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
 .shelf-item {
   display: grid;
   gap: 12px;

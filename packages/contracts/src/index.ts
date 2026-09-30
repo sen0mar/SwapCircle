@@ -433,6 +433,7 @@ export const tradeItemSchema = z.object({
   titleSnapshot: z.string().min(1),
   descriptionSnapshot: z.string().min(1),
   conditionSnapshot: listingConditionSchema,
+  currentAvailability: listingAvailabilitySchema.nullable(),
 });
 export const tradeEventSchema = z.object({
   id: z.uuid(),
