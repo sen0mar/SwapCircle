@@ -21,6 +21,7 @@ export function Header() {
             Home
           </NavLink>
           <NavLink to="/browse">Browse</NavLink>
+          {session && <NavLink to="/swaps">My Swaps</NavLink>}
           {session && <NavLink to="/inbox">Messages</NavLink>}
         </nav>
         <Link
