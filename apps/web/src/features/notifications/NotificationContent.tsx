@@ -41,17 +41,23 @@ export function NotificationContent({
         })}
       </time>
       <div className="notification-actions">
-        {(!detail || item.resource_type === 'conversation') && (
+        {(!detail ||
+          item.resource_type === 'conversation' ||
+          item.resource_type === 'trade') && (
           <Link
             to={
               item.resource_type === 'conversation'
                 ? `/inbox/${item.resource_id}`
-                : `/notifications/${item.id}`
+                : item.resource_type === 'trade'
+                  ? `/swaps/${item.resource_id}`
+                  : `/notifications/${item.id}`
             }
           >
             {item.resource_type === 'conversation'
               ? 'Open conversation'
-              : 'View notification'}
+              : item.resource_type === 'trade'
+                ? 'View swap'
+                : 'View notification'}
           </Link>
         )}
         {!item.read_at && (
