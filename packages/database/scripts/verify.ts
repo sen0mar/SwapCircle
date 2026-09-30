@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      14,
+      15,
     );
 
     const publication = await pool.query<{ tablename: string }>(
@@ -117,6 +117,11 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'conversation_reads',
       'messages',
       'notifications',
+      'trades',
+      'trade_versions',
+      'trade_participants',
+      'trade_items',
+      'trade_events',
     ]) {
       const protection = await pool.query<{ relrowsecurity: boolean }>(
         'select relrowsecurity from pg_class where oid = $1::regclass',
@@ -151,6 +156,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'public.allocate_message_order()',
       'public.guard_direct_membership()',
       'public.guard_conversation_identity()',
+      'public.guard_trade_event_history()',
     ]) {
       for (const role of [
         'anon',

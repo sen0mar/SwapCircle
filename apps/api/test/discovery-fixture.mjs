@@ -1,4 +1,6 @@
 import { NotificationsService } from '../dist/features/notifications/notifications.service.js';
+import { TradesService } from '../dist/features/trades/trades.service.js';
+import { TradesRepository } from '../dist/features/trades/trades.repository.js';
 import { NotificationsRepository } from '../dist/features/notifications/notifications.repository.js';
 import { ConversationsService } from '../dist/features/conversations/conversations.service.js';
 import { ConversationsRepository } from '../dist/features/conversations/conversations.repository.js';
@@ -56,6 +58,7 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
   const makeApp = (limits = developmentLimits) => {
     const permissions = new SafetyPermissions(limits);
     return createApp({
+      trades: new TradesService(new TradesRepository(runtime)),
       notifications: new NotificationsService(
         new NotificationsRepository(runtime),
         permissions,
@@ -84,6 +87,50 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
   const app = makeApp();
   const users = [];
   const cleanup = async () => {
+    const tradeIds = await migration.query(
+      'SELECT DISTINCT trade_id FROM public.trade_participants WHERE user_id=ANY($1::uuid[])',
+      [users.map((user) => user.id)],
+    );
+    if (tradeIds.rows.length > 0) {
+      const client = await migration.connect();
+      try {
+        await client.query('BEGIN');
+        // Privileged synthetic fixture cleanup only; production event history is immutable.
+        await client.query(
+          'ALTER TABLE public.trade_events DISABLE TRIGGER trade_events_append_only',
+        );
+        for (const { trade_id } of tradeIds.rows) {
+          await client.query(
+            'DELETE FROM public.trade_events WHERE trade_id=$1',
+            [trade_id],
+          );
+          await client.query(
+            'DELETE FROM public.trade_items WHERE trade_id=$1',
+            [trade_id],
+          );
+          await client.query(
+            'DELETE FROM public.trade_versions WHERE trade_id=$1',
+            [trade_id],
+          );
+          await client.query(
+            'DELETE FROM public.trade_participants WHERE trade_id=$1',
+            [trade_id],
+          );
+          await client.query('DELETE FROM public.trades WHERE id=$1', [
+            trade_id,
+          ]);
+        }
+        await client.query(
+          'ALTER TABLE public.trade_events ENABLE TRIGGER trade_events_append_only',
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
     await migration.query(
       `DELETE FROM public.conversations WHERE id IN (SELECT conversation_id FROM public.conversation_members WHERE user_id=ANY($1::uuid[]))`,
       [users.map((user) => user.id)],

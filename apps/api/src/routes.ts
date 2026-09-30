@@ -1,4 +1,6 @@
 import { createNotificationsRouter } from './features/notifications/notifications.routes.js';
+import { createTradesRouter } from './features/trades/trades.routes.js';
+import type { TradesService } from './features/trades/trades.service.js';
 import type { NotificationsService } from './features/notifications/notifications.service.js';
 import type { ConversationsService } from './features/conversations/conversations.service.js';
 import { createConversationsRouter } from './features/conversations/conversations.routes.js';
@@ -23,6 +25,7 @@ export function createApiRouter(
   safety?: SafetyService,
   conversations?: ConversationsService,
   notifications?: NotificationsService,
+  trades?: TradesService,
 ): Router {
   const api = Router();
 
@@ -41,6 +44,8 @@ export function createApiRouter(
 
   if (notifications)
     api.use(createNotificationsRouter(verifyToken, notifications));
+
+  if (trades) api.use(createTradesRouter(verifyToken, trades));
 
   return api;
 }
