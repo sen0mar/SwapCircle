@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   tradeIdParamsSchema,
   tradePageQuerySchema,
+  proposalCreationSchema,
 } from '@swapcircle/contracts';
 import type { VerifyToken } from '../../auth/verify.js';
 import {
@@ -15,6 +16,22 @@ export function createTradesRouter(
   service: TradesService,
 ): Router {
   const router = Router();
+
+  router.post(
+    '/trades',
+    authenticate(verifyToken),
+    async (
+      request,
+      response: import('express').Response<unknown, AuthenticatedLocals>,
+    ) => {
+      const input = proposalCreationSchema.parse(request.body);
+      const result = await service.create(
+        response.locals.identity.userId,
+        input,
+      );
+      response.status(201).json(result);
+    },
+  );
 
   router.get(
     '/trades/mine',

@@ -245,7 +245,7 @@ export const actionQuotas = pgTable(
     check('quota_used_positive', sql`${table.used} > 0`),
     check(
       'quota_action_valid',
-      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report', 'conversation', 'message')`,
+      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report', 'conversation', 'message', 'trade')`,
     ),
   ],
 );
@@ -407,6 +407,8 @@ export const trades = pgTable(
     creatorId: uuid('creator_id')
       .notNull()
       .references(() => profiles.id),
+    operationKey: uuid('operation_key'),
+    operationHash: varchar('operation_hash', { length: 64 }),
     status: varchar('status', { length: 16 }).notNull().default('proposed'),
     currentVersion: integer('current_version').notNull().default(1),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
@@ -419,6 +421,14 @@ export const trades = pgTable(
   },
   (table) => [
     index('trades_creator_idx').on(table.creatorId),
+    unique('trades_creator_operation_unique').on(
+      table.creatorId,
+      table.operationKey,
+    ),
+    check(
+      'trade_operation_pair_valid',
+      sql`(${table.operationKey} IS NULL) = (${table.operationHash} IS NULL)`,
+    ),
     check(
       'trade_status_valid',
       sql`${table.status} IN ('proposed','confirmed','completed','declined','expired','cancelled','disputed')`,
