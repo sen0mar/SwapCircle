@@ -314,3 +314,78 @@ export const notificationsReadReceiptSchema = z.object({
     )
     .max(100),
 });
+
+export const tradeStatusSchema = z.enum([
+  'proposed',
+  'confirmed',
+  'completed',
+  'declined',
+  'expired',
+  'cancelled',
+  'disputed',
+]);
+export const tradeInvitationStatusSchema = z.enum([
+  'invited',
+  'joined',
+  'declined',
+]);
+export const tradePageQuerySchema = z.strictObject({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  after: z.uuid().optional(),
+});
+export const tradeIdParamsSchema = z.object({ id: z.uuid() });
+export const tradeSummarySchema = z.object({
+  id: z.uuid(),
+  creatorId: z.uuid(),
+  status: tradeStatusSchema,
+  currentVersion: z.number().int().positive(),
+  expiresAt: z.iso.datetime({ offset: true }),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+  participantCount: z.number().int().min(2),
+  itemCount: z.number().int().min(1),
+});
+export const tradePageSchema = z.object({
+  items: z.array(tradeSummarySchema).max(50),
+  nextAfter: z.uuid().nullable(),
+});
+export const tradeParticipantSchema = z.object({
+  userId: z.uuid(),
+  displayName: z.string(),
+  invitationStatus: tradeInvitationStatusSchema,
+  invitedAt: z.iso.datetime({ offset: true }),
+  respondedAt: z.iso.datetime({ offset: true }).nullable(),
+  acceptedVersion: z.number().int().positive().nullable(),
+  acceptedAt: z.iso.datetime({ offset: true }).nullable(),
+});
+export const tradeItemSchema = z.object({
+  id: z.uuid(),
+  listingId: z.uuid(),
+  ownerId: z.uuid(),
+  recipientId: z.uuid(),
+  listingRevision: z.number().int().positive(),
+  titleSnapshot: z.string().min(1),
+  descriptionSnapshot: z.string().min(1),
+  conditionSnapshot: listingConditionSchema,
+});
+export const tradeEventSchema = z.object({
+  id: z.uuid(),
+  version: z.number().int().positive(),
+  actorId: z.uuid(),
+  eventType: z.enum([
+    'proposed',
+    'revised',
+    'confirmed',
+    'completed',
+    'declined',
+    'expired',
+    'cancelled',
+    'disputed',
+  ]),
+  createdAt: z.iso.datetime({ offset: true }),
+});
+export const tradeDetailSchema = tradeSummarySchema.extend({
+  participants: z.array(tradeParticipantSchema),
+  items: z.array(tradeItemSchema),
+  events: z.array(tradeEventSchema),
+});
