@@ -70,6 +70,9 @@ try {
       .expect(200)
   ).body;
   assert.equal(detail.status, 'proposed');
+  assert.ok(
+    detail.items.every((item) => item.currentAvailability === 'available'),
+  );
   assert.equal(
     detail.participants.find((member) => member.userId === bob.id)
       .invitationStatus,
@@ -122,6 +125,17 @@ try {
   await migration.query(
     "UPDATE public.listings SET availability='withdrawn' WHERE id=$1",
     [items.get(bob.id)],
+  );
+  const withdrawnDetail = (
+    await request(app)
+      .get(`/api/v1/trades/${first.id}`)
+      .set(auth(alice))
+      .expect(200)
+  ).body;
+  assert.equal(
+    withdrawnDetail.items.find((item) => item.ownerId === bob.id)
+      .currentAvailability,
+    'withdrawn',
   );
   assert.equal((await post(alice, make())).status, 409);
   await migration.query(

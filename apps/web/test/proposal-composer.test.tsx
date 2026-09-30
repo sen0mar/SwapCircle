@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { http, HttpResponse } from 'msw';
 import { expect, test } from 'vitest';
@@ -61,6 +62,7 @@ function mount() {
     defaultOptions: { queries: { retry: false } },
   });
   let writes = 0;
+  const payloads: unknown[] = [];
 
   server.use(
     http.get('http://127.0.0.1:3001/api/v1/profiles/me', () =>
@@ -106,24 +108,49 @@ function mount() {
         ? HttpResponse.json(item)
         : new HttpResponse(null, { status: 404 });
     }),
-    http.post('http://127.0.0.1:3001/api/v1/trades', () => {
+    http.post('http://127.0.0.1:3001/api/v1/trades', async ({ request }) => {
       writes++;
-      return new HttpResponse(null, { status: 500 });
+      payloads.push(await request.json());
+      if (writes === 1) return new HttpResponse(null, { status: 503 });
+      return HttpResponse.json(
+        { id: ids.bicycle, currentVersion: 1, status: 'proposed' },
+        { status: 201 },
+      );
     }),
   );
 
   render(
     <QueryClientProvider client={queries}>
       <AuthProvider client={client}>
-        <ProposalComposer item={items[0]!} ownerName="Alex" />
+        <MemoryRouter>
+          <ProposalComposer item={items[0]!} ownerName="Alex" />
+        </MemoryRouter>
       </AuthProvider>
     </QueryClientProvider>,
   );
 
-  return { user: userEvent.setup(), writes: () => writes };
+  return { user: userEvent.setup(), writes: () => writes, payloads };
 }
 
-test('direct preview explains missing offer and never submits when closed', async () => {
+test('failed submission keeps the same operation key for retry', async () => {
+  const { user, writes, payloads } = mount();
+
+  await user.click(
+    await screen.findByRole('button', { name: 'Propose a trade' }),
+  );
+  await user.click(await screen.findByRole('checkbox', { name: 'Desk lamp' }));
+  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
+  await screen.findByRole('button', { name: 'Send proposal' });
+  await user.click(screen.getByRole('button', { name: 'Send proposal' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'request could not be completed',
+  );
+  await user.click(screen.getByRole('button', { name: 'Send proposal' }));
+  expect(writes()).toBe(2);
+  expect(payloads[0]).toEqual(payloads[1]);
+});
+
+test('direct proposal explains missing offer and never submits when closed', async () => {
   const { user, writes } = mount();
 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -131,12 +158,12 @@ test('direct preview explains missing offer and never submits when closed', asyn
     await screen.findByRole('button', { name: 'Propose a trade' }),
   );
   expect(screen.getByRole('dialog')).toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Review preview' }));
+  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Each person needs at least one offered item',
   );
   await user.click(await screen.findByRole('checkbox', { name: 'Desk lamp' }));
-  await user.click(screen.getByRole('button', { name: 'Review preview' }));
+  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
 
   const summary = await screen.findByRole('list', { name: 'Trade transfers' });
   expect(within(summary).getAllByRole('listitem')[0]).toHaveTextContent(
@@ -145,8 +172,11 @@ test('direct preview explains missing offer and never submits when closed', asyn
   expect(within(summary).getAllByRole('listitem')[1]).toHaveTextContent(
     /You gives Desk lamp to Alex/,
   );
-  expect(screen.getByText(/Development preview only/)).toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Done' }));
+  expect(screen.getByText(/Items are not reserved/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Edit draft' }));
+  await user.click(
+    screen.getByRole('button', { name: 'Keep draft and close' }),
+  );
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(writes()).toBe(0);
 
@@ -177,7 +207,7 @@ test('four-person multi-item preview identifies every giver and recipient', asyn
     screen.getByRole('combobox', { name: 'Casey gives Books to' }),
     ids.fourth,
   );
-  await user.click(screen.getByRole('button', { name: 'Review preview' }));
+  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
 
   const summary = await screen.findByRole('list', { name: 'Trade transfers' });
   expect(within(summary).getAllByRole('listitem')[0]).toHaveTextContent(
@@ -202,7 +232,7 @@ test('self transfer and a newly unavailable item block the preview with clear fe
     screen.getByRole('combobox', { name: 'Alex gives Bicycle to' }),
     ids.owner,
   );
-  await user.click(screen.getByRole('button', { name: 'Review preview' }));
+  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Choose a different recipient',
   );
@@ -216,12 +246,12 @@ test('self transfer and a newly unavailable item block the preview with clear fe
       HttpResponse.json({ ...items[0], availability: 'reserved' }),
     ),
   );
-  await user.click(screen.getByRole('button', { name: 'Review preview' }));
+  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Bicycle is unavailable',
   );
   expect(
-    screen.queryByRole('heading', { name: 'Review your trade preview' }),
+    screen.queryByRole('heading', { name: 'Review your proposal' }),
   ).not.toBeInTheDocument();
   expect(writes()).toBe(0);
 });

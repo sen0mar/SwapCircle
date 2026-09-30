@@ -27,13 +27,14 @@ export function NotificationPage() {
       ) : (
         <>
           <NotificationContent item={item} detail />
-          {item.resource_type !== 'conversation' && (
-            <p>
-              The related feature is not available yet. You can mark this
-              notification read; no invitation response or confirmation will be
-              recorded.
-            </p>
-          )}
+          {item.resource_type !== 'conversation' &&
+            item.resource_type !== 'trade' && (
+              <p>
+                The related feature is not available yet. You can mark this
+                notification read; no invitation response or confirmation will
+                be recorded.
+              </p>
+            )}
         </>
       )}
       <Link to="/">Back to Home</Link>

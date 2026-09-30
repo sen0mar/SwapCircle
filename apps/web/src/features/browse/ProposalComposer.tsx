@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
   proposalDraftSchema,
   type Listing,
   type ProposalDraft,
+  type ProposalCreation,
 } from '@swapcircle/contracts';
 import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
@@ -17,6 +19,7 @@ import { getListing, getListings } from './listing-api';
 import { getMembers } from '../home/discovery-api';
 import { getCurrentProfile } from '../account/profile-api';
 import { useAuth } from '../auth/AuthProvider';
+import { useCreateTrade } from '../trades/useTrades';
 
 function MemberItems({
   memberId,
@@ -94,11 +97,15 @@ export function ProposalComposer({
   ownerName: string;
 }) {
   const { session, request } = useAuth();
+  const navigate = useNavigate();
+  const create = useCreateTrade();
   const selfId = session?.user.id ?? '';
   const [open, setOpen] = useState(false);
   const [review, setReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [pendingCreation, setPendingCreation] =
+    useState<ProposalCreation | null>(null);
   const [membersCursor, setMembersCursor] = useState('');
   const [draft, setDraft] = useState<ProposalDraft>({
     participantIds: [selfId, item.ownerId],
@@ -235,6 +242,38 @@ export function ProposalComposer({
     }
   };
 
+  const submit = async () => {
+    const input =
+      pendingCreation &&
+      JSON.stringify({
+        ...pendingCreation,
+        operationKey: undefined,
+        expiresAt: undefined,
+      }) === JSON.stringify(draft)
+        ? pendingCreation
+        : {
+            ...draft,
+            operationKey: crypto.randomUUID(),
+            expiresAt: new Date(
+              Date.now() + 7 * 24 * 60 * 60 * 1000,
+            ).toISOString(),
+          };
+    setPendingCreation(input);
+    setError(null);
+
+    try {
+      const result = await create.mutateAsync(input);
+      close();
+      void navigate(`/swaps/${result.id}`);
+    } catch (cause) {
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : 'The trade could not be sent. Please retry.',
+      );
+    }
+  };
+
   if (!selfId || selfId === item.ownerId || item.availability !== 'available')
     return null;
 
@@ -243,17 +282,18 @@ export function ProposalComposer({
       <Button variant="primary" onClick={() => setOpen(true)}>
         Propose a trade
       </Button>
-      <p>Build a development preview. Sending proposals is coming next.</p>
+      <p>Invite members to review a proposed swap.</p>
       <Dialog
         open={open}
         onOpenChange={(next) => (next ? setOpen(true) : close())}
       >
         <DialogContent className="proposal-dialog">
           <DialogTitle>
-            {review ? 'Review your trade preview' : 'Build a trade preview'}
+            {review ? 'Review your proposal' : 'Build a proposal'}
           </DialogTitle>
           <DialogDescription>
-            This draft stays on this page. No invitation or trade is sent.
+            Review the terms before sending. Items stay available until a later
+            confirmation.
           </DialogDescription>
           {review ? (
             <div className="proposal-content">
@@ -271,15 +311,29 @@ export function ProposalComposer({
                 ))}
               </ul>
               <p>
-                Development preview only. Participants have not been invited and
-                these items are not reserved.
+                Invitations will be sent to the other participants. This
+                proposal expires in seven days. Items are not reserved.
               </p>
               <div className="proposal-actions">
-                <Button onClick={() => setReview(false)}>Edit draft</Button>
-                <Button variant="primary" onClick={close}>
-                  Done
+                <Button
+                  disabled={create.isPending}
+                  onClick={() => setReview(false)}
+                >
+                  Edit draft
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={create.isPending}
+                  onClick={() => void submit()}
+                >
+                  {create.isPending ? 'Sending…' : 'Send proposal'}
                 </Button>
               </div>
+              {error && (
+                <p role="alert" className="ui-feedback-error">
+                  {error}
+                </p>
+              )}
             </div>
           ) : (
             <div className="proposal-content">
@@ -422,7 +476,7 @@ export function ProposalComposer({
                   disabled={checking}
                   onClick={() => void startReview()}
                 >
-                  {checking ? 'Checking items…' : 'Review preview'}
+                  {checking ? 'Checking items…' : 'Review proposal'}
                 </Button>
               </div>
             </div>
