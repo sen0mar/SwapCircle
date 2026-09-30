@@ -110,8 +110,8 @@ test('public cursor navigation, reload, owner profile, long text and accessible 
     page.getByRole('link', { name: 'Sign in to message', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Propose a trade' }),
-  ).toBeDisabled();
+    page.getByRole('link', { name: 'Sign in to preview a trade' }),
+  ).toBeVisible();
   for (const theme of ['light', 'dark']) {
     await page.getByLabel('Theme').selectOption(theme);
     for (const width of [360, 768, 800, 1280, 1600]) {

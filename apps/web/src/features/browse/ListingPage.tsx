@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { SafetyActions } from '../safety/SafetyActions';
 import { MessageAction } from '../inbox/MessageAction';
 import { useListing, useListingOwner } from './useListings';
+import { ProposalComposer } from './ProposalComposer';
 import { conditions, ListingPlaceholder, ListingRetry } from './ListingContent';
 import {
   ListingImage,
@@ -117,12 +118,24 @@ export function ListingPage() {
             targetId={item.id}
           />
           <MessageAction userId={item.ownerId} />
-          <div className="message-action">
-            <Button disabled aria-describedby="trade-unavailable">
-              Propose a trade
-            </Button>
-            <p id="trade-unavailable">Trade proposals are not available yet.</p>
-          </div>
+          {session && owner.data && (
+            <ProposalComposer
+              key={item.id}
+              item={item}
+              ownerName={owner.data.displayName}
+            />
+          )}
+          {!session && item.availability === 'available' && (
+            <div className="message-action">
+              <Button asChild>
+                <Link
+                  to={`/sign-in?next=${encodeURIComponent(`/listings/${item.id}`)}`}
+                >
+                  Sign in to preview a trade
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </section>
