@@ -58,7 +58,7 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
   const makeApp = (limits = developmentLimits) => {
     const permissions = new SafetyPermissions(limits);
     return createApp({
-      trades: new TradesService(new TradesRepository(runtime)),
+      trades: new TradesService(new TradesRepository(runtime), permissions),
       notifications: new NotificationsService(
         new NotificationsRepository(runtime),
         permissions,

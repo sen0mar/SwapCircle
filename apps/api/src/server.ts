@@ -26,7 +26,7 @@ const pool = new Pool(databaseConfig(config.databaseUrl));
 const permissions = new SafetyPermissions(config.limits);
 
 createApp({
-  trades: new TradesService(new TradesRepository(pool)),
+  trades: new TradesService(new TradesRepository(pool), permissions),
   notifications: new NotificationsService(
     new NotificationsRepository(pool),
     permissions,
