@@ -2,12 +2,14 @@ import { createHash } from 'node:crypto';
 import {
   proposalCreationResultSchema,
   type ProposalCreation,
+  type ProposalRevision,
 } from '@swapcircle/contracts';
 import { createNotification } from '../notifications/notifications.repository.js';
 import {
   SafetyError,
   SafetyPermissions,
 } from '../safety/safety.permissions.js';
+import { lockProposalBoundary } from './proposal-boundary.js';
 import type { TradesRepository } from './trades.repository.js';
 
 export class TradesService {
@@ -38,6 +40,7 @@ export class TradesService {
       .digest('hex');
 
     return this.repository.transaction(async (client) => {
+      await lockProposalBoundary(client);
       await this.repository.lockOperation(client, actor, input.operationKey);
       await this.permissions.assertUnrestricted(client, [actor]);
       const previous = await this.repository.operation(
@@ -46,6 +49,17 @@ export class TradesService {
         input.operationKey,
       );
       if (previous) {
+        if (
+          !(await this.repository.participantIds(client, previous.id)).includes(
+            actor,
+          )
+        )
+          throw new SafetyError(
+            404,
+            'TRADE_UNAVAILABLE',
+            'This trade is unavailable.',
+          );
+
         if (previous.operation_hash !== hash)
           throw new SafetyError(
             409,
@@ -150,6 +164,175 @@ export class TradesService {
         currentVersion: 1 as const,
         status: 'proposed' as const,
       };
+    });
+  }
+
+  async revise(actor: string, id: string, input: ProposalRevision) {
+    return this.repository.transaction(async (client) => {
+      await lockProposalBoundary(client);
+      const previousParticipants = await this.repository.participantIds(
+        client,
+        id,
+      );
+      await this.repository.lockParticipants(client, [
+        ...new Set([actor, ...previousParticipants, ...input.participantIds]),
+      ]);
+      await this.permissions.assertUnrestricted(client, [actor]);
+
+      const trade = await this.repository.lockTrade(client, id, actor);
+      if (!trade)
+        throw new SafetyError(
+          404,
+          'TRADE_UNAVAILABLE',
+          'This trade is unavailable.',
+        );
+
+      if (
+        trade.status !== 'proposed' ||
+        trade.expires_at.getTime() <= Date.now()
+      )
+        throw new SafetyError(
+          409,
+          'TERMS_FROZEN',
+          'These terms cannot be revised.',
+        );
+
+      if (trade.current_version !== input.expectedVersion)
+        throw new SafetyError(
+          409,
+          'STALE_PROPOSAL',
+          'The proposal changed. Reload its terms.',
+        );
+
+      if (!input.participantIds.includes(actor))
+        throw new SafetyError(
+          422,
+          'PROPOSAL_INVALID',
+          'Include yourself in the proposal.',
+        );
+
+      if (Date.parse(input.expiresAt) <= Date.now())
+        throw new SafetyError(
+          422,
+          'PROPOSAL_INVALID',
+          'Choose a future expiry.',
+        );
+
+      await this.permissions.assertUnrestricted(client, input.participantIds);
+      if (await this.repository.blocked(client, input.participantIds))
+        throw new SafetyError(
+          403,
+          'CONTACT_BLOCKED',
+          'This contact is unavailable.',
+        );
+
+      if (
+        (await this.repository.existingParticipants(
+          client,
+          input.participantIds,
+        )) !== input.participantIds.length
+      )
+        throw new SafetyError(
+          422,
+          'PROPOSAL_INVALID',
+          'A participant is unavailable.',
+        );
+
+      await this.permissions.authorizeWrite(client, actor, 'trade');
+
+      const listings = await this.repository.availableListings(
+        client,
+        input.transfers.map((transfer) => transfer.listingId),
+      );
+      for (const transfer of input.transfers) {
+        const listing = listings.get(transfer.listingId);
+        if (!listing || listing.availability !== 'available')
+          throw new SafetyError(
+            409,
+            'LISTING_UNAVAILABLE',
+            'An offered item is unavailable.',
+          );
+        if (listing.owner_id !== transfer.ownerId)
+          throw new SafetyError(
+            422,
+            'PROPOSAL_INVALID',
+            'An offered item has a different owner.',
+          );
+      }
+
+      const eventId = await this.repository.insertRevision(
+        client,
+        id,
+        actor,
+        input,
+        listings,
+      );
+      for (const recipientId of input.participantIds)
+        if (recipientId !== actor)
+          await createNotification(client, {
+            recipient_id: recipientId,
+            domain_event_id: eventId,
+            event_type: previousParticipants.includes(recipientId)
+              ? 'trade_revision'
+              : 'trade_invitation',
+            resource_type: 'trade',
+            resource_id: id,
+          });
+
+      const group = await this.repository.coordinateGroup(
+        client,
+        id,
+        actor,
+        input.participantIds,
+        input.participantIds.filter(
+          (user) => !previousParticipants.includes(user),
+        ),
+      );
+      if (group)
+        for (const change of group.changes) {
+          const recipients =
+            change.event_type === 'removed'
+              ? new Set([change.user_id, ...group.activeMembers])
+              : new Set([change.user_id]);
+
+          for (const recipientId of recipients)
+            await createNotification(client, {
+              recipient_id: recipientId,
+              domain_event_id: change.event_id,
+              event_type:
+                change.event_type === 'removed'
+                  ? 'group_membership'
+                  : 'group_invitation',
+              resource_type: 'conversation',
+              resource_id: group.id,
+            });
+        }
+
+      return {
+        id,
+        currentVersion: input.expectedVersion + 1,
+        status: 'proposed' as const,
+      };
+    });
+  }
+
+  async version(actor: string, id: string, version: number) {
+    return this.repository.read(async (client) => {
+      await this.permissions.assertUnrestricted(client, [actor]);
+      const snapshot = await this.repository.version(
+        client,
+        actor,
+        id,
+        version,
+      );
+      if (!snapshot)
+        throw new SafetyError(
+          404,
+          'TRADE_UNAVAILABLE',
+          'This trade is unavailable.',
+        );
+
+      return snapshot;
     });
   }
 

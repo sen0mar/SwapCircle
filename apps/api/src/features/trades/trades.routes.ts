@@ -3,6 +3,8 @@ import {
   tradeIdParamsSchema,
   tradePageQuerySchema,
   proposalCreationSchema,
+  proposalRevisionSchema,
+  tradeVersionParamsSchema,
 } from '@swapcircle/contracts';
 import type { VerifyToken } from '../../auth/verify.js';
 import {
@@ -60,6 +62,35 @@ export function createTradesRouter(
     ) => {
       const { id } = tradeIdParamsSchema.parse(request.params);
       response.json(await service.detail(response.locals.identity.userId, id));
+    },
+  );
+
+  router.put(
+    '/trades/:id',
+    authenticate(verifyToken),
+    async (
+      request,
+      response: import('express').Response<unknown, AuthenticatedLocals>,
+    ) => {
+      const { id } = tradeIdParamsSchema.parse(request.params);
+      const input = proposalRevisionSchema.parse(request.body);
+      response.json(
+        await service.revise(response.locals.identity.userId, id, input),
+      );
+    },
+  );
+
+  router.get(
+    '/trades/:id/versions/:version',
+    authenticate(verifyToken),
+    async (
+      request,
+      response: import('express').Response<unknown, AuthenticatedLocals>,
+    ) => {
+      const { id, version } = tradeVersionParamsSchema.parse(request.params);
+      response.json(
+        await service.version(response.locals.identity.userId, id, version),
+      );
     },
   );
 
