@@ -4,6 +4,7 @@ import {
   tradeDetailSchema,
   tradePageSchema,
   tradeVersionSchema,
+  tradeAcceptanceResultSchema,
 } from '@swapcircle/contracts';
 import type { ProposalCreation, ProposalRevision } from '@swapcircle/contracts';
 
@@ -206,6 +207,155 @@ export class TradesRepository {
       [id, actor],
     );
     return result.rows[0];
+  }
+
+  async acceptanceOperation(client: PoolClient, actor: string, key: string) {
+    const result = await client.query<{
+      trade_id: string;
+      version: number;
+      result_status: string;
+    }>(
+      'SELECT trade_id,version,result_status FROM public.trade_acceptance_operations WHERE actor_id=$1 AND operation_key=$2',
+      [actor, key],
+    );
+    return result.rows[0];
+  }
+
+  async acceptanceTerms(client: PoolClient, id: string, version: number) {
+    const result = await client.query<{
+      id: string;
+      participant_ids: string[];
+      unexpired: boolean;
+      expires_match: boolean;
+    }>(
+      `SELECT v.id,v.participant_ids,v.expires_at>statement_timestamp() AS unexpired,
+      v.expires_at=t.expires_at AS expires_match FROM public.trade_versions v
+      JOIN public.trades t ON t.id=v.trade_id WHERE v.trade_id=$1 AND v.version=$2`,
+      [id, version],
+    );
+    const items = await client.query<{
+      listing_id: string;
+      owner_id: string;
+      recipient_id: string;
+      listing_revision: number;
+      title_snapshot: string;
+      description_snapshot: string;
+      condition_snapshot: string;
+    }>(
+      `SELECT i.* FROM public.trade_items i JOIN public.trade_versions v ON v.id=i.version_id
+      WHERE v.trade_id=$1 AND v.version=$2 ORDER BY i.listing_id`,
+      [id, version],
+    );
+    return { version: result.rows[0], items: items.rows };
+  }
+
+  async reserved(client: PoolClient, ids: string[]) {
+    return Boolean(
+      (
+        await client.query(
+          'SELECT 1 FROM public.item_reservations WHERE listing_id=ANY($1::uuid[]) AND released_at IS NULL LIMIT 1',
+          [ids],
+        )
+      ).rowCount,
+    );
+  }
+
+  async hasAcceptance(
+    client: PoolClient,
+    id: string,
+    version: number,
+    actor: string,
+  ) {
+    return Boolean(
+      (
+        await client.query(
+          'SELECT 1 FROM public.trade_acceptances WHERE trade_id=$1 AND version=$2 AND actor_id=$3',
+          [id, version, actor],
+        )
+      ).rowCount,
+    );
+  }
+
+  async insertAcceptance(
+    client: PoolClient,
+    id: string,
+    version: number,
+    versionId: string,
+    actor: string,
+  ) {
+    await client.query(
+      'INSERT INTO public.trade_acceptances (trade_id,version,actor_id) VALUES ($1,$2,$3)',
+      [id, version, actor],
+    );
+    await client.query(
+      `UPDATE public.trade_participants SET accepted_version=$2,accepted_at=statement_timestamp(),invitation_status='joined',responded_at=statement_timestamp()
+      WHERE trade_id=$1 AND user_id=$3 AND active`,
+      [id, version, actor],
+    );
+    await client.query(
+      `INSERT INTO public.trade_events (trade_id,version_id,actor_id,event_type)
+      VALUES ($1,$2,$3,'accepted')`,
+      [id, versionId, actor],
+    );
+  }
+
+  async unanimous(client: PoolClient, id: string, version: number) {
+    return !(
+      await client.query(
+        `SELECT 1 FROM public.trade_participants p WHERE p.trade_id=$1 AND p.active
+      AND NOT EXISTS (SELECT 1 FROM public.trade_acceptances a WHERE a.trade_id=p.trade_id AND a.actor_id=p.user_id AND a.version=$2)
+      LIMIT 1`,
+        [id, version],
+      )
+    ).rowCount;
+  }
+
+  async confirm(
+    client: PoolClient,
+    id: string,
+    versionId: string,
+    actor: string,
+    listingIds: string[],
+  ) {
+    for (const listingId of [...listingIds].sort())
+      await client.query(
+        'INSERT INTO public.item_reservations (trade_id,listing_id) VALUES ($1,$2)',
+        [id, listingId],
+      );
+    await client.query(
+      `UPDATE public.listings SET availability='reserved',updated_at=statement_timestamp() WHERE id=ANY($1::uuid[])`,
+      [listingIds],
+    );
+    await client.query(
+      `UPDATE public.trades SET status='confirmed',updated_at=statement_timestamp() WHERE id=$1`,
+      [id],
+    );
+    const event = await client.query<{ id: string }>(
+      `INSERT INTO public.trade_events (trade_id,version_id,actor_id,event_type)
+      VALUES ($1,$2,$3,'confirmed') RETURNING id`,
+      [id, versionId, actor],
+    );
+    return event.rows[0]!.id;
+  }
+
+  async saveAcceptanceOperation(
+    client: PoolClient,
+    actor: string,
+    key: string,
+    id: string,
+    version: number,
+    status: string,
+  ) {
+    await client.query(
+      `INSERT INTO public.trade_acceptance_operations (actor_id,operation_key,trade_id,version,result_status)
+      VALUES ($1,$2,$3,$4,$5)`,
+      [actor, key, id, version, status],
+    );
+    return tradeAcceptanceResultSchema.parse({
+      id,
+      acceptedVersion: version,
+      status,
+    });
   }
 
   async participantIds(client: PoolClient, id: string) {

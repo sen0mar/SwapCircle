@@ -621,6 +621,9 @@ export const tradeEvents = pgTable(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex('trade_confirmation_unique')
+      .on(table.tradeId)
+      .where(sql`${table.eventType} = 'confirmed'`),
     index('trade_events_trade_created_idx').on(
       table.tradeId,
       table.createdAt,
@@ -636,7 +639,84 @@ export const tradeEvents = pgTable(
     }),
     check(
       'trade_event_type_valid',
-      sql`${table.eventType} IN ('proposed','revised','confirmed','completed','declined','expired','cancelled','disputed')`,
+      sql`${table.eventType} IN ('proposed','revised','accepted','confirmed','completed','declined','expired','cancelled','disputed')`,
     ),
+  ],
+);
+
+export const tradeAcceptances = pgTable(
+  'trade_acceptances',
+  {
+    tradeId: uuid('trade_id').notNull(),
+    version: integer('version').notNull(),
+    actorId: uuid('actor_id').notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.tradeId, table.version, table.actorId] }),
+    foreignKey({
+      columns: [table.tradeId, table.version],
+      foreignColumns: [tradeVersions.tradeId, tradeVersions.version],
+    }),
+    foreignKey({
+      columns: [table.tradeId, table.actorId],
+      foreignColumns: [tradeParticipants.tradeId, tradeParticipants.userId],
+    }),
+  ],
+);
+
+export const tradeAcceptanceOperations = pgTable(
+  'trade_acceptance_operations',
+  {
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => profiles.id),
+    operationKey: uuid('operation_key').notNull(),
+    tradeId: uuid('trade_id').notNull(),
+    version: integer('version').notNull(),
+    resultStatus: varchar('result_status', { length: 16 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.actorId, table.operationKey] }),
+    foreignKey({
+      columns: [table.tradeId, table.version, table.actorId],
+      foreignColumns: [
+        tradeAcceptances.tradeId,
+        tradeAcceptances.version,
+        tradeAcceptances.actorId,
+      ],
+    }),
+    check(
+      'acceptance_result_status_valid',
+      sql`${table.resultStatus} IN ('proposed','confirmed')`,
+    ),
+  ],
+);
+
+export const itemReservations = pgTable(
+  'item_reservations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tradeId: uuid('trade_id')
+      .notNull()
+      .references(() => trades.id),
+    listingId: uuid('listing_id')
+      .notNull()
+      .references(() => listings.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    releasedAt: timestamp('released_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('item_reservations_active_listing_unique')
+      .on(table.listingId)
+      .where(sql`${table.releasedAt} IS NULL`),
+    index('item_reservations_trade_idx').on(table.tradeId),
   ],
 );

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   tradeIdParamsSchema,
+  tradeAcceptanceSchema,
   tradePageQuerySchema,
   proposalCreationSchema,
   proposalRevisionSchema,
@@ -32,6 +33,21 @@ export function createTradesRouter(
         input,
       );
       response.status(201).json(result);
+    },
+  );
+
+  router.post(
+    '/trades/:id/accept',
+    authenticate(verifyToken),
+    async (
+      request,
+      response: import('express').Response<unknown, AuthenticatedLocals>,
+    ) => {
+      const { id } = tradeIdParamsSchema.parse(request.params);
+      const input = tradeAcceptanceSchema.parse(request.body);
+      response.json(
+        await service.accept(response.locals.identity.userId, id, input),
+      );
     },
   );
 
