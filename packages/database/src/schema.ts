@@ -255,6 +255,7 @@ export const conversations = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     type: varchar('type', { length: 16 }).notNull(),
+    tradeId: uuid('trade_id').references(() => trades.id),
     directUserLow: uuid('direct_user_low').references(() => profiles.id),
     directUserHigh: uuid('direct_user_high').references(() => profiles.id),
     lastMessageOrder: integer('last_message_order').notNull().default(0),
@@ -268,6 +269,11 @@ export const conversations = pgTable(
       table.directUserHigh,
     ),
     index('conversations_direct_high_idx').on(table.directUserHigh),
+    unique('conversations_trade_unique').on(table.tradeId),
+    check(
+      'conversation_trade_group',
+      sql`${table.tradeId} IS NULL OR ${table.type} = 'group'`,
+    ),
     check(
       'conversation_identity_valid',
       sql`(${table.type} = 'direct' AND ${table.directUserLow} IS NOT NULL AND ${table.directUserHigh} IS NOT NULL AND ${table.directUserLow} < ${table.directUserHigh}) OR (${table.type} = 'group' AND ${table.directUserLow} IS NULL AND ${table.directUserHigh} IS NULL)`,
@@ -289,15 +295,49 @@ export const conversationMembers = pgTable(
       .notNull()
       .references(() => profiles.id),
     active: boolean('active').notNull().default(true),
+    status: varchar('status', { length: 16 }).notNull().default('accepted'),
+    respondedAt: timestamp('responded_at', { withTimezone: true }),
     joinedAt: timestamp('joined_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => [
+    check(
+      'membership_status_valid',
+      sql`${table.status} IN ('pending', 'accepted', 'declined', 'left')`,
+    ),
+    check(
+      'membership_active_accepted',
+      sql`NOT ${table.active} OR ${table.status} = 'accepted'`,
+    ),
     primaryKey({ columns: [table.conversationId, table.userId] }),
     index('conversation_members_user_idx').on(
       table.userId,
       table.conversationId,
+    ),
+  ],
+);
+
+export const conversationMembershipEvents = pgTable(
+  'conversation_membership_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => profiles.id),
+    eventType: varchar('event_type', { length: 16 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('membership_events_conversation_idx').on(table.conversationId),
+    check(
+      'membership_event_type_valid',
+      sql`${table.eventType} IN ('invited', 'accepted', 'declined', 'left')`,
     ),
   ],
 );
@@ -395,7 +435,7 @@ export const notifications = pgTable(
       .where(sql`${table.readAt} IS NULL`),
     check(
       'notification_resource_valid',
-      sql`(${table.eventType} IN ('trade_invitation', 'trade_status', 'trade_revision') AND ${table.resourceType} = 'trade') OR (${table.eventType} = 'group_invitation' AND ${table.resourceType} = 'conversation') OR (${table.eventType} IN ('coffee_invitation', 'coffee_response') AND ${table.resourceType} = 'coffee_invitation') OR (${table.eventType} = 'meeting_change' AND ${table.resourceType} = 'meetup')`,
+      sql`(${table.eventType} IN ('trade_invitation', 'trade_status', 'trade_revision') AND ${table.resourceType} = 'trade') OR (${table.eventType} IN ('group_invitation', 'group_membership') AND ${table.resourceType} = 'conversation') OR (${table.eventType} IN ('coffee_invitation', 'coffee_response') AND ${table.resourceType} = 'coffee_invitation') OR (${table.eventType} = 'meeting_change' AND ${table.resourceType} = 'meetup')`,
     ),
   ],
 );

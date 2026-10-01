@@ -248,6 +248,7 @@ export const notificationEventTypeSchema = z.enum([
   'trade_status',
   'trade_revision',
   'group_invitation',
+  'group_membership',
   'coffee_invitation',
   'coffee_response',
   'meeting_change',
@@ -272,6 +273,7 @@ export const notificationCreationSchema = z
       trade_status: 'trade',
       trade_revision: 'trade',
       group_invitation: 'conversation',
+      group_membership: 'conversation',
       coffee_invitation: 'coffee_invitation',
       coffee_response: 'coffee_invitation',
       meeting_change: 'meetup',
@@ -456,3 +458,19 @@ export const tradeDetailSchema = tradeSummarySchema.extend({
   items: z.array(tradeItemSchema),
   events: z.array(tradeEventSchema),
 });
+
+// Chat consent is independent of version-specific trade acceptance.
+export const groupMembershipResponseSchema = z.strictObject({});
+export const groupMembershipParamsSchema = z.strictObject({ id: z.uuid() });
+export const groupMembershipStatusSchema = z.enum([
+  'pending',
+  'accepted',
+  'declined',
+  'left',
+]);
+export const groupMembershipReceiptSchema = z.object({
+  conversationId: z.uuid(),
+  status: groupMembershipStatusSchema,
+  active: z.boolean(),
+});
+export type GroupMembershipStatus = z.infer<typeof groupMembershipStatusSchema>;

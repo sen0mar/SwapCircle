@@ -1,5 +1,9 @@
 import type { Pool, PoolClient } from 'pg';
-import type { MessageReceipt, MessageSubmission } from '@swapcircle/contracts';
+import type {
+  GroupMembershipStatus,
+  MessageReceipt,
+  MessageSubmission,
+} from '@swapcircle/contracts';
 
 export class ConversationsRepository {
   constructor(private readonly pool: Pool) {}
@@ -18,6 +22,45 @@ export class ConversationsRepository {
     } finally {
       client.release();
     }
+  }
+
+  async groupMembership(client: PoolClient, actor: string, id: string) {
+    // Sends, reads and transitions all hold this lock until commit. Membership
+    // SELECT needs no UPDATE privilege; the private transition function owns it.
+    const group = await client.query(
+      "SELECT id FROM public.conversations WHERE id=$1 AND type='group' AND trade_id IS NOT NULL FOR NO KEY UPDATE",
+      [id],
+    );
+    if (!group.rowCount) return null;
+
+    const result = await client.query<{
+      status: GroupMembershipStatus;
+      active: boolean;
+    }>(
+      'SELECT status,active FROM public.conversation_members WHERE conversation_id=$1 AND user_id=$2',
+      [id, actor],
+    );
+
+    return result.rows[0] ?? null;
+  }
+
+  async respondGroup(
+    client: PoolClient,
+    actor: string,
+    id: string,
+    status: GroupMembershipStatus,
+  ) {
+    await client.query('SELECT private.respond_group_membership($1,$2,$3)', [
+      id,
+      actor,
+      status,
+    ]);
+    const event = await client.query<{ id: string }>(
+      'INSERT INTO public.conversation_membership_events (conversation_id,actor_id,event_type) VALUES ($1,$2,$3) RETURNING id',
+      [id, actor, status],
+    );
+
+    return event.rows[0]!.id;
   }
 
   async lockReader(client: PoolClient, actor: string, id: string) {

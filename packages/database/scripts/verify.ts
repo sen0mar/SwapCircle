@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      16,
+      17,
     );
 
     const publication = await pool.query<{ tablename: string }>(
@@ -114,6 +114,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'action_quotas',
       'conversations',
       'conversation_members',
+      'conversation_membership_events',
       'conversation_reads',
       'messages',
       'notifications',
@@ -174,6 +175,16 @@ export async function verify(pool: Pool, runtimeUrl: string) {
     }
 
     for (const role of ['anon', 'authenticated', 'service_role']) {
+      assert.equal(
+        (
+          await pool.query(
+            "SELECT has_function_privilege($1, 'private.respond_group_membership(uuid,uuid,text)', 'EXECUTE') AS execute",
+            [role],
+          )
+        ).rows[0]?.execute,
+        false,
+      );
+
       const result = await pool.query<{ execute: boolean }>(
         "SELECT has_function_privilege($1, 'private.lock_conversation_reader(uuid,uuid)', 'EXECUTE') AS execute",
         [role],
