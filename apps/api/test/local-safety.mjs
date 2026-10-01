@@ -24,12 +24,17 @@ import { createDiscoveryFixture } from './discovery-fixture.mjs';
 const fetch = globalThis.fetch;
 const fixture = await createDiscoveryFixture();
 const {
-  app,
+  app: application,
   makeApp,
   migration,
   runtime,
   users: [alice, bob, carol, dan],
 } = fixture;
+// Keep one listener for concurrent HTTP assertions instead of closing an ephemeral
+// Supertest server between requests while Node may reuse a keep-alive socket.
+const app = application.listen(0, '127.0.0.1');
+await once(app, 'listening');
+const servers = [app];
 const auth = (user) => ({ Authorization: `Bearer ${user.token}` });
 const base = '/api/v1/safety';
 const block = (user, other, instance = app) =>
@@ -343,7 +348,12 @@ try {
   ])
     await assert.rejects(migration.query(sql, values), { code });
 
-  const limited = makeApp({ ...developmentLimits, allowance: 2 });
+  const limited = makeApp({ ...developmentLimits, allowance: 2 }).listen(
+    0,
+    '127.0.0.1',
+  );
+  servers.push(limited);
+  await once(limited, 'listening');
   // Dan has never fetched a profile: report submission must provision quota ownership.
   const allowanceRace = await Promise.all(
     Array.from({ length: 7 }, () =>
@@ -607,5 +617,9 @@ try {
     for (const row of avatars.rows)
       if (row.key) await fixture.storage.remove(row.key);
   }
+  for (const server of servers)
+    await new Promise((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
   await fixture.cleanup();
 }

@@ -105,7 +105,25 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
         await client.query(
           'ALTER TABLE public.trade_items DISABLE TRIGGER trade_items_append_only',
         );
+        await client.query(
+          'ALTER TABLE public.trade_acceptances DISABLE TRIGGER trade_acceptances_append_only',
+        );
+        await client.query(
+          'ALTER TABLE public.trade_acceptance_operations DISABLE TRIGGER acceptance_operations_append_only',
+        );
         for (const { trade_id } of tradeIds.rows) {
+          await client.query(
+            'DELETE FROM public.trade_acceptance_operations WHERE trade_id=$1',
+            [trade_id],
+          );
+          await client.query(
+            'DELETE FROM public.trade_acceptances WHERE trade_id=$1',
+            [trade_id],
+          );
+          await client.query(
+            'DELETE FROM public.item_reservations WHERE trade_id=$1',
+            [trade_id],
+          );
           await client.query(
             'DELETE FROM public.conversations WHERE trade_id=$1',
             [trade_id],
@@ -119,11 +137,11 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
             [trade_id],
           );
           await client.query(
-            'DELETE FROM public.trade_versions WHERE trade_id=$1',
+            'DELETE FROM public.trade_participants WHERE trade_id=$1',
             [trade_id],
           );
           await client.query(
-            'DELETE FROM public.trade_participants WHERE trade_id=$1',
+            'DELETE FROM public.trade_versions WHERE trade_id=$1',
             [trade_id],
           );
           await client.query('DELETE FROM public.trades WHERE id=$1', [
@@ -139,6 +157,12 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
         );
         await client.query(
           'ALTER TABLE public.trade_items ENABLE TRIGGER trade_items_append_only',
+        );
+        await client.query(
+          'ALTER TABLE public.trade_acceptances ENABLE TRIGGER trade_acceptances_append_only',
+        );
+        await client.query(
+          'ALTER TABLE public.trade_acceptance_operations ENABLE TRIGGER acceptance_operations_append_only',
         );
         await client.query('COMMIT');
       } catch (error) {
