@@ -395,6 +395,17 @@ export const proposalRevisionSchema = proposalDraftSchema.safeExtend({
   expectedVersion: z.number().int().positive(),
   expiresAt: z.iso.datetime({ offset: true }),
 });
+export const tradeAcceptanceSchema = z.strictObject({
+  expectedVersion: z.number().int().positive(),
+  operationKey: z.uuid(),
+});
+export type TradeAcceptance = z.infer<typeof tradeAcceptanceSchema>;
+export const tradeAcceptanceResultSchema = z.strictObject({
+  id: z.uuid(),
+  acceptedVersion: z.number().int().positive(),
+  status: z.enum(['proposed', 'confirmed']),
+});
+
 export type ProposalRevision = z.infer<typeof proposalRevisionSchema>;
 export const tradeVersionParamsSchema = z.object({
   id: z.uuid(),
@@ -453,6 +464,7 @@ export const tradeEventSchema = z.object({
   eventType: z.enum([
     'proposed',
     'revised',
+    'accepted',
     'confirmed',
     'completed',
     'declined',
