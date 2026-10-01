@@ -76,5 +76,6 @@ jobs:
       - run: pnpm --filter @swapcircle/web test:notifications-local
       - run: pnpm --filter @swapcircle/web test:swaps-local
       - run: pnpm --filter @swapcircle/web test:groups-local
+      - run: pnpm --filter @swapcircle/web test:revisions-local
       - if: always()
         run: pnpm db:stop
