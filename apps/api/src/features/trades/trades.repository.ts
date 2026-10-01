@@ -162,6 +162,34 @@ export class TradesRepository {
     return { tradeId, eventId: event.rows[0]!.id };
   }
 
+  async createGroup(
+    client: PoolClient,
+    tradeId: string,
+    actor: string,
+    ids: string[],
+  ) {
+    const result = await client.query<{ id: string }>(
+      "INSERT INTO public.conversations (type,trade_id) VALUES ('group',$1) RETURNING id",
+      [tradeId],
+    );
+    const id = result.rows[0]!.id;
+
+    for (const user of ids)
+      await client.query(
+        `INSERT INTO public.conversation_members (conversation_id,user_id,active,status)
+         VALUES ($1,$2,$3,$4)`,
+        [id, user, user === actor, user === actor ? 'accepted' : 'pending'],
+      );
+
+    const event = await client.query<{ id: string }>(
+      `INSERT INTO public.conversation_membership_events (conversation_id,actor_id,event_type)
+       VALUES ($1,$2,'invited') RETURNING id`,
+      [id, actor],
+    );
+
+    return { id, eventId: event.rows[0]!.id };
+  }
+
   async read<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
 
