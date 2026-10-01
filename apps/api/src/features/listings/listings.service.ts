@@ -1,3 +1,5 @@
+import { lockProposalBoundary } from '../trades/proposal-boundary.js';
+import { createNotification } from '../notifications/notifications.repository.js';
 import type {
   CatalogQuery,
   ListingCreate,
@@ -33,6 +35,8 @@ export class ListingsService {
 
   change(actor: string, id: string, revision: number, input?: ListingUpdate) {
     return this.repository.transaction(async (client) => {
+      await lockProposalBoundary(client);
+      await this.repository.permissions.lockPair(client, actor, actor);
       await this.repository.permissions.authorizeWrite(
         client,
         actor,
@@ -46,7 +50,10 @@ export class ListingsService {
 
       // Future trade transitions must lock this same row in their atomic transaction.
       // No ordinary edit or withdrawal can override a trade-controlled state.
-      if (listing.availability !== 'available')
+      if (
+        listing.availability !== 'available' ||
+        (await this.repository.frozenTerms(client, id))
+      )
         throw new ListingError(
           409,
           'LISTING_UNAVAILABLE',
@@ -60,9 +67,34 @@ export class ListingsService {
           'The listing changed. Reload it before trying again.',
         );
 
-      return input
-        ? this.repository.edit(client, id, input)
-        : this.repository.withdraw(client, id);
+      if (
+        input &&
+        listing.title === input.title &&
+        listing.description === input.description &&
+        listing.condition === input.condition
+      )
+        return listing;
+
+      const changed = input
+        ? await this.repository.edit(client, id, input)
+        : await this.repository.withdraw(client, id);
+      const revisions = await this.repository.reviseProposals(
+        client,
+        id,
+        actor,
+      );
+      for (const revision of revisions)
+        for (const recipientId of revision.participants)
+          if (recipientId !== actor)
+            await createNotification(client, {
+              recipient_id: recipientId,
+              domain_event_id: revision.eventId,
+              event_type: 'trade_revision',
+              resource_type: 'trade',
+              resource_id: revision.tradeId,
+            });
+
+      return changed;
     });
   }
 
