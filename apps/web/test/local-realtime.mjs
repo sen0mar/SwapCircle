@@ -325,7 +325,11 @@ try {
     'UPDATE public.conversation_members SET active=false WHERE conversation_id=$1 AND user_id=$2',
     [direct.id, bob.id],
   );
-  await expect(peer.getByRole('alert')).toContainText('do not have access');
+  await expect(
+    peer
+      .getByRole('region', { name: 'Conversation unavailable', exact: true })
+      .getByRole('alert'),
+  ).toHaveText('This conversation cannot be found or you do not have access.');
   await expect(peer.locator('[data-message-order]')).toHaveCount(0);
   await expect(peer.getByLabel('Message draft')).toHaveCount(0);
   for (const theme of ['light', 'dark']) {
@@ -342,7 +346,11 @@ try {
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await signIn(page, stranger);
   await page.goto(`${origin}/inbox/${direct.id}`);
-  await expect(page.getByRole('alert')).toContainText('do not have access');
+  await expect(
+    page
+      .getByRole('region', { name: 'Conversation unavailable', exact: true })
+      .getByRole('alert'),
+  ).toHaveText('This conversation cannot be found or you do not have access.');
   assert.ok(
     !(await page.locator('body').innerText()).includes('Live greeting'),
   );
