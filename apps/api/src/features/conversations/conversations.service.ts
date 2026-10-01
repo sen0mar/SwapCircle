@@ -1,3 +1,4 @@
+import { groupInvitationSchema } from '@swapcircle/contracts';
 import { createNotification } from '../notifications/notifications.repository.js';
 import type {
   GroupMembershipStatus,
@@ -15,6 +16,25 @@ export class ConversationsService {
     private readonly repository: ConversationsRepository,
     private readonly permissions = new SafetyPermissions(),
   ) {}
+
+  async groupInvitation(actor: string, id: string) {
+    return this.repository.transaction(async (client) => {
+      await this.permissions.assertUnrestricted(client, [actor]);
+      const invitation = await this.repository.groupInvitation(
+        client,
+        actor,
+        id,
+      );
+      if (!invitation)
+        throw new SafetyError(
+          403,
+          'CONVERSATION_UNAVAILABLE',
+          'This conversation is unavailable.',
+        );
+
+      return groupInvitationSchema.parse(invitation);
+    });
+  }
 
   async respondGroup(
     actor: string,

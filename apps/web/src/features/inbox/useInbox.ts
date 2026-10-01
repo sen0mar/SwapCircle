@@ -1,8 +1,15 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { getGroup } from '../groups/groups-api';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
 import { getPublicProfile } from '../account/profile-api';
 import {
+  ConversationDenied,
   authorizeRead,
   directPeer,
   readConversation,
@@ -30,7 +37,7 @@ export function useInbox() {
       const items = await Promise.all(
         page.items.map(async (conversation) => {
           const peer = directPeer(conversation, userId);
-          const [profile, history, unread] = await Promise.all([
+          const [profile, history, unread, group] = await Promise.all([
             peer ? getPublicProfile(peer, signal).catch(() => null) : null,
             readHistory(sdk, conversation.id, undefined, signal, 1),
             readUnread(request, conversation.id, signal).catch(
@@ -44,10 +51,14 @@ export function useInbox() {
                 return null;
               },
             ),
+            conversation.type === 'group'
+              ? getGroup(request, conversation.id, signal).catch(() => null)
+              : null,
           ]);
           return {
             conversation,
             profile,
+            group,
             latest: history.items[0],
             unreadCount: unread?.unreadCount ?? null,
           };
@@ -109,6 +120,23 @@ export function useThread(id: string) {
     retry: false,
     gcTime: 0,
   });
+  const queries = useQueryClient();
+  const denied =
+    conversation.error instanceof ConversationDenied ||
+    history.error instanceof ConversationDenied;
+
+  useEffect(() => {
+    if (!denied) return;
+    const prefix = ['private', userId, 'thread', id];
+    void queries
+      .cancelQueries({ queryKey: [...prefix, 'history'] })
+      .then(() => {
+        queries.removeQueries({ queryKey: [...prefix, 'history'] });
+        queries.removeQueries({ queryKey: [...prefix, 'profiles'] });
+      });
+    void queries.invalidateQueries({ queryKey: ['private', userId, 'inbox'] });
+  }, [denied, queries, userId, id]);
+
   const messages = [
     ...new Map(
       (history.data?.pages.flatMap((page) => page.items) ?? []).map(
