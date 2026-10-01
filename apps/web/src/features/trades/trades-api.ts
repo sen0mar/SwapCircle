@@ -3,6 +3,8 @@ import {
   tradeDetailSchema,
   tradePageSchema,
   type ProposalCreation,
+  type ProposalRevision,
+  tradeVersionSchema,
 } from '@swapcircle/contracts';
 import type { apiRequest } from '../../lib/api-client';
 
@@ -36,6 +38,38 @@ export function getTrade(
   return request(
     `/api/v1/trades/${encodeURIComponent(id)}`,
     tradeDetailSchema,
+    { signal },
+  );
+}
+
+export type TradeDetail = Awaited<ReturnType<typeof getTrade>>;
+export type TradeVersion = Awaited<ReturnType<typeof getTradeVersion>>;
+
+export function reviseTrade(
+  request: typeof apiRequest,
+  id: string,
+  input: ProposalRevision,
+) {
+  return request(
+    `/api/v1/trades/${encodeURIComponent(id)}`,
+    proposalCreationResultSchema,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export function getTradeVersion(
+  request: typeof apiRequest,
+  id: string,
+  version: number,
+  signal: AbortSignal,
+) {
+  return request(
+    `/api/v1/trades/${encodeURIComponent(id)}/versions/${version}`,
+    tradeVersionSchema,
     { signal },
   );
 }

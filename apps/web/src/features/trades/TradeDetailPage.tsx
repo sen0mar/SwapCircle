@@ -1,9 +1,13 @@
+import { useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
 import { GroupInvitation } from '../groups/GroupInvitation';
-import { useTrade } from './useTrades';
+import { useTrade, useTradeVersion } from './useTrades';
+
+import { ProposalComposer } from '../browse/ProposalComposer';
+import { detailTerms, termChanges } from './term-changes';
 
 const statuses: Record<string, string> = {
   proposed: 'Proposed',
@@ -21,9 +25,11 @@ const invitations: Record<string, string> = {
 };
 
 export function TradeDetailPage() {
+  const heading = useRef<HTMLHeadingElement>(null);
   const { id = '' } = useParams();
   const { session } = useAuth();
   const trade = useTrade(id);
+  const previous = useTradeVersion(id, (trade.data?.currentVersion ?? 1) - 1);
 
   if (trade.isPending)
     return (
@@ -77,14 +83,58 @@ export function TradeDetailPage() {
       <Link to="/swaps">← My Swaps</Link>
       <div className="section-heading">
         <div>
-          <h1 id="trade-title">Swap proposal</h1>
+          <h1 ref={heading} tabIndex={-1} id="trade-title">
+            Swap proposal
+          </h1>
           <p>
             {statuses[trade.data.status]} · Version {trade.data.currentVersion}
           </p>
         </div>
       </div>
+      {self && (
+        <ProposalComposer
+          key={`${session?.user.id}:${id}`}
+          revision={trade.data}
+          onReadOnlyClose={() => heading.current?.focus()}
+        />
+      )}
       <div className="panel route-panel">
         <h2>Current terms</h2>
+        {trade.data.currentVersion > 1 && (
+          <section aria-label="Term changes">
+            <h3>What changed</h3>
+            {previous.data ? (
+              <p>
+                {termChanges(previous.data, detailTerms(trade.data)).join(
+                  ' · ',
+                ) || 'A new version was saved with the same visible terms.'}
+              </p>
+            ) : (
+              <p>
+                {previous.isPending
+                  ? 'Loading previous terms…'
+                  : 'Previous terms are unavailable to this account. Review the complete current version below.'}
+              </p>
+            )}
+            {previous.isError && (
+              <Button onClick={() => void previous.refetch()}>
+                Retry previous terms
+              </Button>
+            )}
+            {trade.data.status === 'proposed' && (
+              <p>
+                Everyone must agree to version {trade.data.currentVersion}.
+                Earlier agreement does not apply to these terms.
+              </p>
+            )}
+          </section>
+        )}
+        {trade.data.status === 'confirmed' && (
+          <p>
+            Confirmed terms are read-only. Renegotiation requires cancellation
+            and a new proposal.
+          </p>
+        )}
         <p>
           Meet to swap · {trade.data.participantCount} people ·{' '}
           {trade.data.itemCount} items
@@ -165,6 +215,10 @@ export function TradeDetailPage() {
               {names.get(item.ownerId) ?? 'Member'} gives {item.titleSnapshot}{' '}
               to {names.get(item.recipientId) ?? 'Member'} ·{' '}
               {item.currentAvailability ?? 'Unavailable'}
+              <p>
+                {item.conditionSnapshot} · {item.descriptionSnapshot} · Listing
+                revision {item.listingRevision}
+              </p>
             </li>
           ))}
         </ul>
@@ -179,7 +233,10 @@ export function TradeDetailPage() {
               {invitations[person.invitationStatus]} ·{' '}
               {person.acceptedVersion === trade.data.currentVersion
                 ? 'Current terms accepted'
-                : 'Current terms not accepted'}
+                : trade.data.status === 'proposed' &&
+                    trade.data.currentVersion > 1
+                  ? 'Renewed agreement required'
+                  : 'Current terms not accepted'}
             </li>
           ))}
         </ul>
@@ -189,8 +246,11 @@ export function TradeDetailPage() {
         <ol>
           {trade.data.events.map((event) => (
             <li key={event.id}>
-              {statuses[event.eventType] ?? event.eventType} by{' '}
-              {names.get(event.actorId) ?? 'Member'} · version {event.version} ·{' '}
+              {event.eventType === 'revised'
+                ? 'Terms revised'
+                : (statuses[event.eventType] ?? event.eventType)}{' '}
+              by {names.get(event.actorId) ?? 'Member'} · version{' '}
+              {event.version} ·{' '}
               <time dateTime={event.createdAt}>
                 {new Date(event.createdAt).toLocaleString()}
               </time>
