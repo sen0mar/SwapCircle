@@ -33,6 +33,12 @@ export function createConversationsRouter(
     controller.markRead,
   );
 
+  router.get(
+    '/conversations/:id/invitation',
+    authenticate(verifyToken),
+    controller.groupInvitation,
+  );
+
   router.put(
     '/conversations/:id/invitation/accept',
     authenticate(verifyToken),

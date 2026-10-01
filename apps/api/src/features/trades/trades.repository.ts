@@ -254,6 +254,11 @@ export class TradesRepository {
     );
     if (!trade.rows[0]) return null;
 
+    const group = await client.query<{ id: string }>(
+      "SELECT id FROM public.conversations WHERE trade_id=$1 AND type='group'",
+      [id],
+    );
+
     const participants = await client.query(
       `SELECT p.user_id AS "userId", u.display_name AS "displayName",
         p.invitation_status AS "invitationStatus", p.invited_at AS "invitedAt",
@@ -286,6 +291,7 @@ export class TradesRepository {
       JSON.parse(
         JSON.stringify({
           ...trade.rows[0],
+          groupConversationId: group.rows[0]?.id ?? null,
           participants: participants.rows,
           items: items.rows,
           events: events.rows,

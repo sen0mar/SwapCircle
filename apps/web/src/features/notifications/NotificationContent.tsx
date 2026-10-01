@@ -48,14 +48,20 @@ export function NotificationContent({
           <Link
             to={
               item.resource_type === 'conversation'
-                ? `/inbox/${item.resource_id}`
+                ? item.event_type === 'group_invitation' ||
+                  item.event_type === 'group_membership'
+                  ? `/groups/${item.resource_id}`
+                  : `/inbox/${item.resource_id}`
                 : item.resource_type === 'trade'
                   ? `/swaps/${item.resource_id}`
                   : `/notifications/${item.id}`
             }
           >
             {item.resource_type === 'conversation'
-              ? 'Open conversation'
+              ? item.event_type === 'group_invitation' ||
+                item.event_type === 'group_membership'
+                ? 'View group invitation'
+                : 'Open conversation'
               : item.resource_type === 'trade'
                 ? 'View swap'
                 : 'View notification'}

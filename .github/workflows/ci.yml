@@ -37,7 +37,7 @@ jobs:
           if-no-files-found: ignore
   database:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -74,5 +74,6 @@ jobs:
       - run: pnpm --filter @swapcircle/web test:unread-local
       - run: pnpm --filter @swapcircle/web test:notifications-local
       - run: pnpm --filter @swapcircle/web test:swaps-local
+      - run: pnpm --filter @swapcircle/web test:groups-local
       - if: always()
         run: pnpm db:stop

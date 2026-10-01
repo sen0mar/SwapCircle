@@ -204,6 +204,8 @@ test('membership revocation purges history and profiles and refuses later events
       ).toBe('error'),
     );
     expect(orders(f.queries)).toEqual([]);
+    expect(f.remove).toHaveBeenCalledTimes(1);
+    expect(f.status).toHaveBeenLastCalledWith(null);
   } finally {
     f.connection.stop();
   }
