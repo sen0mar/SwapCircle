@@ -3,6 +3,8 @@ import {
   proposalCreationResultSchema,
   type ProposalCreation,
   type ProposalRevision,
+  type TradeAcceptance,
+  tradeAcceptanceResultSchema,
 } from '@swapcircle/contracts';
 import { createNotification } from '../notifications/notifications.repository.js';
 import {
@@ -313,6 +315,207 @@ export class TradesService {
         currentVersion: input.expectedVersion + 1,
         status: 'proposed' as const,
       };
+    });
+  }
+
+  async accept(actor: string, id: string, input: TradeAcceptance) {
+    return this.repository.transaction(async (client) => {
+      await lockProposalBoundary(client);
+      await this.repository.lockOperation(client, actor, input.operationKey);
+      const participants = await this.repository.participantIds(client, id);
+      await this.repository.lockParticipants(client, [
+        ...new Set([actor, ...participants]),
+      ]);
+      await this.permissions.assertUnrestricted(client, [actor]);
+      const trade = await this.repository.lockTrade(client, id, actor);
+      if (!trade)
+        throw new SafetyError(
+          404,
+          'TRADE_UNAVAILABLE',
+          'This trade is unavailable.',
+        );
+
+      const previous = await this.repository.acceptanceOperation(
+        client,
+        actor,
+        input.operationKey,
+      );
+      if (previous) {
+        if (
+          previous.trade_id !== id ||
+          previous.version !== input.expectedVersion
+        )
+          throw new SafetyError(
+            409,
+            'OPERATION_CONFLICT',
+            'This operation key was used for different terms.',
+          );
+        return tradeAcceptanceResultSchema.parse({
+          id,
+          acceptedVersion: previous.version,
+          status: previous.result_status,
+        });
+      }
+
+      await this.permissions.authorizeWrite(client, actor, 'trade');
+
+      if (trade.current_version !== input.expectedVersion)
+        throw new SafetyError(
+          409,
+          'STALE_PROPOSAL',
+          'The proposal changed. Reload its terms.',
+        );
+
+      await this.permissions.assertUnrestricted(client, participants);
+      if (await this.repository.blocked(client, participants))
+        throw new SafetyError(
+          403,
+          'CONTACT_BLOCKED',
+          'This contact is unavailable.',
+        );
+
+      // A new key for an already confirmed consent cannot create another outcome.
+      if (
+        trade.status === 'confirmed' &&
+        (await this.repository.hasAcceptance(
+          client,
+          id,
+          input.expectedVersion,
+          actor,
+        ))
+      )
+        return this.repository.saveAcceptanceOperation(
+          client,
+          actor,
+          input.operationKey,
+          id,
+          input.expectedVersion,
+          'confirmed',
+        );
+      if (trade.status !== 'proposed')
+        throw new SafetyError(
+          409,
+          'TERMS_FROZEN',
+          'These terms cannot be accepted.',
+        );
+
+      const terms = await this.repository.acceptanceTerms(
+        client,
+        id,
+        input.expectedVersion,
+      );
+      const version = terms.version;
+      if (
+        !version ||
+        !version.expires_match ||
+        [...version.participant_ids].sort().join() !==
+          [...participants].sort().join() ||
+        participants.length < 2 ||
+        terms.items.length === 0 ||
+        participants.some(
+          (user) => !terms.items.some((item) => item.owner_id === user),
+        )
+      )
+        throw new SafetyError(
+          409,
+          'STALE_PROPOSAL',
+          'The proposal changed. Reload its terms.',
+        );
+
+      const listings = await this.repository.availableListings(
+        client,
+        terms.items.map((item) => item.listing_id),
+      );
+      for (const item of terms.items) {
+        const listing = listings.get(item.listing_id);
+        if (!listing || listing.availability !== 'available')
+          throw new SafetyError(
+            409,
+            'LISTING_UNAVAILABLE',
+            'An offered item is unavailable.',
+          );
+        if (
+          listing.owner_id !== item.owner_id ||
+          !participants.includes(item.owner_id) ||
+          !participants.includes(item.recipient_id) ||
+          item.owner_id === item.recipient_id ||
+          listing.revision !== item.listing_revision ||
+          listing.title !== item.title_snapshot ||
+          listing.description !== item.description_snapshot ||
+          listing.condition !== item.condition_snapshot
+        )
+          throw new SafetyError(
+            409,
+            'STALE_PROPOSAL',
+            'The proposal changed. Reload its terms.',
+          );
+      }
+      if (await this.repository.reserved(client, [...listings.keys()]))
+        throw new SafetyError(
+          409,
+          'LISTING_UNAVAILABLE',
+          'An offered item is unavailable.',
+        );
+
+      // Check the database clock after potentially waiting for listing locks.
+      if (
+        !(
+          await this.repository.acceptanceTerms(
+            client,
+            id,
+            input.expectedVersion,
+          )
+        ).version?.unexpired
+      )
+        throw new SafetyError(
+          409,
+          'PROPOSAL_EXPIRED',
+          'This proposal has expired.',
+        );
+
+      if (
+        !(await this.repository.hasAcceptance(
+          client,
+          id,
+          input.expectedVersion,
+          actor,
+        ))
+      ) {
+        await this.repository.insertAcceptance(
+          client,
+          id,
+          input.expectedVersion,
+          version.id,
+          actor,
+        );
+      }
+      let status: 'proposed' | 'confirmed' = 'proposed';
+      if (await this.repository.unanimous(client, id, input.expectedVersion)) {
+        const eventId = await this.repository.confirm(
+          client,
+          id,
+          version.id,
+          actor,
+          [...listings.keys()],
+        );
+        for (const recipientId of participants)
+          await createNotification(client, {
+            recipient_id: recipientId,
+            domain_event_id: eventId,
+            event_type: 'trade_status',
+            resource_type: 'trade',
+            resource_id: id,
+          });
+        status = 'confirmed';
+      }
+      return this.repository.saveAcceptanceOperation(
+        client,
+        actor,
+        input.operationKey,
+        id,
+        input.expectedVersion,
+        status,
+      );
     });
   }
 
