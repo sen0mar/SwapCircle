@@ -6,6 +6,8 @@ import { ConversationDenied } from './inbox-api';
 import { useInbox, useThread } from './useInbox';
 import { useInboxRealtime } from './useInboxRealtime';
 import { useVisibleRead } from './useVisibleRead';
+import { GroupInvitation } from '../groups/GroupInvitation';
+import { useGroup } from '../groups/useGroup';
 import { UnreadBadge } from './UnreadBadge';
 import { useComposer } from './MessageComposerProvider';
 
@@ -98,10 +100,13 @@ function ConversationList({ selected }: { selected: string | undefined }) {
           <ul className="conversation-list">
             {inbox.data.pages
               .flatMap((page) => page.items)
-              .map(({ conversation, profile, latest, unreadCount }) => {
+              .map(({ conversation, profile, group, latest, unreadCount }) => {
                 const name =
                   conversation.type === 'group'
-                    ? 'Group conversation'
+                    ? group?.members
+                        .filter((member) => member.active)
+                        .map((member) => member.displayName)
+                        .join(', ') || 'Group conversation'
                     : (profile?.displayName ?? 'Member unavailable');
                 return (
                   <li key={conversation.id}>
@@ -160,6 +165,7 @@ function Thread({
   const { conversation, history, messages, profiles, peer, userId } =
     useThread(id);
   const composer = useComposer();
+  const group = useGroup(id, conversation.data?.type === 'group');
   const local = composer.outbox.filter(
     (message) =>
       message.payload.conversation_id === id &&
@@ -224,6 +230,11 @@ function Thread({
   const denied =
     conversation.error instanceof ConversationDenied ||
     history.error instanceof ConversationDenied;
+
+  useEffect(() => {
+    if (denied) composer.discard(id);
+  }, [denied, id, composer.discard]);
+
   const unavailable =
     conversation.isError || (history.isError && !history.data);
   const name =
@@ -248,6 +259,14 @@ function Thread({
             <h2 id="thread-title" ref={heading} tabIndex={-1}>
               {denied ? 'Conversation unavailable' : name}
             </h2>
+            {group.data && !denied && (
+              <p>
+                {group.data.members
+                  .filter((member) => member.active)
+                  .map((member) => member.displayName)
+                  .join(', ')}
+              </p>
+            )}
             {conversation.data && !denied && (
               <p>
                 {conversation.data.type === 'group'
@@ -258,6 +277,12 @@ function Thread({
           </div>
         </div>
       </header>
+      {conversation.data?.type === 'group' && !denied && (
+        <details className="group-thread-membership">
+          <summary>Participants and chat membership</summary>
+          <GroupInvitation id={id} thread />
+        </details>
+      )}
       {denied ? (
         <p role="alert">
           This conversation cannot be found or you do not have access.
@@ -323,7 +348,10 @@ function Thread({
                   const sender =
                     message.sender_id === userId
                       ? 'You'
-                      : (profiles?.get(message.sender_id)?.displayName ??
+                      : (group.data?.members.find(
+                          (member) => member.userId === message.sender_id,
+                        )?.displayName ??
+                        profiles?.get(message.sender_id)?.displayName ??
                         'Member unavailable');
                   return (
                     <li

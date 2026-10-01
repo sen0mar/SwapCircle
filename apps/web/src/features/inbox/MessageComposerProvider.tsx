@@ -27,6 +27,7 @@ type ComposerState = {
   setDraft: (id: string, text: string) => void;
   send: (id: string) => void;
   retry: (message: LocalMessage) => void;
+  discard: (id: string) => void;
   reconcile: (messages: MessageRead[]) => void;
 };
 const ComposerContext = createContext<ComposerState | null>(null);
@@ -45,6 +46,7 @@ export function MessageComposerProvider({ children }: { children: ReactNode }) {
   const queries = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [outbox, setOutbox] = useState<LocalMessage[]>([]);
+  const revoked = useRef(new Set<string>());
   const active = useRef(new Set<string>());
   const setDraft = (id: string, text: string) =>
     setDrafts((current) => ({ ...current, [id]: text }));
@@ -61,7 +63,7 @@ export function MessageComposerProvider({ children }: { children: ReactNode }) {
       ),
     );
     const timer = setTimeout(() => {
-      if (!readSignal.aborted)
+      if (!readSignal.aborted && !revoked.current.has(payload.conversation_id))
         setOutbox((current) =>
           current.map((message) =>
             message.payload.client_message_id === key
@@ -73,7 +75,8 @@ export function MessageComposerProvider({ children }: { children: ReactNode }) {
 
     try {
       const saved = await submitMessage(request, payload);
-      if (readSignal.aborted) return;
+      if (readSignal.aborted || revoked.current.has(payload.conversation_id))
+        return;
       const historyKey = [
         'private',
         session?.user.id,
@@ -84,7 +87,8 @@ export function MessageComposerProvider({ children }: { children: ReactNode }) {
       const hadHistory = queries.getQueryData(historyKey) !== undefined;
       // A read begun before this commit must not overwrite the saved receipt later.
       await queries.cancelQueries({ queryKey: historyKey, exact: true });
-      if (readSignal.aborted) return;
+      if (readSignal.aborted || revoked.current.has(payload.conversation_id))
+        return;
       queries.setQueryData<HistoryData>(historyKey, (current) =>
         current
           ? mergeMessage(current, saved)
@@ -111,7 +115,7 @@ export function MessageComposerProvider({ children }: { children: ReactNode }) {
         ],
       });
     } catch {
-      if (!readSignal.aborted)
+      if (!readSignal.aborted && !revoked.current.has(payload.conversation_id))
         setOutbox((current) =>
           current.map((message) =>
             message.payload.client_message_id === key
@@ -126,6 +130,7 @@ export function MessageComposerProvider({ children }: { children: ReactNode }) {
   };
 
   const send = (id: string) => {
+    revoked.current.delete(id);
     const payload = messageSubmissionSchema.safeParse({
       conversation_id: id,
       body: drafts[id] ?? '',
@@ -158,6 +163,18 @@ export function MessageComposerProvider({ children }: { children: ReactNode }) {
     [session?.user.id],
   );
 
+  const discard = useCallback((id: string) => {
+    revoked.current.add(id);
+    setDrafts((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setOutbox((current) =>
+      current.filter((message) => message.payload.conversation_id !== id),
+    );
+  }, []);
+
   return (
     <ComposerContext.Provider
       value={{
@@ -167,6 +184,7 @@ export function MessageComposerProvider({ children }: { children: ReactNode }) {
         send,
         retry: (message) => void attempt(message.payload),
         reconcile,
+        discard,
       }}
     >
       {children}

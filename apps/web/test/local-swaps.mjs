@@ -205,7 +205,10 @@ try {
     .click();
   await expect(bobPage).toHaveURL(`${origin}/swaps/${tradeId}`);
   await expect(
-    bobPage.getByText('Your invitation is pending.', { exact: false }),
+    bobPage.getByText(
+      'Your trade invitation is pending. Chat membership is separate; trade response controls are not available yet.',
+      { exact: true },
+    ),
   ).toBeVisible();
   await expect(bobPage.getByText(bobItem.title).first()).toBeVisible();
 

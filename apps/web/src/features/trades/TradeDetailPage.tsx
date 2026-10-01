@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
+import { GroupInvitation } from '../groups/GroupInvitation';
 import { useTrade } from './useTrades';
 
 const statuses: Record<string, string> = {
@@ -102,7 +103,8 @@ export function TradeDetailPage() {
         )}
         {self?.invitationStatus === 'invited' && (
           <p role="status">
-            Your invitation is pending. Response controls are not available yet.
+            Your trade invitation is pending. Chat membership is separate; trade
+            response controls are not available yet.
           </p>
         )}
         {withdrawn.length > 0 && (
@@ -114,6 +116,9 @@ export function TradeDetailPage() {
           </p>
         )}
       </div>
+      {trade.data.groupConversationId && (
+        <GroupInvitation id={trade.data.groupConversationId} />
+      )}
       <div className="trade-detail-grid">
         <section className="panel route-panel">
           <h2>You give</h2>
@@ -171,7 +176,10 @@ export function TradeDetailPage() {
             <li key={person.userId}>
               {person.displayName}
               {person.userId === session?.user.id ? ' (you)' : ''} ·{' '}
-              {invitations[person.invitationStatus]}
+              {invitations[person.invitationStatus]} ·{' '}
+              {person.acceptedVersion === trade.data.currentVersion
+                ? 'Current terms accepted'
+                : 'Current terms not accepted'}
             </li>
           ))}
         </ul>
