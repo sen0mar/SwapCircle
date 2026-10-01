@@ -6,9 +6,17 @@ test('protected route preserves its query and fragment through a single OAuth co
   page,
 }) => {
   let exchanges = 0;
+  const outdatedDependencies: string[] = [];
 
   page.on('request', (request) => {
     if (new URL(request.url()).pathname === '/auth/v1/token') exchanges++;
+  });
+
+  page.on('response', (response) => {
+    const path = new URL(response.url()).pathname;
+
+    if (response.status() === 504 && path.includes('/node_modules/.vite/deps/'))
+      outdatedDependencies.push(path);
   });
 
   await signInFixture(page, '/account?view=session#details');
@@ -18,6 +26,7 @@ test('protected route preserves its query and fragment through a single OAuth co
   );
 
   expect(exchanges).toBe(1);
+  expect(outdatedDependencies).toEqual([]);
 });
 
 test('SDK OAuth callback, reload, protected route and sign-out lifecycle (synthetic transport)', async ({
