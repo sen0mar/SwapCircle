@@ -29,7 +29,7 @@ export class ConversationsRepository {
       `SELECT c.id AS "conversationId", c.trade_id AS "tradeId", m.status, m.active
        FROM public.conversations c JOIN public.conversation_members m ON m.conversation_id=c.id
        JOIN public.trade_participants p ON p.trade_id=c.trade_id AND p.user_id=m.user_id
-       WHERE c.id=$1 AND c.type='group' AND m.user_id=$2`,
+       WHERE c.id=$1 AND c.type='group' AND m.user_id=$2 AND p.active`,
       [id, actor],
     );
     if (!result.rows[0]) return null;
@@ -57,7 +57,9 @@ export class ConversationsRepository {
       status: GroupMembershipStatus;
       active: boolean;
     }>(
-      'SELECT status,active FROM public.conversation_members WHERE conversation_id=$1 AND user_id=$2',
+      `SELECT m.status,m.active FROM public.conversation_members m JOIN public.conversations c ON c.id=m.conversation_id
+       JOIN public.trade_participants p ON p.trade_id=c.trade_id AND p.user_id=m.user_id
+       WHERE m.conversation_id=$1 AND m.user_id=$2 AND p.active`,
       [id, actor],
     );
 

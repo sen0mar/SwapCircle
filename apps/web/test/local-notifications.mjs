@@ -98,8 +98,8 @@ const seedGroup = async (id, active) => {
       [trade, bob.id],
     );
     await client.query(
-      'INSERT INTO public.trade_versions (trade_id,version,created_by) VALUES ($1,1,$2)',
-      [trade, bob.id],
+      "INSERT INTO public.trade_versions (trade_id,version,created_by,participant_ids,expires_at) VALUES ($1,1,$2,$3,now()+interval '1 day')",
+      [trade, bob.id, [alice.id, bob.id, stranger.id]],
     );
     await client.query(
       'INSERT INTO public.trade_participants (trade_id,user_id) VALUES ($1,$2),($1,$3),($1,$4)',

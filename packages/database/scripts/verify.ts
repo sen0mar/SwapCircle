@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      17,
+      19,
     );
 
     const publication = await pool.query<{ tablename: string }>(
@@ -158,6 +158,8 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'public.guard_direct_membership()',
       'public.guard_conversation_identity()',
       'public.guard_trade_event_history()',
+      'public.guard_proposal_terms()',
+      'public.guard_new_trade_snapshot()',
     ]) {
       for (const role of [
         'anon',

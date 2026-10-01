@@ -1,3 +1,4 @@
+import { TradesRepository } from '../trades/trades.repository.js';
 import { SafetyPermissions } from '../safety/safety.permissions.js';
 import type { Pool, PoolClient } from 'pg';
 import type {
@@ -59,6 +60,24 @@ export class ListingsRepository {
     );
 
     return result.rows[0];
+  }
+
+  async reviseProposals(client: PoolClient, id: string, actor: string) {
+    return new TradesRepository(this.pool).reviseListingProposals(
+      client,
+      id,
+      actor,
+    );
+  }
+
+  async frozenTerms(client: PoolClient, id: string) {
+    const result = await client.query(
+      `SELECT 1 FROM public.trade_items i JOIN public.trade_versions v ON v.id=i.version_id
+       JOIN public.trades t ON t.id=v.trade_id WHERE i.listing_id=$1 AND v.version=t.current_version
+       AND t.status IN ('confirmed','completed','disputed') LIMIT 1`,
+      [id],
+    );
+    return Boolean(result.rowCount);
   }
 
   async edit(client: PoolClient, id: string, input: ListingCreate) {

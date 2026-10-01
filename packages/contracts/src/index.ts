@@ -391,6 +391,15 @@ export const proposalCreationSchema = proposalDraftSchema.safeExtend({
   operationKey: z.uuid(),
   expiresAt: z.iso.datetime({ offset: true }),
 });
+export const proposalRevisionSchema = proposalDraftSchema.safeExtend({
+  expectedVersion: z.number().int().positive(),
+  expiresAt: z.iso.datetime({ offset: true }),
+});
+export type ProposalRevision = z.infer<typeof proposalRevisionSchema>;
+export const tradeVersionParamsSchema = z.object({
+  id: z.uuid(),
+  version: z.coerce.number().int().positive(),
+});
 export type ProposalCreation = z.infer<typeof proposalCreationSchema>;
 export const proposalCreationResultSchema = z.object({
   id: z.uuid(),
@@ -458,6 +467,16 @@ export const tradeDetailSchema = tradeSummarySchema.extend({
   items: z.array(tradeItemSchema),
   events: z.array(tradeEventSchema),
   groupConversationId: z.uuid().nullable().default(null),
+});
+
+export const tradeVersionSchema = z.object({
+  tradeId: z.uuid(),
+  version: z.number().int().positive(),
+  participantIds: z.array(z.uuid()).min(2),
+  expiresAt: z.iso.datetime({ offset: true }),
+  createdBy: z.uuid(),
+  createdAt: z.iso.datetime({ offset: true }),
+  items: z.array(tradeItemSchema),
 });
 
 // Chat consent is independent of version-specific trade acceptance.

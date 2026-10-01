@@ -328,6 +328,7 @@ export const conversationMembershipEvents = pgTable(
     actorId: uuid('actor_id')
       .notNull()
       .references(() => profiles.id),
+    affectedUserId: uuid('affected_user_id').references(() => profiles.id),
     eventType: varchar('event_type', { length: 16 }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -337,7 +338,7 @@ export const conversationMembershipEvents = pgTable(
     index('membership_events_conversation_idx').on(table.conversationId),
     check(
       'membership_event_type_valid',
-      sql`${table.eventType} IN ('invited', 'accepted', 'declined', 'left')`,
+      sql`${table.eventType} IN ('invited', 'accepted', 'declined', 'left', 'removed')`,
     ),
   ],
 );
@@ -489,6 +490,8 @@ export const tradeVersions = pgTable(
       .notNull()
       .references(() => trades.id),
     version: integer('version').notNull(),
+    participantIds: uuid('participant_ids').array().notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => profiles.id),
@@ -512,6 +515,7 @@ export const tradeParticipants = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => profiles.id),
+    active: boolean('active').notNull().default(true),
     invitationStatus: varchar('invitation_status', { length: 16 })
       .notNull()
       .default('invited'),
