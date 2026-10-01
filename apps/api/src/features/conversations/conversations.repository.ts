@@ -24,6 +24,26 @@ export class ConversationsRepository {
     }
   }
 
+  async groupInvitation(client: PoolClient, actor: string, id: string) {
+    const result = await client.query(
+      `SELECT c.id AS "conversationId", c.trade_id AS "tradeId", m.status, m.active
+       FROM public.conversations c JOIN public.conversation_members m ON m.conversation_id=c.id
+       JOIN public.trade_participants p ON p.trade_id=c.trade_id AND p.user_id=m.user_id
+       WHERE c.id=$1 AND c.type='group' AND m.user_id=$2`,
+      [id, actor],
+    );
+    if (!result.rows[0]) return null;
+
+    const members = await client.query(
+      `SELECT m.user_id AS "userId", p.display_name AS "displayName", m.status, m.active
+       FROM public.conversation_members m JOIN public.profiles p ON p.id=m.user_id
+       WHERE m.conversation_id=$1 ORDER BY m.user_id`,
+      [id],
+    );
+
+    return { ...result.rows[0], members: members.rows };
+  }
+
   async groupMembership(client: PoolClient, actor: string, id: string) {
     // Sends, reads and transitions all hold this lock until commit. Membership
     // SELECT needs no UPDATE privilege; the private transition function owns it.

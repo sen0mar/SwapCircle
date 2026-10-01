@@ -457,6 +457,7 @@ export const tradeDetailSchema = tradeSummarySchema.extend({
   participants: z.array(tradeParticipantSchema),
   items: z.array(tradeItemSchema),
   events: z.array(tradeEventSchema),
+  groupConversationId: z.uuid().nullable().default(null),
 });
 
 // Chat consent is independent of version-specific trade acceptance.
@@ -474,3 +475,18 @@ export const groupMembershipReceiptSchema = z.object({
   active: z.boolean(),
 });
 export type GroupMembershipStatus = z.infer<typeof groupMembershipStatusSchema>;
+
+export const groupInvitationSchema = z.object({
+  conversationId: z.uuid(),
+  tradeId: z.uuid(),
+  status: groupMembershipStatusSchema,
+  active: z.boolean(),
+  members: z.array(
+    z.object({
+      userId: z.uuid(),
+      displayName: z.string(),
+      status: groupMembershipStatusSchema,
+      active: z.boolean(),
+    }),
+  ),
+});

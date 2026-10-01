@@ -28,7 +28,12 @@ const read = async (user, table, column, id) => {
   assert.equal(result.error, null);
   return result.data;
 };
-const create = async (members, operationKey = randomUUID()) => {
+const fixtureExpiry = new Date(Date.now() + 86400000).toISOString();
+const create = async (
+  members,
+  operationKey = randomUUID(),
+  expiresAt = fixtureExpiry,
+) => {
   const response = await request(app)
     .post('/api/v1/trades')
     .set(auth(alice))
@@ -40,7 +45,7 @@ const create = async (members, operationKey = randomUUID()) => {
         ownerId: user.id,
         recipientId: members[(index + 1) % members.length].id,
       })),
-      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+      expiresAt,
       meetingMode: 'meet_to_swap',
     });
   return response;
@@ -144,11 +149,41 @@ try {
     create([alice, bob, carol], key),
     create([alice, bob, carol], key),
   ]);
-  assert.ok(proposals.every((result) => result.status === 201));
+  assert.ok(
+    proposals.every((result) => result.status === 201),
+    `Exact retry statuses: ${JSON.stringify(proposals.map((result) => ({ status: result.status, code: result.body.error?.code ?? null })))}`,
+  );
+  const changedExpiry = await create(
+    [alice, bob, carol],
+    key,
+    new Date(Date.parse(fixtureExpiry) + 1000).toISOString(),
+  );
+  assert.equal(changedExpiry.status, 409);
+  assert.equal(changedExpiry.body.error.code, 'OPERATION_CONFLICT');
   assert.deepEqual(proposals[0].body, proposals[1].body);
   const trade = proposals[0].body.id;
   const group = await groupFor(trade);
   assert.ok(group && group !== direct);
+  const invitation = await request(app)
+    .get(`/api/v1/conversations/${group}/invitation`)
+    .set(auth(bob))
+    .expect(200);
+  assert.equal(invitation.body.status, 'pending');
+  assert.equal(invitation.body.active, false);
+  assert.equal(invitation.body.tradeId, trade);
+  assert.equal(invitation.body.members.length, 3);
+  assert.ok(!JSON.stringify(invitation.body).includes('Synthetic private DM'));
+  await request(app)
+    .get(`/api/v1/conversations/${group}/invitation`)
+    .set(auth(outsider))
+    .expect(403);
+  await request(app)
+    .get(`/api/v1/conversations/${direct}/invitation`)
+    .set(auth(alice))
+    .expect(403);
+  await request(app)
+    .get(`/api/v1/conversations/${group}/invitation`)
+    .expect(401);
   assert.equal((await events(group)).length, 1);
   assert.equal((await notifications(group)).length, 2);
   assert.deepEqual(

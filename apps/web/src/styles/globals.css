@@ -1571,3 +1571,18 @@
   color: var(--accent-primary-text);
   text-decoration: underline;
 }
+
+.group-thread-membership {
+  margin-block: 12px;
+}
+
+.group-thread-membership summary {
+  min-height: 44px;
+  padding-block: 12px;
+  cursor: pointer;
+}
+
+.group-thread-membership summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

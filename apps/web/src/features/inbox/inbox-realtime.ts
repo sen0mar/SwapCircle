@@ -96,6 +96,9 @@ export function startInboxRealtime({
           void queries.invalidateQueries({
             queryKey: [...threadKey, 'profiles'],
           });
+          void queries.invalidateQueries({
+            queryKey: ['private', userId, 'group', id],
+          });
         }
         readScope.throwIfAborted();
         await queries.invalidateQueries({ queryKey: inboxKey });
@@ -115,6 +118,8 @@ export function startInboxRealtime({
             queryKey: [...threadKey, 'access'],
           });
           void queries.invalidateQueries({ queryKey: inboxKey });
+          status(null);
+          stop();
         } else
           status(
             'Live updates could not be refreshed. Retry or refresh history.',
@@ -151,7 +156,7 @@ export function startInboxRealtime({
         event: '*',
         schema: 'public',
         table: 'conversation_members',
-        filter: `user_id=eq.${userId}`,
+        filter: id ? `conversation_id=eq.${id}` : `user_id=eq.${userId}`,
       },
       () => {
         if (!signal.aborted) void reconcile();
@@ -182,14 +187,14 @@ export function startInboxRealtime({
   globalThis.addEventListener('online', wake);
   globalThis.addEventListener('focus', wake);
 
-  return {
-    retry: wake,
-    stop: () => {
-      lifetime.abort();
-      clearInterval(timer);
-      globalThis.removeEventListener('online', wake);
-      globalThis.removeEventListener('focus', wake);
-      void client.removeChannel(channel);
-    },
+  const stop = () => {
+    if (lifetime.signal.aborted) return;
+    lifetime.abort();
+    clearInterval(timer);
+    globalThis.removeEventListener('online', wake);
+    globalThis.removeEventListener('focus', wake);
+    void client.removeChannel(channel);
   };
+
+  return { retry: wake, stop };
 }

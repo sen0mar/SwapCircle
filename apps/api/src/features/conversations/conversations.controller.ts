@@ -26,6 +26,15 @@ export function createConversationsController(service: ConversationsService) {
     };
 
   return {
+    groupInvitation: async (
+      request: Request,
+      response: Response<unknown, AuthenticatedLocals>,
+    ) => {
+      const { id } = groupMembershipParamsSchema.parse(request.params);
+      response.json(
+        await service.groupInvitation(response.locals.identity.userId, id),
+      );
+    },
     acceptGroup: respondGroup('accepted'),
     declineGroup: respondGroup('declined'),
     leaveGroup: respondGroup('left'),
