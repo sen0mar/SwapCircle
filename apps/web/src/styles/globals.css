@@ -639,7 +639,8 @@
   .proposal-content h3 {
     padding-top: 8px;
   }
-  .proposal-content label {
+  .proposal-content label,
+  .proposal-recipient {
     display: grid;
     gap: 8px;
   }

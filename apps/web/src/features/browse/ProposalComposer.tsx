@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   proposalDraftSchema,
   type Listing,
@@ -19,7 +23,9 @@ import { getListing, getListings } from './listing-api';
 import { getMembers } from '../home/discovery-api';
 import { getCurrentProfile } from '../account/profile-api';
 import { useAuth } from '../auth/AuthProvider';
-import { useCreateTrade } from '../trades/useTrades';
+import { useCreateTrade, useReviseTrade } from '../trades/useTrades';
+import { getTrade, type TradeDetail } from '../trades/trades-api';
+import { detailTerms, termChanges } from '../trades/term-changes';
 
 function MemberItems({
   memberId,
@@ -92,13 +98,53 @@ function MemberItems({
 export function ProposalComposer({
   item,
   ownerName,
-}: {
-  item: Listing;
-  ownerName: string;
-}) {
+  revision,
+  onReadOnlyClose,
+}:
+  | {
+      item: Listing;
+      ownerName: string;
+      revision?: never;
+      onReadOnlyClose?: never;
+    }
+  | {
+      item?: never;
+      ownerName?: never;
+      revision: TradeDetail;
+      onReadOnlyClose?: () => void;
+    }) {
   const { session, request } = useAuth();
   const navigate = useNavigate();
+  const queries = useQueryClient();
+  const trigger = useRef<HTMLButtonElement>(null);
   const create = useCreateTrade();
+  const revise = useReviseTrade(revision?.id ?? '');
+  const [base, setBase] = useState<TradeDetail | undefined>(undefined);
+  const [conflict, setConflict] = useState<TradeDetail | null>(null);
+  const [needsRefresh, setNeedsRefresh] = useState(false);
+  const [details, setDetails] = useState<Record<string, Listing>>({});
+  const saving = create.isPending || revise.isPending;
+  const refreshConflict = async () => {
+    if (!revision) return;
+    setChecking(true);
+    try {
+      const latest = await queries.fetchQuery({
+        queryKey: ['private', session?.user.id, 'trade', revision.id],
+        queryFn: ({ signal }) => getTrade(request, revision.id, signal),
+        staleTime: 0,
+        retry: false,
+      });
+      setConflict(latest);
+      setNeedsRefresh(false);
+    } catch {
+      setError(
+        'Latest terms could not be loaded. Your draft is kept. Retry loading before submitting.',
+      );
+      setNeedsRefresh(true);
+    } finally {
+      setChecking(false);
+    }
+  };
   const selfId = session?.user.id ?? '';
   const [open, setOpen] = useState(false);
   const [review, setReview] = useState(false);
@@ -108,17 +154,34 @@ export function ProposalComposer({
     useState<ProposalCreation | null>(null);
   const [membersCursor, setMembersCursor] = useState('');
   const [draft, setDraft] = useState<ProposalDraft>({
-    participantIds: [selfId, item.ownerId],
-    transfers: [
-      { listingId: item.id, ownerId: item.ownerId, recipientId: selfId },
-    ],
+    participantIds: revision
+      ? revision.participants.map((person) => person.userId)
+      : [selfId, item!.ownerId],
+    transfers: revision
+      ? revision.items.map(({ listingId, ownerId, recipientId }) => ({
+          listingId,
+          ownerId,
+          recipientId,
+        }))
+      : [{ listingId: item!.id, ownerId: item!.ownerId, recipientId: selfId }],
     meetingMode: 'meet_to_swap',
   });
   const [titles, setTitles] = useState<Record<string, string>>({
-    [item.id]: item.title,
+    ...(revision
+      ? Object.fromEntries(
+          revision.items.map((entry) => [entry.listingId, entry.titleSnapshot]),
+        )
+      : { [item!.id]: item!.title }),
   });
   const [names, setNames] = useState<Record<string, string>>({
-    [item.ownerId]: ownerName,
+    ...(revision
+      ? Object.fromEntries(
+          revision.participants.map((person) => [
+            person.userId,
+            person.displayName,
+          ]),
+        )
+      : { [item!.ownerId]: ownerName! }),
   });
   const me = useQuery({
     queryKey: ['private', selfId, 'profile'],
@@ -143,7 +206,6 @@ export function ProposalComposer({
   const close = () => {
     setOpen(false);
     setReview(false);
-    setError(null);
   };
 
   const toggleItem = (selected: Listing) => {
@@ -232,6 +294,9 @@ export function ProposalComposer({
           ...latest.map((listing) => ({ [listing.id]: listing.title })),
         ),
       );
+      setDetails(
+        Object.fromEntries(latest.map((listing) => [listing.id, listing])),
+      );
       setReview(true);
     } catch {
       setError(
@@ -243,6 +308,29 @@ export function ProposalComposer({
   };
 
   const submit = async () => {
+    if (revision && base) {
+      if (conflict || needsRefresh) return;
+      setError(null);
+      try {
+        await revise.mutateAsync({
+          ...draft,
+          expectedVersion: base.currentVersion,
+          expiresAt: base.expiresAt,
+        });
+        close();
+        setBase(undefined);
+      } catch (cause) {
+        setError(
+          cause instanceof ApiError
+            ? cause.message
+            : 'The revision could not be saved. Your draft is kept.',
+        );
+        // A lost response may also hide a committed revision. Never rebase or resubmit automatically.
+        setNeedsRefresh(true);
+        await refreshConflict();
+      }
+      return;
+    }
     const input =
       pendingCreation &&
       JSON.stringify({
@@ -274,59 +362,220 @@ export function ProposalComposer({
     }
   };
 
-  if (!selfId || selfId === item.ownerId || item.availability !== 'available')
+  if (
+    !selfId ||
+    (revision && revision.status !== 'proposed' && !open) ||
+    (!revision &&
+      (selfId === item!.ownerId || item!.availability !== 'available'))
+  )
     return null;
 
   return (
     <div className="message-action">
-      <Button variant="primary" onClick={() => setOpen(true)}>
-        Propose a trade
-      </Button>
-      <p>Invite members to review a proposed swap.</p>
+      {(!revision || revision.status === 'proposed') && (
+        <>
+          <Button
+            ref={trigger}
+            variant="primary"
+            onClick={() => {
+              if (revision && !base) {
+                setBase(revision);
+                setDraft({
+                  participantIds: revision.participants.map(
+                    (person) => person.userId,
+                  ),
+                  transfers: revision.items.map(
+                    ({ listingId, ownerId, recipientId }) => ({
+                      listingId,
+                      ownerId,
+                      recipientId,
+                    }),
+                  ),
+                  meetingMode: 'meet_to_swap',
+                });
+                setTitles(
+                  Object.fromEntries(
+                    revision.items.map((entry) => [
+                      entry.listingId,
+                      entry.titleSnapshot,
+                    ]),
+                  ),
+                );
+                setNames(
+                  Object.fromEntries(
+                    revision.participants.map((person) => [
+                      person.userId,
+                      person.displayName,
+                    ]),
+                  ),
+                );
+              }
+              setOpen(true);
+            }}
+          >
+            {revision ? 'Edit proposal' : 'Propose a trade'}
+          </Button>
+          <p>
+            {revision
+              ? 'Saved terms stay unchanged until your revision succeeds.'
+              : 'Invite members to review a proposed swap.'}
+          </p>
+        </>
+      )}
       <Dialog
         open={open}
         onOpenChange={(next) => (next ? setOpen(true) : close())}
       >
-        <DialogContent className="proposal-dialog">
+        <DialogContent
+          className="proposal-dialog"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            if (trigger.current) trigger.current.focus();
+            else onReadOnlyClose?.();
+          }}
+        >
           <DialogTitle>
-            {review ? 'Review your proposal' : 'Build a proposal'}
+            {review
+              ? revision
+                ? 'Review revised terms'
+                : 'Review your proposal'
+              : revision
+                ? 'Edit proposal draft'
+                : 'Build a proposal'}
           </DialogTitle>
           <DialogDescription>
-            Review the terms before sending. Items stay available until a later
-            confirmation.
+            {revision && revision.status !== 'proposed'
+              ? 'Saved terms are read-only. Your draft is kept for comparison.'
+              : 'Review the terms before sending. Items stay available until a later confirmation.'}
           </DialogDescription>
+          {base && (
+            <p>
+              Editing version {base.currentVersion}. Changes require renewed
+              agreement from everyone.
+            </p>
+          )}
+          {needsRefresh && (
+            <Button disabled={checking} onClick={() => void refreshConflict()}>
+              Load latest terms
+            </Button>
+          )}
+          {conflict && (
+            <section
+              className="panel route-panel"
+              aria-label="Proposal conflict"
+            >
+              <h3>
+                Proposal changed · latest version {conflict.currentVersion}
+              </h3>
+              <p role="alert">
+                Your draft is kept separately. Nothing was resubmitted. Compare
+                the latest saved terms before reusing your draft.
+              </p>
+              {base && (
+                <p>
+                  {termChanges(detailTerms(base), detailTerms(conflict)).join(
+                    ' · ',
+                  ) ||
+                    'No term differences; check the current status and availability.'}
+                </p>
+              )}
+              <h4>Latest saved terms</h4>
+              <p>
+                {conflict.participants
+                  .map((person) => person.displayName)
+                  .join(', ')}{' '}
+                · {conflict.status}
+              </p>
+              <ul>
+                {conflict.items.map((entry) => (
+                  <li key={entry.id}>
+                    {conflict.participants.find(
+                      (person) => person.userId === entry.ownerId,
+                    )?.displayName ?? 'Member'}{' '}
+                    gives {entry.titleSnapshot} to{' '}
+                    {conflict.participants.find(
+                      (person) => person.userId === entry.recipientId,
+                    )?.displayName ?? 'Member'}{' '}
+                    · {entry.conditionSnapshot} · {entry.descriptionSnapshot} ·{' '}
+                    {entry.currentAvailability ?? 'Unavailable'}
+                  </li>
+                ))}
+              </ul>
+              <p>Expiry: {new Date(conflict.expiresAt).toLocaleString()}</p>
+              {conflict.status === 'proposed' ? (
+                <Button
+                  onClick={() => {
+                    setBase(conflict);
+                    setNames((current) => ({
+                      ...current,
+                      ...Object.fromEntries(
+                        conflict.participants.map((person) => [
+                          person.userId,
+                          person.displayName,
+                        ]),
+                      ),
+                    }));
+                    setConflict(null);
+                    setReview(false);
+                    setError(null);
+                  }}
+                >
+                  Reuse draft and review latest version
+                </Button>
+              ) : (
+                <p>These terms are read-only. Your draft cannot revise them.</p>
+              )}
+            </section>
+          )}
+
           {review ? (
             <div className="proposal-content">
               <p>
                 <strong>Meet to swap</strong> · {draft.participantIds.length}{' '}
                 people
               </p>
+              {revision && (
+                <p>
+                  Draft participants:{' '}
+                  {draft.participantIds.map(displayName).join(', ')}. Saving
+                  replaces version {base?.currentVersion} with this complete
+                  draft, including any removed people or items.
+                </p>
+              )}
               <ul className="proposal-summary" aria-label="Trade transfers">
                 {draft.transfers.map((transfer) => (
                   <li key={transfer.listingId}>
                     <strong>{displayName(transfer.ownerId)}</strong> gives{' '}
                     <strong>{titles[transfer.listingId] ?? 'Item'}</strong> to{' '}
                     <strong>{displayName(transfer.recipientId)}</strong>.
+                    {revision && details[transfer.listingId] && (
+                      <p>
+                        {details[transfer.listingId]!.condition} ·{' '}
+                        {details[transfer.listingId]!.description}
+                      </p>
+                    )}
                   </li>
                 ))}
               </ul>
               <p>
-                Invitations will be sent to the other participants. This
-                proposal expires in seven days. Items are not reserved.
+                {revision
+                  ? 'Every participant must agree to the revised version. The saved expiry is kept. Items are not reserved.'
+                  : 'Invitations will be sent to the other participants. This proposal expires in seven days. Items are not reserved.'}
               </p>
               <div className="proposal-actions">
-                <Button
-                  disabled={create.isPending}
-                  onClick={() => setReview(false)}
-                >
+                <Button disabled={saving} onClick={() => setReview(false)}>
                   Edit draft
                 </Button>
                 <Button
                   variant="primary"
-                  disabled={create.isPending}
+                  disabled={saving || !!conflict || needsRefresh}
                   onClick={() => void submit()}
                 >
-                  {create.isPending ? 'Sending…' : 'Send proposal'}
+                  {saving
+                    ? 'Sending…'
+                    : revision
+                      ? 'Save revision'
+                      : 'Send proposal'}
                 </Button>
               </div>
               {error && (
@@ -343,7 +592,7 @@ export function ProposalComposer({
                 {draft.participantIds.map((id) => (
                   <li key={id}>
                     {displayName(id)}
-                    {id !== selfId && id !== item.ownerId && (
+                    {id !== selfId && (revision || id !== item!.ownerId) && (
                       <Button
                         aria-label={`Remove ${displayName(id)}`}
                         onClick={() => {
@@ -433,12 +682,29 @@ export function ProposalComposer({
                 />
               ))}
               {draft.transfers.map((transfer) => (
-                <label className="proposal-recipient" key={transfer.listingId}>
+                <div className="proposal-recipient" key={transfer.listingId}>
+                  {revision && (
+                    <Button
+                      aria-label={`Remove item ${titles[transfer.listingId] ?? 'Item'}`}
+                      onClick={() => {
+                        setDraft((current) => ({
+                          ...current,
+                          transfers: current.transfers.filter(
+                            (entry) => entry.listingId !== transfer.listingId,
+                          ),
+                        }));
+                        setError(null);
+                      }}
+                    >
+                      Remove item
+                    </Button>
+                  )}
                   <span>
                     {displayName(transfer.ownerId)} gives{' '}
                     {titles[transfer.listingId] ?? 'Item'} to
                   </span>
                   <select
+                    aria-label={`${displayName(transfer.ownerId)} gives ${titles[transfer.listingId] ?? 'Item'} to`}
                     value={transfer.recipientId}
                     onChange={(event) => {
                       setDraft((current) => ({
@@ -458,7 +724,7 @@ export function ProposalComposer({
                       </option>
                     ))}
                   </select>
-                </label>
+                </div>
               ))}
               <p>
                 <strong>Meet to swap</strong> is the default. Coffee invitations
