@@ -101,6 +101,10 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
         );
         for (const { trade_id } of tradeIds.rows) {
           await client.query(
+            'DELETE FROM public.conversations WHERE trade_id=$1',
+            [trade_id],
+          );
+          await client.query(
             'DELETE FROM public.trade_events WHERE trade_id=$1',
             [trade_id],
           );

@@ -33,5 +33,21 @@ export function createConversationsRouter(
     controller.markRead,
   );
 
+  router.put(
+    '/conversations/:id/invitation/accept',
+    authenticate(verifyToken),
+    controller.acceptGroup,
+  );
+  router.put(
+    '/conversations/:id/invitation/decline',
+    authenticate(verifyToken),
+    controller.declineGroup,
+  );
+  router.put(
+    '/conversations/:id/leave',
+    authenticate(verifyToken),
+    controller.leaveGroup,
+  );
+
   return router;
 }
