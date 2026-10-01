@@ -89,3 +89,19 @@ test('message submission rejects invalid content, references and forged identity
     assert.equal(result.body.error.code, 'INVALID_INPUT');
   }
 });
+
+test('group responses authenticate and reject forged identities and malformed references before persistence', async () => {
+  for (const action of ['invitation/accept', 'invitation/decline', 'leave']) {
+    const path = `/api/v1/conversations/${randomUUID()}/${action}`;
+    await request(app).put(path).expect(401);
+    await request(app)
+      .put(path)
+      .set('Authorization', 'Bearer synthetic')
+      .send({ userId: actor })
+      .expect(400);
+    await request(app)
+      .put(`/api/v1/conversations/invalid/${action}`)
+      .set('Authorization', 'Bearer synthetic')
+      .expect(400);
+  }
+});

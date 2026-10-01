@@ -126,6 +126,25 @@ export class TradesService {
             resource_id: tradeId,
           });
 
+      if (input.participantIds.length >= 3) {
+        const group = await this.repository.createGroup(
+          client,
+          tradeId,
+          actor,
+          input.participantIds,
+        );
+
+        for (const recipientId of input.participantIds)
+          if (recipientId !== actor)
+            await createNotification(client, {
+              recipient_id: recipientId,
+              domain_event_id: group.eventId,
+              event_type: 'group_invitation',
+              resource_type: 'conversation',
+              resource_id: group.id,
+            });
+      }
+
       return {
         id: tradeId,
         currentVersion: 1 as const,
