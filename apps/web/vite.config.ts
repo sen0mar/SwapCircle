@@ -16,11 +16,23 @@ export default defineConfig({
   optimizeDeps: {
     // Workspace exports change without a lockfile change; serve them directly.
     exclude: ['@swapcircle/contracts'],
+    // Keep the first dependency graph stable: late discovery can invalidate
+    // React/router chunks already requested by a cold browser (optimizer 504s).
+    noDiscovery: true,
     include: [
+      '@hookform/resolvers/zod',
       '@radix-ui/react-dialog',
       '@radix-ui/react-slot',
+      '@supabase/supabase-js',
       '@tanstack/react-query',
       '@swapcircle/contracts > zod',
+      'lucide-react',
+      'react',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      'react-dom/client',
+      'react-hook-form',
+      'react-router-dom',
     ],
   },
   plugins: [

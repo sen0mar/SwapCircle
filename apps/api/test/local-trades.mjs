@@ -31,8 +31,8 @@ async function seed(size) {
         [tradeId, member.id],
       );
     await db.query(
-      'INSERT INTO public.trade_versions (id,trade_id,version,created_by) VALUES ($1,$2,1,$3)',
-      [versionId, tradeId, alice.id],
+      "INSERT INTO public.trade_versions (id,trade_id,version,created_by,participant_ids,expires_at) VALUES ($1,$2,1,$3,$4,now()+interval '7 days')",
+      [versionId, tradeId, alice.id, members.map((member) => member.id)],
     );
     for (const [index, owner] of members.entries()) {
       const recipient = members[(index + 1) % size];
