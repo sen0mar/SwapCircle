@@ -27,6 +27,7 @@ import {
   readNotifications,
 } from '../src/features/notifications/notifications-api';
 import { startNotificationsRealtime } from '../src/features/notifications/notifications-realtime';
+import { NotificationContent } from '../src/features/notifications/NotificationContent';
 import { NotificationBell } from '../src/features/notifications/NotificationBell';
 
 const state = vi.hoisted(() => ({ auth: {} as Record<string, unknown> }));
@@ -455,4 +456,64 @@ test('persisted read reconciliation clears single/all retry warnings after a los
     expect(screen.queryByRole('button', { name: /Retry mark/ })).toBeNull();
     view.unmount();
   }
+});
+
+test('coffee notification resolves its swap only through an authorized backend read', async () => {
+  const f = fixture();
+  const trade = '30000000-0000-4000-8000-000000000001';
+  const item = {
+    ...row(1),
+    resource_type: 'coffee_invitation' as const,
+    event_type: 'coffee_invitation' as const,
+  };
+  server.use(
+    http.get(`*/api/v1/coffee/${item.resource_id}`, () =>
+      HttpResponse.json({
+        id: item.resource_id,
+        tradeId: trade,
+        inviterId: peer,
+        inviteeId: user,
+        offerToPay: false,
+        status: 'pending',
+        createdAt: '2026-10-02T08:00:00.000Z',
+        respondedAt: null,
+      }),
+    ),
+  );
+  render(
+    <QueryClientProvider client={f.queries}>
+      <MemoryRouter>
+        <NotificationContent item={item} detail />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  expect(
+    await screen.findByRole('link', { name: 'View coffee in swap' }),
+  ).toHaveAttribute('href', `/swaps/${trade}#coffee`);
+});
+
+test('unavailable coffee notification exposes retry without linking to a guessed swap', async () => {
+  const f = fixture();
+  const item = {
+    ...row(1),
+    resource_type: 'coffee_invitation' as const,
+    event_type: 'coffee_response' as const,
+  };
+  server.use(
+    http.get(
+      `*/api/v1/coffee/${item.resource_id}`,
+      () => new HttpResponse(null, { status: 404 }),
+    ),
+  );
+  render(
+    <QueryClientProvider client={f.queries}>
+      <MemoryRouter>
+        <NotificationContent item={item} detail />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByRole('button', { name: 'Retry coffee invitation' });
+  expect(
+    screen.queryByRole('link', { name: 'View coffee in swap' }),
+  ).toBeNull();
 });

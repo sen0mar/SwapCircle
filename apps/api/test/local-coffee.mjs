@@ -163,6 +163,22 @@ try {
   ]);
   assert.deepEqual(created[0].body, created[1].body);
   const invitation = created[0].body;
+  for (const user of [alice, bob]) {
+    const read = await request(app)
+      .get(`/api/v1/coffee/${invitation.id}`)
+      .set(auth(user))
+      .expect(200);
+    assert.deepEqual(read.body, invitation);
+  }
+  await request(app)
+    .get(`/api/v1/coffee/${invitation.id}`)
+    .set(auth(outsider))
+    .expect(404);
+  await request(app)
+    .get(`/api/v1/coffee/${randomUUID()}`)
+    .set(auth(alice))
+    .expect(404);
+  await request(app).get('/api/v1/coffee/invalid').set(auth(alice)).expect(400);
   assert.equal(invitation.offerToPay, true);
   assert.equal(invitation.status, 'pending');
   assert.equal(invitation.inviterId, alice.id);
@@ -353,6 +369,10 @@ try {
     })
     .expect(200);
   await list(group, carol).expect(404);
+  await request(app)
+    .get(`/api/v1/coffee/${ac.id}`)
+    .set(auth(carol))
+    .expect(404);
   await eligibility(group, alice, carol).expect(422);
   await respond(group, ac.id, 'cancel', carol).expect(404);
   await send(group, alice, carol).expect(422);
