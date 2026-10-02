@@ -1,3 +1,5 @@
+import { MeetingsRepository } from './features/meetings/meetings.repository.js';
+import { MeetingsService } from './features/meetings/meetings.service.js';
 import { CoffeeService } from './features/coffee/coffee.service.js';
 import { CoffeeRepository } from './features/coffee/coffee.repository.js';
 import { NotificationsService } from './features/notifications/notifications.service.js';
@@ -28,6 +30,7 @@ const pool = new Pool(databaseConfig(config.databaseUrl));
 const permissions = new SafetyPermissions(config.limits);
 
 createApp({
+  meetings: new MeetingsService(new MeetingsRepository(pool), permissions),
   coffee: new CoffeeService(new CoffeeRepository(pool), permissions),
   trades: new TradesService(new TradesRepository(pool), permissions),
   notifications: new NotificationsService(

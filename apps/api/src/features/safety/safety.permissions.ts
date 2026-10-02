@@ -30,7 +30,8 @@ export type WriteAction =
   | 'conversation'
   | 'message'
   | 'trade'
-  | 'coffee';
+  | 'coffee'
+  | 'meeting';
 
 export class SafetyPermissions {
   constructor(
