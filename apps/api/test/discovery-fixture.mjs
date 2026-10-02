@@ -1,3 +1,5 @@
+import { MeetingsService } from '../dist/features/meetings/meetings.service.js';
+import { MeetingsRepository } from '../dist/features/meetings/meetings.repository.js';
 import { CoffeeService } from '../dist/features/coffee/coffee.service.js';
 import { CoffeeRepository } from '../dist/features/coffee/coffee.repository.js';
 import { NotificationsService } from '../dist/features/notifications/notifications.service.js';
@@ -60,6 +62,10 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
   const makeApp = (limits = developmentLimits) => {
     const permissions = new SafetyPermissions(limits);
     return createApp({
+      meetings: new MeetingsService(
+        new MeetingsRepository(runtime),
+        permissions,
+      ),
       coffee: new CoffeeService(new CoffeeRepository(runtime), permissions),
       trades: new TradesService(new TradesRepository(runtime), permissions),
       notifications: new NotificationsService(
@@ -115,6 +121,17 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
           'ALTER TABLE public.trade_acceptance_operations DISABLE TRIGGER acceptance_operations_append_only',
         );
         for (const { trade_id } of tradeIds.rows) {
+          await client.query(
+            'DELETE FROM public.meetup_operations WHERE meetup_id IN (SELECT id FROM public.meetups WHERE trade_id=$1)',
+            [trade_id],
+          );
+          await client.query(
+            'DELETE FROM public.meetup_responses WHERE meetup_id IN (SELECT id FROM public.meetups WHERE trade_id=$1)',
+            [trade_id],
+          );
+          await client.query('DELETE FROM public.meetups WHERE trade_id=$1', [
+            trade_id,
+          ]);
           await client.query(
             'DELETE FROM public.coffee_invitations WHERE trade_id=$1',
             [trade_id],

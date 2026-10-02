@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm';
 import {
   pgTable,
   integer,
+  jsonb,
   boolean,
   index,
   check,
@@ -245,7 +246,7 @@ export const actionQuotas = pgTable(
     check('quota_used_positive', sql`${table.used} > 0`),
     check(
       'quota_action_valid',
-      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report', 'conversation', 'message', 'trade', 'coffee')`,
+      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report', 'conversation', 'message', 'trade', 'coffee', 'meeting')`,
     ),
   ],
 );
@@ -774,5 +775,80 @@ export const coffeeInvitations = pgTable(
       columns: [table.tradeId, table.inviteeId],
       foreignColumns: [tradeParticipants.tradeId, tradeParticipants.userId],
     }),
+  ],
+);
+
+export const meetups = pgTable(
+  'meetups',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tradeId: uuid('trade_id')
+      .notNull()
+      .references(() => trades.id),
+    revision: integer('revision').notNull().default(1),
+    place: varchar('place', { length: 500 }),
+    mapLink: varchar('map_link', { length: 2000 }),
+    meetingAt: timestamp('meeting_at', { withTimezone: true }).notNull(),
+    timeZone: varchar('time_zone', { length: 100 }).notNull(),
+  },
+  (table) => [
+    unique('meetup_trade_unique').on(table.tradeId),
+    check('meetup_revision_positive', sql`${table.revision} > 0`),
+    check(
+      'meetup_place_valid',
+      sql`(${table.place} IS NOT NULL OR ${table.mapLink} IS NOT NULL) AND (${table.place} IS NULL OR length(trim(${table.place})) > 0)`,
+    ),
+  ],
+);
+
+export const meetupResponses = pgTable(
+  'meetup_responses',
+  {
+    meetupId: uuid('meetup_id')
+      .notNull()
+      .references(() => meetups.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => profiles.id),
+    revision: integer('revision').notNull(),
+    tradeVersion: integer('trade_version').notNull(),
+    response: varchar('response', { length: 16 }).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [
+        table.meetupId,
+        table.userId,
+        table.revision,
+        table.tradeVersion,
+      ],
+    }),
+    index('meetup_responses_user_idx').on(table.userId),
+    check(
+      'meetup_response_valid',
+      sql`${table.response} IN ('confirmed','declined')`,
+    ),
+    check(
+      'meetup_response_versions_positive',
+      sql`${table.revision} > 0 AND ${table.tradeVersion} > 0`,
+    ),
+  ],
+);
+
+export const meetupOperations = pgTable(
+  'meetup_operations',
+  {
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => profiles.id),
+    operationKey: uuid('operation_key').notNull(),
+    meetupId: uuid('meetup_id')
+      .notNull()
+      .references(() => meetups.id),
+    request: jsonb('request').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.actorId, table.operationKey] }),
+    index('meetup_operations_meetup_idx').on(table.meetupId),
   ],
 );
