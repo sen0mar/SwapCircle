@@ -399,6 +399,16 @@ export const tradeAcceptanceSchema = z.strictObject({
   expectedVersion: z.number().int().positive(),
   operationKey: z.uuid(),
 });
+export const tradeTransitionSchema = z.strictObject({
+  expectedVersion: z.number().int().positive(),
+});
+export type TradeTransition = z.infer<typeof tradeTransitionSchema>;
+export const tradeTransitionResultSchema = z.strictObject({
+  id: z.uuid(),
+  currentVersion: z.number().int().positive(),
+  status: z.enum(['declined', 'expired', 'cancelled']),
+});
+
 export type TradeAcceptance = z.infer<typeof tradeAcceptanceSchema>;
 export const tradeAcceptanceResultSchema = z.strictObject({
   id: z.uuid(),
@@ -471,6 +481,8 @@ export const tradeEventSchema = z.object({
     'expired',
     'cancelled',
     'disputed',
+    'receipt_acknowledged',
+    'handover_reported',
   ]),
   createdAt: z.iso.datetime({ offset: true }),
 });

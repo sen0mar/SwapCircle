@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   tradeIdParamsSchema,
+  tradeTransitionSchema,
   tradeAcceptanceSchema,
   tradePageQuerySchema,
   proposalCreationSchema,
@@ -50,6 +51,27 @@ export function createTradesRouter(
       );
     },
   );
+
+  for (const action of ['decline', 'cancel', 'expire'] as const)
+    router.post(
+      `/trades/:id/${action}`,
+      authenticate(verifyToken),
+      async (
+        request,
+        response: import('express').Response<unknown, AuthenticatedLocals>,
+      ) => {
+        const { id } = tradeIdParamsSchema.parse(request.params);
+        const input = tradeTransitionSchema.parse(request.body);
+        response.json(
+          await service.transition(
+            response.locals.identity.userId,
+            id,
+            action,
+            input,
+          ),
+        );
+      },
+    );
 
   router.get(
     '/trades/mine',
