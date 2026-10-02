@@ -1637,3 +1637,35 @@
 .coffee-pair > .ui-button {
   margin: 0.5rem 0.5rem 0.5rem 0;
 }
+
+.meeting-form,
+.meeting-form fieldset,
+.meeting-form label {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.meeting-form {
+  margin-block: 24px;
+}
+.meeting-form fieldset {
+  border: 0;
+  padding: 0;
+}
+.meeting-form .ui-input {
+  width: 100%;
+  min-width: 0;
+}
+.meeting-place {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.meeting-form .meeting-occurrence {
+  display: flex;
+  align-items: flex-start;
+}
+.meeting-occurrence input {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
