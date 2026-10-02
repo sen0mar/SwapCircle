@@ -521,3 +521,46 @@ export const groupInvitationSchema = z.object({
     }),
   ),
 });
+
+// Coffee consent belongs to an explicit pair, independently of trade consent.
+export const coffeeSendSchema = z.strictObject({
+  inviteeId: z.uuid(),
+  operationKey: z.uuid(),
+  offerToPay: z.boolean().default(false),
+});
+
+export const coffeeResponseSchema = z.strictObject({
+  action: z.enum(['accept', 'decline', 'cancel']),
+});
+
+export const coffeeEligibilityQuerySchema = z.strictObject({
+  inviteeId: z.uuid(),
+});
+
+export const coffeeEligibilitySchema = z.strictObject({
+  tradeId: z.uuid(),
+  inviterId: z.uuid(),
+  inviteeId: z.uuid(),
+  eligible: z.boolean(),
+  sharedInterests: z.array(interestSchema),
+});
+
+export const coffeeInvitationSchema = z.strictObject({
+  id: z.uuid(),
+  tradeId: z.uuid(),
+  inviterId: z.uuid(),
+  inviteeId: z.uuid(),
+  offerToPay: z.boolean(),
+  status: z.enum(['pending', 'accepted', 'declined', 'cancelled']),
+  createdAt: z.iso.datetime(),
+  respondedAt: z.iso.datetime().nullable(),
+});
+
+export const coffeeInvitationListSchema = z.array(coffeeInvitationSchema);
+export type CoffeeSend = z.infer<typeof coffeeSendSchema>;
+export type CoffeeResponse = z.infer<typeof coffeeResponseSchema>;
+
+export const coffeeInvitationParamsSchema = z.strictObject({
+  id: z.uuid(),
+  invitationId: z.uuid(),
+});
