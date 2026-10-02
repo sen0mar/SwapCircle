@@ -1,4 +1,5 @@
 import type { NotificationRead } from '@swapcircle/contracts';
+import { useMeeting } from '../trades/useMeetings';
 import { useCoffeeInvitation } from '../trades/useCoffee';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
@@ -43,6 +44,9 @@ export function NotificationContent({
         })}
       </time>
       <div className="notification-actions">
+        {detail && item.resource_type === 'meetup' && (
+          <MeetingNotificationLink id={item.resource_id} />
+        )}
         {detail && item.resource_type === 'coffee_invitation' && (
           <CoffeeNotificationLink id={item.resource_id} />
         )}
@@ -110,5 +114,26 @@ function CoffeeNotificationLink({ id }: { id: string }) {
     );
   return (
     <Link to={`/swaps/${coffee.data.tradeId}#coffee`}>View coffee in swap</Link>
+  );
+}
+
+function MeetingNotificationLink({ id }: { id: string }) {
+  const meeting = useMeeting(id, false);
+  if (meeting.isPending) return <p role="status">Loading meeting link…</p>;
+  if (meeting.isError || !meeting.data)
+    return (
+      <div>
+        <p role="alert">
+          This meeting could not be loaded or is unavailable to this account.
+        </p>
+        <Button onClick={() => void meeting.refetch()}>
+          Retry meeting link
+        </Button>
+      </div>
+    );
+  return (
+    <Link to={`/swaps/${meeting.data.tradeId}#meeting`}>
+      View meeting in swap
+    </Link>
   );
 }

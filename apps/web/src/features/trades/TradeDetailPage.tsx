@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
 import { GroupInvitation } from '../groups/GroupInvitation';
+import { TradeMeeting } from './TradeMeeting';
 import { TradeCoffee } from './TradeCoffee';
 import { TradeAcceptance } from './TradeAcceptance';
 import { useTrade, useTradeVersion } from './useTrades';
@@ -184,6 +185,12 @@ export function TradeDetailPage() {
       {self && (
         <TradeCoffee
           key={`coffee:${session?.user.id}:${id}`}
+          detail={trade.data}
+        />
+      )}
+      {self && (
+        <TradeMeeting
+          key={`meeting:${session?.user.id}:${id}`}
           detail={trade.data}
         />
       )}
