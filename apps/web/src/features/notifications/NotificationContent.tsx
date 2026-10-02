@@ -1,4 +1,5 @@
 import type { NotificationRead } from '@swapcircle/contracts';
+import { useCoffeeInvitation } from '../trades/useCoffee';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { useNotificationAcknowledgement } from './useNotifications';
@@ -42,6 +43,9 @@ export function NotificationContent({
         })}
       </time>
       <div className="notification-actions">
+        {detail && item.resource_type === 'coffee_invitation' && (
+          <CoffeeNotificationLink id={item.resource_id} />
+        )}
         {(!detail ||
           item.resource_type === 'conversation' ||
           item.resource_type === 'trade') && (
@@ -86,5 +90,25 @@ export function NotificationContent({
         </div>
       )}
     </>
+  );
+}
+
+function CoffeeNotificationLink({ id }: { id: string }) {
+  const coffee = useCoffeeInvitation(id);
+  if (coffee.isPending) return <p role="status">Loading coffee invitation…</p>;
+  if (coffee.isError)
+    return (
+      <div>
+        <p role="alert">
+          This coffee invitation could not be loaded or is unavailable to this
+          account.
+        </p>
+        <Button onClick={() => void coffee.refetch()}>
+          Retry coffee invitation
+        </Button>
+      </div>
+    );
+  return (
+    <Link to={`/swaps/${coffee.data.tradeId}#coffee`}>View coffee in swap</Link>
   );
 }

@@ -67,6 +67,16 @@ function mount(revision?: TradeDetail, detail = false) {
   const payloads: unknown[] = [];
 
   server.use(
+    http.get('*/api/v1/trades/:id/coffee', () => HttpResponse.json([])),
+    http.get('*/api/v1/trades/:id/coffee/eligibility', ({ params, request }) =>
+      HttpResponse.json({
+        tradeId: params.id,
+        inviterId: ids.self,
+        inviteeId: new URL(request.url).searchParams.get('inviteeId'),
+        eligible: false,
+        sharedInterests: [],
+      }),
+    ),
     http.get('http://127.0.0.1:3001/api/v1/profiles/me', () =>
       HttpResponse.json({
         id: ids.self,

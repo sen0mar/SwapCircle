@@ -20,6 +20,15 @@ export function createCoffeeRouter(
   const router = Router();
 
   router.get(
+    '/coffee/:id',
+    authenticate(verify),
+    async (request, response: Response<unknown, AuthenticatedLocals>) => {
+      const { id } = tradeIdParamsSchema.parse(request.params);
+      response.json(await service.read(response.locals.identity.userId, id));
+    },
+  );
+
+  router.get(
     '/trades/:id/coffee/eligibility',
     authenticate(verify),
     async (request, response: Response<unknown, AuthenticatedLocals>) => {

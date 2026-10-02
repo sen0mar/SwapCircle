@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
 import { GroupInvitation } from '../groups/GroupInvitation';
+import { TradeCoffee } from './TradeCoffee';
 import { TradeAcceptance } from './TradeAcceptance';
 import { useTrade, useTradeVersion } from './useTrades';
 
@@ -180,6 +181,12 @@ export function TradeDetailPage() {
         key={`acceptance:${session?.user.id}:${id}`}
         detail={trade.data}
       />
+      {self && (
+        <TradeCoffee
+          key={`coffee:${session?.user.id}:${id}`}
+          detail={trade.data}
+        />
+      )}
       {trade.data.groupConversationId && (
         <GroupInvitation id={trade.data.groupConversationId} />
       )}

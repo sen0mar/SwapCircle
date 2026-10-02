@@ -19,6 +19,7 @@ const app = createApp({
 const input = { inviteeId: randomUUID(), operationKey: randomUUID() };
 
 test('coffee routes require authentication before private reads or writes', async () => {
+  await request(app).get(`/api/v1/coffee/${invitation}`).expect(401);
   await request(app).get(`/api/v1/trades/${id}/coffee`).expect(401);
   await request(app).get(`/api/v1/trades/${id}/coffee/eligibility`).expect(401);
   await request(app)

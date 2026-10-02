@@ -1604,3 +1604,36 @@
 .trade-acceptance .ui-button {
   justify-self: start;
 }
+
+.coffee-pair {
+  border-top: 1px solid var(--border-default);
+  padding-block: 1.25rem;
+}
+
+.coffee-pair fieldset {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.coffee-pair label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
+}
+
+.coffee-pair input {
+  accent-color: var(--accent-primary);
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.coffee-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.coffee-pair > .ui-button {
+  margin: 0.5rem 0.5rem 0.5rem 0;
+}

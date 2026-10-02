@@ -98,6 +98,22 @@ export class CoffeeService {
     });
   }
 
+  async read(actor: string, id: string) {
+    return this.repository.trades.transaction(async (client) => {
+      await lockProposalBoundary(client);
+      const invitation = await this.repository.invitation(client, id);
+      if (!invitation)
+        throw new SafetyError(
+          404,
+          'COFFEE_UNAVAILABLE',
+          'This invitation is unavailable.',
+        );
+
+      await this.authorize(client, actor, invitation.tradeId);
+      return invitation;
+    });
+  }
+
   async list(actor: string, tradeId: string) {
     return this.repository.trades.transaction(async (client) => {
       await lockProposalBoundary(client);
