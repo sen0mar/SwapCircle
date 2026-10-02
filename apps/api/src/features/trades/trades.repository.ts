@@ -1,6 +1,8 @@
 import type { Pool, PoolClient } from 'pg';
 import type { z } from 'zod';
 import {
+  type TradeReceiptSubmission,
+  type TradeProblemSubmission,
   tradeDetailSchema,
   tradePageSchema,
   tradeVersionSchema,
@@ -239,6 +241,92 @@ export class TradesRepository {
       [id],
     );
     return result.rowCount !== 0;
+  }
+
+  async outcomeOperation(client: PoolClient, actor: string, key: string) {
+    const result = await client.query<{
+      trade_id: string;
+      version: number;
+      kind: string;
+      reason: string | null;
+    }>(
+      'SELECT trade_id,version,kind,reason FROM public.trade_outcome_operations WHERE actor_id=$1 AND operation_key=$2',
+      [actor, key],
+    );
+    return result.rows[0];
+  }
+
+  async recordOutcomeOperation(
+    client: PoolClient,
+    actor: string,
+    id: string,
+    input: TradeReceiptSubmission | TradeProblemSubmission,
+    kind: 'receipt' | TradeProblemSubmission['kind'],
+    reason: string | null,
+  ) {
+    await client.query(
+      'INSERT INTO public.trade_outcome_operations (actor_id,operation_key,trade_id,version,kind,reason) VALUES ($1,$2,$3,$4,$5,$6)',
+      [actor, input.operationKey, id, input.expectedVersion, kind, reason],
+    );
+  }
+
+  async hasReceipt(client: PoolClient, id: string, actor: string) {
+    const result = await client.query(
+      "SELECT 1 FROM public.trade_events WHERE trade_id=$1 AND actor_id=$2 AND event_type='receipt_acknowledged'",
+      [id, actor],
+    );
+    return result.rowCount !== 0;
+  }
+
+  async allReceipts(client: PoolClient, id: string) {
+    const result = await client.query<{ complete: boolean }>(
+      `SELECT NOT EXISTS (SELECT 1 FROM public.trade_versions v JOIN public.trades t ON t.id=v.trade_id AND t.current_version=v.version,
+       unnest(v.participant_ids) AS participant_id WHERE t.id=$1 AND NOT EXISTS
+       (SELECT 1 FROM public.trade_events e WHERE e.trade_id=t.id AND e.version_id=v.id
+       AND e.actor_id=participant_id AND e.event_type='receipt_acknowledged')) AS complete`,
+      [id],
+    );
+    return result.rows[0]!.complete;
+  }
+
+  async outcomeEvent(
+    client: PoolClient,
+    id: string,
+    actor: string,
+    kind:
+      'receipt_acknowledged' | 'handover_reported' | 'completed' | 'disputed',
+  ) {
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO public.trade_events (trade_id,version_id,actor_id,event_type)
+       SELECT t.id,v.id,$2,$3 FROM public.trades t JOIN public.trade_versions v
+       ON v.trade_id=t.id AND v.version=t.current_version WHERE t.id=$1 RETURNING id`,
+      [id, actor, kind],
+    );
+    return result.rows[0]!.id;
+  }
+
+  async markOutcome(
+    client: PoolClient,
+    id: string,
+    status: 'completed' | 'disputed',
+  ) {
+    await client.query(
+      `SELECT id FROM public.listings WHERE id IN
+       (SELECT listing_id FROM public.item_reservations WHERE trade_id=$1 AND released_at IS NULL)
+       ORDER BY id FOR UPDATE`,
+      [id],
+    );
+    // Retain reservations as durable ownership evidence. Neither path releases items.
+    await client.query(
+      `UPDATE public.listings SET availability=$2,updated_at=clock_timestamp()
+       WHERE id IN (SELECT listing_id FROM public.item_reservations WHERE trade_id=$1 AND released_at IS NULL)
+       AND availability <> 'exchanged'`,
+      [id, status === 'completed' ? 'exchanged' : 'disputed'],
+    );
+    await client.query(
+      'UPDATE public.trades SET status=$2,updated_at=clock_timestamp() WHERE id=$1',
+      [id, status],
+    );
   }
 
   async close(

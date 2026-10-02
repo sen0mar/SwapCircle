@@ -26,6 +26,7 @@
     "test:acceptances-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-acceptances.mjs",
     "test:coffee-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-coffee.mjs",
     "test:meetings-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-meetings.mjs",
+    "test:outcomes-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-outcomes.mjs",
     "test:lifecycle-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-lifecycle.mjs"
   },
   "exports": {

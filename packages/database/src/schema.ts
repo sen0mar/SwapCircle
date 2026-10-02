@@ -852,3 +852,41 @@ export const meetupOperations = pgTable(
     index('meetup_operations_meetup_idx').on(table.meetupId),
   ],
 );
+
+// Private request evidence and retry keys are never included in trade detail reads.
+export const tradeOutcomeOperations = pgTable(
+  'trade_outcome_operations',
+  {
+    actorId: uuid('actor_id').notNull(),
+    operationKey: uuid('operation_key').notNull(),
+    tradeId: uuid('trade_id')
+      .notNull()
+      .references(() => trades.id),
+    version: integer('version').notNull(),
+    kind: varchar('kind', { length: 32 }).notNull(),
+    reason: varchar('reason', { length: 2000 }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.actorId, table.operationKey] }),
+    index('trade_outcome_operations_trade_idx').on(table.tradeId),
+    foreignKey({
+      columns: [table.tradeId, table.actorId],
+      foreignColumns: [tradeParticipants.tradeId, tradeParticipants.userId],
+    }),
+    foreignKey({
+      columns: [table.tradeId, table.version],
+      foreignColumns: [tradeVersions.tradeId, tradeVersions.version],
+    }),
+    check(
+      'trade_outcome_kind_valid',
+      sql`${table.kind} IN ('receipt','problem','partial_handover')`,
+    ),
+    check(
+      'trade_outcome_reason_valid',
+      sql`(${table.kind} = 'receipt' AND ${table.reason} IS NULL) OR (${table.kind} <> 'receipt' AND ${table.reason} IS NOT NULL AND length(trim(${table.reason})) > 0)`,
+    ),
+  ],
+);
