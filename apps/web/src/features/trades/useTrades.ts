@@ -3,6 +3,7 @@ import type {
   ProposalCreation,
   ProposalRevision,
   TradeAcceptance,
+  TradeTransition,
 } from '@swapcircle/contracts';
 import { useAuth } from '../auth/AuthProvider';
 import {
@@ -12,6 +13,7 @@ import {
   getTrade,
   getTradeVersion,
   reviseTrade,
+  transitionTrade,
 } from './trades-api';
 
 export function useMyTrades(after: string) {
@@ -22,6 +24,7 @@ export function useMyTrades(after: string) {
     queryFn: ({ signal }) => getMyTrades(request, after, signal),
     enabled: !!session,
     retry: false,
+    refetchInterval: 30_000,
   });
 }
 
@@ -33,6 +36,7 @@ export function useTrade(id: string) {
     queryFn: ({ signal }) => getTrade(request, id, signal),
     enabled: !!session && !!id,
     retry: false,
+    refetchInterval: 30_000,
   });
 }
 
@@ -93,9 +97,39 @@ export function useAcceptTrade(id: string) {
       const root = ['private', session?.user.id];
 
       await Promise.all([
-        ...['trade', 'my-trades', 'my-listings'].map((key) =>
+        ...['trade', 'my-trades', 'my-listings', 'notifications'].map((key) =>
           queries.invalidateQueries({ queryKey: [...root, key] }),
         ),
+        ...['listing', 'listings', 'proposal-items'].map((key) =>
+          queries.invalidateQueries({ queryKey: [key] }),
+        ),
+      ]);
+    },
+  });
+}
+
+export function useTradeTransition(id: string) {
+  const { session, request } = useAuth();
+  const queries = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      action,
+      ...input
+    }: TradeTransition & { action: 'decline' | 'cancel' }) =>
+      transitionTrade(request, id, action, input),
+    onSettled: async () => {
+      const root = ['private', session?.user.id];
+
+      await Promise.all([
+        ...[
+          'trade',
+          'my-trades',
+          'my-listings',
+          'notifications',
+          'coffee',
+          'meeting',
+        ].map((key) => queries.invalidateQueries({ queryKey: [...root, key] })),
         ...['listing', 'listings', 'proposal-items'].map((key) =>
           queries.invalidateQueries({ queryKey: [key] }),
         ),

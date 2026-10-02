@@ -17,7 +17,11 @@ const summarySql = `SELECT t.id, t.creator_id AS "creatorId",
   t.created_at AS "createdAt", t.updated_at AS "updatedAt",
   (SELECT count(*)::int FROM public.trade_participants p WHERE p.trade_id=t.id AND p.active) AS "participantCount",
   (SELECT count(*)::int FROM public.trade_items i JOIN public.trade_versions v ON v.id=i.version_id
-   WHERE v.trade_id=t.id AND v.version=t.current_version) AS "itemCount"
+   WHERE v.trade_id=t.id AND v.version=t.current_version) AS "itemCount",
+  EXISTS (SELECT 1 FROM public.trade_items i JOIN public.trade_versions v ON v.id=i.version_id
+   LEFT JOIN public.listings l ON l.id=i.listing_id
+   WHERE v.trade_id=t.id AND v.version=t.current_version
+     AND l.availability IS DISTINCT FROM 'available') AS "hasUnavailableItems"
   FROM public.trades t`;
 
 export class TradesRepository {

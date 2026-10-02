@@ -287,6 +287,7 @@ function proposal(version = 1): TradeDetail {
     updatedAt: items[0]!.updatedAt,
     participantCount: 2,
     itemCount: 2,
+    hasUnavailableItems: false,
     groupConversationId: null,
     events: [],
     participants: [ids.self, ids.owner].map((userId) => ({
