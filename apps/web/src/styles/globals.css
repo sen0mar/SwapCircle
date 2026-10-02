@@ -1587,3 +1587,20 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+
+.trade-acceptance,
+.acceptance-review {
+  display: grid;
+  gap: 16px;
+}
+.acceptance-review {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.acceptance-review h3,
+.acceptance-review h4 {
+  font-weight: 600;
+}
+.trade-acceptance .ui-button {
+  justify-self: start;
+}

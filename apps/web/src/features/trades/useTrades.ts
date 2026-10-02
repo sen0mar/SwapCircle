@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ProposalCreation, ProposalRevision } from '@swapcircle/contracts';
+import type {
+  ProposalCreation,
+  ProposalRevision,
+  TradeAcceptance,
+} from '@swapcircle/contracts';
 import { useAuth } from '../auth/AuthProvider';
 import {
+  acceptTrade,
   createTrade,
   getMyTrades,
   getTrade,
@@ -73,6 +78,27 @@ export function useReviseTrade(id: string) {
         queries.invalidateQueries({ queryKey: [...root, 'my-trades'] }),
         queries.invalidateQueries({ queryKey: [...root, 'group'] }),
         queries.invalidateQueries({ queryKey: [...root, 'inbox'] }),
+      ]);
+    },
+  });
+}
+
+export function useAcceptTrade(id: string) {
+  const { session, request } = useAuth();
+  const queries = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: TradeAcceptance) => acceptTrade(request, id, input),
+    onSettled: async () => {
+      const root = ['private', session?.user.id];
+
+      await Promise.all([
+        ...['trade', 'my-trades', 'my-listings'].map((key) =>
+          queries.invalidateQueries({ queryKey: [...root, key] }),
+        ),
+        ...['listing', 'listings', 'proposal-items'].map((key) =>
+          queries.invalidateQueries({ queryKey: [key] }),
+        ),
       ]);
     },
   });

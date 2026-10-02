@@ -139,7 +139,7 @@ function mount(revision?: TradeDetail, detail = false) {
     </QueryClientProvider>,
   );
 
-  return { user: userEvent.setup(), writes: () => writes, payloads };
+  return { user: userEvent.setup(), writes: () => writes, payloads, queries };
 }
 
 test('failed submission keeps the same operation key for retry', async () => {
@@ -620,4 +620,175 @@ test('a frozen authoritative response keeps the open recovery draft while shared
   expect(
     screen.queryByRole('button', { name: 'Edit proposal' }),
   ).not.toBeInTheDocument();
+});
+
+test('acceptance requires explicit refreshed review, preserves key on failure and never optimistically confirms', async () => {
+  let saved = proposal();
+  const payloads: { expectedVersion: number; operationKey: string }[] = [];
+  server.use(
+    http.get('http://127.0.0.1:3001/api/v1/trades/:id', () =>
+      HttpResponse.json(saved),
+    ),
+    http.post(
+      'http://127.0.0.1:3001/api/v1/trades/:id/accept',
+      async ({ request }) => {
+        payloads.push((await request.json()) as (typeof payloads)[number]);
+        if (payloads.length === 1)
+          return new HttpResponse(null, { status: 503 });
+        saved = {
+          ...saved,
+          participants: saved.participants.map((p) =>
+            p.userId === ids.self ? { ...p, acceptedVersion: 1 } : p,
+          ),
+        };
+        return HttpResponse.json({
+          id: saved.id,
+          acceptedVersion: 1,
+          status: 'proposed',
+        });
+      },
+    ),
+  );
+  const { user, queries } = mount(undefined, true);
+  const refreshedKeys = [
+    ['private', ids.self, 'my-trades'],
+    ['private', ids.self, 'my-listings'],
+    ['listing', ids.lamp],
+    ['listings', { availability: 'available' }],
+    ['proposal-items', ids.self],
+  ];
+  await screen.findByRole('heading', { name: 'Agree to current terms' });
+  for (const key of refreshedKeys)
+    queries.setQueryData(key, { synthetic: true });
+  expect(
+    screen.queryByRole('button', { name: 'Accept version 1' }),
+  ).not.toBeInTheDocument();
+  expect(payloads).toHaveLength(0);
+  await user.click(
+    screen.getByRole('button', { name: 'Review current terms' }),
+  );
+  const review = await screen.findByRole('region', {
+    name: 'Acceptance review',
+  });
+  expect(review).toHaveTextContent('Desk lamp to Alex');
+  expect(review).toHaveTextContent('Bicycle from Alex');
+  await user.click(screen.getByRole('button', { name: 'Accept version 1' }));
+  expect(
+    await screen.findByText(/Acceptance could not be verified/),
+  ).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Accept version 1' }));
+  await screen.findByText(/Your acceptance is saved/);
+  expect(
+    screen.getByRole('heading', { name: 'Agree to current terms' }),
+  ).toHaveFocus();
+  expect(payloads[0]).toEqual(payloads[1]);
+  for (const key of refreshedKeys)
+    expect(queries.getQueryState(key)?.isInvalidated).toBe(true);
+  expect(screen.queryByText('Agreement confirmed')).not.toBeInTheDocument();
+});
+
+test('stale acceptance retains old terms and requires a deliberate review of the new version', async () => {
+  let saved = proposal();
+  let writes = 0;
+  server.use(
+    http.get('http://127.0.0.1:3001/api/v1/trades/:id', () =>
+      HttpResponse.json(saved),
+    ),
+    http.get(
+      'http://127.0.0.1:3001/api/v1/trades/:id/versions/:version',
+      () => new HttpResponse(null, { status: 404 }),
+    ),
+    http.post('http://127.0.0.1:3001/api/v1/trades/:id/accept', () => {
+      writes++;
+      saved = proposal(2);
+      saved.items[0]!.titleSnapshot = 'Changed bicycle';
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'STALE_PROPOSAL',
+            message: 'Reload terms.',
+            requestId: 'synthetic',
+          },
+        },
+        { status: 409 },
+      );
+    }),
+  );
+  const { user } = mount(undefined, true);
+  await user.click(
+    await screen.findByRole('button', { name: 'Review current terms' }),
+  );
+  await user.click(
+    await screen.findByRole('button', { name: 'Accept version 1' }),
+  );
+  await screen.findByText(/You reviewed version 1/);
+  expect(
+    screen.getByRole('button', { name: 'Accept version 1' }),
+  ).toBeDisabled();
+  expect(
+    screen.getByRole('region', { name: 'Acceptance review' }),
+  ).toHaveTextContent('Bicycle from Alex');
+  expect(writes).toBe(1);
+  await user.click(
+    screen.getByRole('button', { name: 'Review current terms' }),
+  );
+  expect(
+    await screen.findByRole('button', { name: 'Accept version 2' }),
+  ).toBeEnabled();
+  expect(
+    screen.getByRole('region', { name: 'Acceptance review' }),
+  ).toHaveTextContent('Changed bicycle');
+  expect(writes).toBe(1);
+});
+
+test('confirmed reservations represent agreement without reporting its own items as unavailable', async () => {
+  const saved = { ...proposal(), status: 'confirmed' as TradeDetail['status'] };
+  saved.items.forEach((item) => {
+    item.currentAvailability = 'reserved';
+  });
+  server.use(
+    http.get('http://127.0.0.1:3001/api/v1/trades/:id', () =>
+      HttpResponse.json(saved),
+    ),
+  );
+  mount(undefined, true);
+  await screen.findByRole('heading', { name: 'Agreement confirmed' });
+  expect(screen.getByText(/not physical handover/)).toBeInTheDocument();
+  expect(
+    screen.queryByText(/proposed items are no longer/),
+  ).not.toBeInTheDocument();
+});
+
+test('failed current-term refresh keeps the reviewed context and blocks acceptance until fresh review', async () => {
+  let failRead = false;
+  server.use(
+    http.get('http://127.0.0.1:3001/api/v1/trades/:id', () =>
+      failRead
+        ? new HttpResponse(null, { status: 503 })
+        : HttpResponse.json(proposal()),
+    ),
+  );
+  const { user } = mount(undefined, true);
+  await user.click(
+    await screen.findByRole('button', { name: 'Review current terms' }),
+  );
+  await screen.findByRole('button', { name: 'Accept version 1' });
+  failRead = true;
+  await user.click(
+    screen.getByRole('button', { name: 'Review current terms' }),
+  );
+  await screen.findByText(/Current terms could not be refreshed/);
+  expect(
+    screen.getByRole('region', { name: 'Acceptance review' }),
+  ).toHaveTextContent('Desk lamp to Alex');
+  expect(
+    screen.getByRole('button', { name: 'Accept version 1' }),
+  ).toBeDisabled();
+  failRead = false;
+  await user.click(
+    screen.getByRole('button', { name: 'Review current terms' }),
+  );
+  expect(
+    await screen.findByRole('button', { name: 'Accept version 1' }),
+  ).toBeEnabled();
 });
