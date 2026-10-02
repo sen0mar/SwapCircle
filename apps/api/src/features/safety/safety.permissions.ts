@@ -29,7 +29,8 @@ export type WriteAction =
   | 'report'
   | 'conversation'
   | 'message'
-  | 'trade';
+  | 'trade'
+  | 'coffee';
 
 export class SafetyPermissions {
   constructor(

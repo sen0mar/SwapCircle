@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      20,
+      21,
     );
 
     const publication = await pool.query<{ tablename: string }>(
@@ -102,6 +102,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
     );
 
     for (const table of [
+      'coffee_invitations',
       'profiles',
       'interests',
       'profile_interests',

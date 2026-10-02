@@ -37,7 +37,8 @@ jobs:
           if-no-files-found: ignore
   database:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The prior full database job used 18 minutes before pairwise coffee coverage.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -67,6 +68,7 @@ jobs:
       - run: pnpm --filter @swapcircle/api test:groups-local
       - run: pnpm --filter @swapcircle/api test:revisions-local
       - run: pnpm --filter @swapcircle/api test:acceptances-local
+      - run: pnpm --filter @swapcircle/api test:coffee-local
       - run: pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
       - run: pnpm --filter @swapcircle/web test:catalog-local
       - run: pnpm --filter @swapcircle/web test:safety-local
