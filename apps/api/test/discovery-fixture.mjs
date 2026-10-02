@@ -120,7 +120,14 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
         await client.query(
           'ALTER TABLE public.trade_acceptance_operations DISABLE TRIGGER acceptance_operations_append_only',
         );
+        await client.query(
+          'ALTER TABLE public.trade_outcome_operations DISABLE TRIGGER trade_outcome_operations_append_only',
+        );
         for (const { trade_id } of tradeIds.rows) {
+          await client.query(
+            'DELETE FROM public.trade_outcome_operations WHERE trade_id=$1',
+            [trade_id],
+          );
           await client.query(
             'DELETE FROM public.meetup_operations WHERE meetup_id IN (SELECT id FROM public.meetups WHERE trade_id=$1)',
             [trade_id],
@@ -187,6 +194,9 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
         );
         await client.query(
           'ALTER TABLE public.trade_acceptance_operations ENABLE TRIGGER acceptance_operations_append_only',
+        );
+        await client.query(
+          'ALTER TABLE public.trade_outcome_operations ENABLE TRIGGER trade_outcome_operations_append_only',
         );
         await client.query('COMMIT');
       } catch (error) {

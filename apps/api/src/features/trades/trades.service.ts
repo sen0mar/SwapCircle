@@ -2,6 +2,9 @@ import type { PoolClient } from 'pg';
 import { createHash } from 'node:crypto';
 import {
   proposalCreationResultSchema,
+  tradeOutcomeResultSchema,
+  type TradeReceiptSubmission,
+  type TradeProblemSubmission,
   type ProposalCreation,
   type ProposalRevision,
   type TradeAcceptance,
@@ -139,6 +142,144 @@ export class TradesService {
     });
     if (result instanceof SafetyError) throw result;
     return result;
+  }
+
+  async outcome(
+    actor: string,
+    id: string,
+    input: TradeReceiptSubmission | TradeProblemSubmission,
+  ) {
+    return this.repository.transaction(async (client) => {
+      await lockProposalBoundary(client);
+      await this.repository.lockParticipants(client, [actor]);
+      await this.permissions.assertUnrestricted(client, [actor]);
+      const trade = await this.repository.lockTrade(client, id, actor);
+      if (!trade)
+        throw new SafetyError(
+          404,
+          'TRADE_UNAVAILABLE',
+          'This trade is unavailable.',
+        );
+      const kind = 'kind' in input ? input.kind : 'receipt';
+      const reason = 'reason' in input ? input.reason : null;
+      const previous = await this.repository.outcomeOperation(
+        client,
+        actor,
+        input.operationKey,
+      );
+      if (
+        previous &&
+        (previous.trade_id !== id ||
+          previous.version !== input.expectedVersion ||
+          previous.kind !== kind ||
+          previous.reason !== reason)
+      )
+        throw new SafetyError(
+          409,
+          'OPERATION_CONFLICT',
+          'This operation key was used for a different request.',
+        );
+      if (trade.current_version !== input.expectedVersion)
+        throw new SafetyError(
+          409,
+          'STALE_PROPOSAL',
+          'The proposal changed. Reload its terms.',
+        );
+      if (!previous) {
+        const received =
+          kind === 'receipt' &&
+          (await this.repository.hasReceipt(client, id, actor));
+        if (
+          trade.status !== 'confirmed' &&
+          trade.status !== 'disputed' &&
+          !(received && trade.status === 'completed')
+        )
+          throw new SafetyError(
+            409,
+            'TERMS_FROZEN',
+            'This trade cannot be changed.',
+          );
+        const terms = await this.repository.acceptanceTerms(
+          client,
+          id,
+          trade.current_version,
+        );
+        if (!terms.version?.participant_ids.includes(actor))
+          throw new SafetyError(
+            404,
+            'TRADE_UNAVAILABLE',
+            'This trade is unavailable.',
+          );
+        await this.permissions.authorizeWrite(
+          client,
+          actor,
+          kind === 'receipt' ? 'trade' : 'report',
+        );
+        await this.repository.recordOutcomeOperation(
+          client,
+          actor,
+          id,
+          input,
+          kind,
+          reason,
+        );
+        if (kind === 'receipt') {
+          if (!received)
+            await this.repository.outcomeEvent(
+              client,
+              id,
+              actor,
+              'receipt_acknowledged',
+            );
+          // A report freezes ordinary completion as well as release, even after all receipts.
+          if (
+            trade.status === 'confirmed' &&
+            (await this.repository.allReceipts(client, id))
+          ) {
+            await this.repository.markOutcome(client, id, 'completed');
+            await this.notifyOutcome(client, id, actor, 'completed');
+          }
+        } else {
+          if (kind === 'partial_handover')
+            await this.repository.outcomeEvent(
+              client,
+              id,
+              actor,
+              'handover_reported',
+            );
+          await this.repository.markOutcome(client, id, 'disputed');
+          await this.notifyOutcome(client, id, actor, 'disputed');
+        }
+      }
+      const current = await this.repository.lockTrade(client, id, actor);
+      return tradeOutcomeResultSchema.parse({
+        id,
+        currentVersion: current!.current_version,
+        status: current!.status,
+      });
+    });
+  }
+
+  private async notifyOutcome(
+    client: PoolClient,
+    id: string,
+    actor: string,
+    status: 'completed' | 'disputed',
+  ) {
+    const eventId = await this.repository.outcomeEvent(
+      client,
+      id,
+      actor,
+      status,
+    );
+    for (const recipientId of await this.repository.participantIds(client, id))
+      await createNotification(client, {
+        recipient_id: recipientId,
+        domain_event_id: eventId,
+        event_type: 'trade_status',
+        resource_type: 'trade',
+        resource_id: id,
+      });
   }
 
   async create(actor: string, input: ProposalCreation) {
