@@ -7,6 +7,7 @@ import { GroupInvitation } from '../groups/GroupInvitation';
 import { TradeMeeting } from './TradeMeeting';
 import { TradeCoffee } from './TradeCoffee';
 import { TradeAcceptance } from './TradeAcceptance';
+import { TradeLifecycle } from './TradeLifecycle';
 import { useTrade, useTradeVersion } from './useTrades';
 
 import { ProposalComposer } from '../browse/ProposalComposer';
@@ -110,6 +111,13 @@ export function TradeDetailPage() {
           </p>
         </div>
       </div>
+      {self && (
+        <TradeLifecycle
+          key={`lifecycle:${session?.user.id}:${id}`}
+          detail={trade.data}
+          current={!trade.isError}
+        />
+      )}
       {self && (
         <ProposalComposer
           key={`${session?.user.id}:${id}`}

@@ -106,6 +106,12 @@ export class TradesService {
             ? 'cancelled'
             : 'expired';
       if (trade.status !== status) {
+        if (input.expectedStatus && trade.status !== input.expectedStatus)
+          throw new SafetyError(
+            409,
+            'STALE_TRADE_STATUS',
+            'The trade status changed. Reload it before acting.',
+          );
         if (
           (trade.status !== 'proposed' &&
             !(trade.status === 'confirmed' && action === 'cancel')) ||

@@ -1193,6 +1193,24 @@
   gap: 20px;
   min-width: 0;
 }
+.trade-lifecycle {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+.trade-lifecycle p {
+  margin-top: 0;
+}
+@media (max-width: 639px) {
+  .trade-lifecycle-dialog .notification-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+  .trade-lifecycle-dialog .notification-actions .ui-button {
+    width: 100%;
+  }
+}
 .trade-detail li {
   margin-top: 8px;
   overflow-wrap: anywhere;
