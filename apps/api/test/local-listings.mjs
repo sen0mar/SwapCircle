@@ -200,21 +200,24 @@ try {
     .expect(200);
   assert.equal(changed.body.revision, 2);
   for (const state of ['reserved', 'exchanged', 'disputed']) {
+    // Terminal inventory is never reset for another assertion, even in fixtures.
+    const unavailableId = randomUUID();
     await migration.query(
-      'UPDATE public.listings SET availability=$2 WHERE id=$1',
-      [a.id, state],
+      `INSERT INTO public.listings (id,owner_id,title,description,condition,revision,availability)
+       VALUES ($1,$2,'Synthetic unavailable item','Isolated state guard fixture','good',2,$3)`,
+      [unavailableId, alice.id, state],
     );
-    await edit(alice, a.id, { ...data, revision: 2 }).expect(409);
-    await withdraw(alice, a.id, 2).expect(409);
+    await edit(alice, unavailableId, { ...data, revision: 2 }).expect(409);
+    await withdraw(alice, unavailableId, 2).expect(409);
     assert.equal(
-      (await request(app).get(`/api/v1/listings/${a.id}`)).body.availability,
+      (await request(app).get(`/api/v1/listings/${unavailableId}`)).body
+        .availability,
       state,
     );
+    await migration.query('DELETE FROM public.listings WHERE id=$1', [
+      unavailableId,
+    ]);
   }
-  await migration.query(
-    "UPDATE public.listings SET availability='available' WHERE id=$1",
-    [a.id],
-  );
   const withdrawn = await withdraw(alice, a.id, 2).expect(200);
   assert.equal(withdrawn.body.revision, 3);
   await request(app).get(`/api/v1/listings/${a.id}`).expect(404);

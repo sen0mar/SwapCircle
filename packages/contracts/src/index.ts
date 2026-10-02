@@ -659,3 +659,26 @@ export type MeetingCreate = z.infer<typeof meetingCreateSchema>;
 export type MeetingUpdate = z.infer<typeof meetingUpdateSchema>;
 export type MeetingResponse = z.infer<typeof meetingResponseSchema>;
 export type Meetup = z.infer<typeof meetupSchema>;
+
+// Verified identity supplies the participant; callers cannot acknowledge for others.
+export const tradeReceiptSubmissionSchema = z.strictObject({
+  operationKey: z.uuid(),
+  expectedVersion: z.number().int().positive(),
+});
+export const tradeProblemSubmissionSchema = tradeReceiptSubmissionSchema.extend(
+  {
+    kind: z.enum(['problem', 'partial_handover']),
+    reason: z.string().trim().min(1).max(2000),
+  },
+);
+export const tradeOutcomeResultSchema = z.object({
+  id: z.uuid(),
+  currentVersion: z.number().int().positive(),
+  status: z.enum(['confirmed', 'completed', 'disputed']),
+});
+export type TradeReceiptSubmission = z.infer<
+  typeof tradeReceiptSubmissionSchema
+>;
+export type TradeProblemSubmission = z.infer<
+  typeof tradeProblemSubmissionSchema
+>;

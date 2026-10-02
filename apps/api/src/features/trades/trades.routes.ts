@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import {
   tradeIdParamsSchema,
+  tradeReceiptSubmissionSchema,
+  tradeProblemSubmissionSchema,
   tradeTransitionSchema,
   tradeAcceptanceSchema,
   tradePageQuerySchema,
@@ -69,6 +71,25 @@ export function createTradesRouter(
             action,
             input,
           ),
+        );
+      },
+    );
+
+  for (const action of ['receipt', 'problem'] as const)
+    router.post(
+      `/trades/:id/${action}`,
+      authenticate(verifyToken),
+      async (
+        request,
+        response: import('express').Response<unknown, AuthenticatedLocals>,
+      ) => {
+        const { id } = tradeIdParamsSchema.parse(request.params);
+        const input =
+          action === 'receipt'
+            ? tradeReceiptSubmissionSchema.parse(request.body)
+            : tradeProblemSubmissionSchema.parse(request.body);
+        response.json(
+          await service.outcome(response.locals.identity.userId, id, input),
         );
       },
     );
