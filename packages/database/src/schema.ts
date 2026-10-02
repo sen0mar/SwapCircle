@@ -640,7 +640,7 @@ export const tradeEvents = pgTable(
     }),
     check(
       'trade_event_type_valid',
-      sql`${table.eventType} IN ('proposed','revised','accepted','confirmed','completed','declined','expired','cancelled','disputed')`,
+      sql`${table.eventType} IN ('proposed','revised','accepted','confirmed','completed','declined','expired','cancelled','disputed','receipt_acknowledged','handover_reported')`,
     ),
   ],
 );

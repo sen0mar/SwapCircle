@@ -537,6 +537,10 @@ try {
     locker.release();
   }
 
+  assert.equal(
+    await count('trade_events', expiring.id, "AND event_type='expired'"),
+    1,
+  );
   assert.equal(await count('trade_acceptances', expiring.id), 0);
   assert.equal(await count('item_reservations', expiring.id), 0);
 
