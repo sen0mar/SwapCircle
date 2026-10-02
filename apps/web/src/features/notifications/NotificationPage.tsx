@@ -29,7 +29,8 @@ export function NotificationPage() {
           <NotificationContent item={item} detail />
           {item.resource_type !== 'conversation' &&
             item.resource_type !== 'trade' &&
-            item.resource_type !== 'coffee_invitation' && (
+            item.resource_type !== 'coffee_invitation' &&
+            item.resource_type !== 'meetup' && (
               <p>
                 The related feature is not available yet. You can mark this
                 notification read; no invitation response or confirmation will

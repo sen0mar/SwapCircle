@@ -403,6 +403,16 @@ try {
   assert.ok(notice);
   assert.ok(!JSON.stringify(notifications).includes('Synthetic public'));
   await bobPage.goto(`${origin}/notifications/${notice.id}`);
+  await expect(
+    bobPage.getByRole('link', { name: 'View meeting in swap' }),
+  ).toBeVisible();
+  await expect(
+    bobPage.getByText(/related feature is not available yet/),
+  ).toHaveCount(0);
+  await expect(
+    bobPage.getByText('Synthetic public museum entrance'),
+  ).toHaveCount(0);
+  await expect(bobPage.getByText(/Europe\/Paris/)).toHaveCount(0);
   await bobPage.getByRole('link', { name: 'View meeting in swap' }).click();
   await expect(bobPage).toHaveURL(`${origin}/swaps/${direct.id}#meeting`);
   await signIn(outsider, stranger, `/notifications/${notice.id}`);
