@@ -401,6 +401,7 @@ export const tradeAcceptanceSchema = z.strictObject({
 });
 export const tradeTransitionSchema = z.strictObject({
   expectedVersion: z.number().int().positive(),
+  expectedStatus: z.enum(['proposed', 'confirmed']).optional(),
 });
 export type TradeTransition = z.infer<typeof tradeTransitionSchema>;
 export const tradeTransitionResultSchema = z.strictObject({
@@ -442,6 +443,7 @@ export const tradeSummarySchema = z.object({
   updatedAt: z.iso.datetime({ offset: true }),
   participantCount: z.number().int().min(2),
   itemCount: z.number().int().min(1),
+  hasUnavailableItems: z.boolean(),
 });
 export const tradePageSchema = z.object({
   items: z.array(tradeSummarySchema).max(50),

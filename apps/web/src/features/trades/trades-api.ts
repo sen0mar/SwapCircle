@@ -1,4 +1,6 @@
 import {
+  tradeTransitionResultSchema,
+  type TradeTransition,
   tradeAcceptanceResultSchema,
   type TradeAcceptance,
   proposalCreationResultSchema,
@@ -9,6 +11,23 @@ import {
   tradeVersionSchema,
 } from '@swapcircle/contracts';
 import type { apiRequest } from '../../lib/api-client';
+
+export function transitionTrade(
+  request: typeof apiRequest,
+  id: string,
+  action: 'decline' | 'cancel',
+  input: TradeTransition,
+) {
+  return request(
+    `/api/v1/trades/${encodeURIComponent(id)}/${action}`,
+    tradeTransitionResultSchema,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+  );
+}
 
 export function createTrade(
   request: typeof apiRequest,

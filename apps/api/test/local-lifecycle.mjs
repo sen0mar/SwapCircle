@@ -156,6 +156,23 @@ try {
   await transition(cancelledProposal.id).expect(200);
   await transition(cancelledProposal.id, 'cancel', bob).expect(200);
   await released(cancelledProposal);
+
+  // Same-version confirmation requires renewed cancellation consent; completed
+  // cancellation retries still succeed with the originally reviewed precondition.
+  const changedStatus = await confirm();
+  const staleStatus = await transition(changedStatus.id, 'cancel', alice, 1, {
+    expectedStatus: 'proposed',
+  }).expect(409);
+  assert.equal(staleStatus.body.error.code, 'STALE_TRADE_STATUS');
+  assert.equal(await status(changedStatus.id), 'confirmed');
+  assert.equal(await active(changedStatus.id), 2);
+  await transition(changedStatus.id, 'cancel', alice, 1, {
+    expectedStatus: 'confirmed',
+  }).expect(200);
+  await transition(changedStatus.id, 'cancel', alice, 1, {
+    expectedStatus: 'confirmed',
+  }).expect(200);
+  await released(changedStatus);
   for (const members of [
     [alice, bob],
     [alice, bob, carol],

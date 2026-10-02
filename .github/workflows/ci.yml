@@ -85,5 +85,6 @@ jobs:
       - run: pnpm --filter @swapcircle/web test:acceptances-local
       - run: pnpm --filter @swapcircle/web test:coffee-local
       - run: pnpm --filter @swapcircle/web test:meetings-local
+      - run: pnpm --filter @swapcircle/web test:lifecycle-local
       - if: always()
         run: pnpm db:stop
