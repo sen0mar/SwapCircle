@@ -4,6 +4,8 @@ import { useCoffeeInvitation } from '../trades/useCoffee';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { useNotificationAcknowledgement } from './useNotifications';
+import { useTrade } from '../trades/useTrades';
+import { lifecycleSummary } from '../trades/lifecycle-copy';
 
 const titles: Record<NotificationRead['event_type'], string> = {
   trade_invitation: 'Trade invitation',
@@ -44,6 +46,9 @@ export function NotificationContent({
         })}
       </time>
       <div className="notification-actions">
+        {detail && item.resource_type === 'trade' && (
+          <TradeNotificationSummary id={item.resource_id} />
+        )}
         {detail && item.resource_type === 'meetup' && (
           <MeetingNotificationLink id={item.resource_id} />
         )}
@@ -94,6 +99,26 @@ export function NotificationContent({
         </div>
       )}
     </>
+  );
+}
+
+function TradeNotificationSummary({ id }: { id: string }) {
+  const trade = useTrade(id);
+
+  if (trade.isPending) return <p role="status">Loading current swap status…</p>;
+  if (trade.isError)
+    return (
+      <p>
+        This swap cannot be loaded or is unavailable to this account. The
+        notification remains in your history.
+      </p>
+    );
+
+  return (
+    <p>
+      {lifecycleSummary(trade.data.status) ??
+        `Current swap status: ${trade.data.status}. This notification records an earlier event; open the swap to review its current terms.`}
+    </p>
   );
 }
 

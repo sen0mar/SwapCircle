@@ -2,6 +2,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { useMyTrades } from './useTrades';
+import { lifecycleSummary } from './lifecycle-copy';
 
 const statuses: Record<string, string> = {
   proposed: 'Proposed · awaiting responses',
@@ -59,6 +60,15 @@ export function MySwapsPage() {
                   <p>Items reserved · handover not yet confirmed.</p>
                 )}
                 {trade.status === 'proposed' && <p>Items are not reserved.</p>}
+                {trade.status === 'proposed' && trade.hasUnavailableItems && (
+                  <p>
+                    An item is no longer available. This proposal cannot confirm
+                    with these items.
+                  </p>
+                )}
+                {lifecycleSummary(trade.status) && (
+                  <p>{lifecycleSummary(trade.status)}</p>
+                )}
                 <Link to={`/swaps/${trade.id}`}>View swap</Link>
               </Card>
             ))}
