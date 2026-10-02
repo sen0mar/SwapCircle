@@ -7,6 +7,7 @@ import { GroupInvitation } from '../groups/GroupInvitation';
 import { TradeMeeting } from './TradeMeeting';
 import { TradeCoffee } from './TradeCoffee';
 import { TradeAcceptance } from './TradeAcceptance';
+import { TradeCompletion } from './TradeCompletion';
 import { TradeLifecycle } from './TradeLifecycle';
 import { useTrade, useTradeVersion } from './useTrades';
 
@@ -119,6 +120,13 @@ export function TradeDetailPage() {
         />
       )}
       {self && (
+        <TradeCompletion
+          key={`outcomes:${session?.user.id}:${id}`}
+          detail={trade.data}
+          current={!trade.isError}
+        />
+      )}
+      {self && (
         <ProposalComposer
           key={`${session?.user.id}:${id}`}
           revision={trade.data}
@@ -158,8 +166,9 @@ export function TradeDetailPage() {
         )}
         {trade.data.status === 'confirmed' && (
           <p>
-            Confirmed terms are read-only. Renegotiation requires cancellation
-            and a new proposal.
+            Confirmed terms are read-only. Agreement does not mean delivery.
+            Cancellation is only available before any recorded receipt or
+            handover.
           </p>
         )}
         <p>
@@ -282,9 +291,15 @@ export function TradeDetailPage() {
         <ol>
           {trade.data.events.map((event) => (
             <li key={event.id}>
-              {event.eventType === 'revised'
-                ? 'Terms revised'
-                : (statuses[event.eventType] ?? event.eventType)}{' '}
+              {event.eventType === 'receipt_acknowledged'
+                ? 'Receipt acknowledged'
+                : event.eventType === 'handover_reported'
+                  ? 'Partial handover reported'
+                  : event.eventType === 'disputed'
+                    ? 'Problem reported · dispute unresolved'
+                    : event.eventType === 'revised'
+                      ? 'Terms revised'
+                      : (statuses[event.eventType] ?? event.eventType)}{' '}
               by {names.get(event.actorId) ?? 'Member'} · version{' '}
               {event.version} ·{' '}
               <time dateTime={event.createdAt}>
