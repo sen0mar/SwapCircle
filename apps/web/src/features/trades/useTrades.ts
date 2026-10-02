@@ -4,9 +4,12 @@ import type {
   ProposalRevision,
   TradeAcceptance,
   TradeTransition,
+  TradeReceiptSubmission,
+  TradeProblemSubmission,
 } from '@swapcircle/contracts';
 import { useAuth } from '../auth/AuthProvider';
 import {
+  recordTradeOutcome,
   acceptTrade,
   createTrade,
   getMyTrades,
@@ -130,6 +133,33 @@ export function useTradeTransition(id: string) {
           'coffee',
           'meeting',
         ].map((key) => queries.invalidateQueries({ queryKey: [...root, key] })),
+        ...['listing', 'listings', 'proposal-items'].map((key) =>
+          queries.invalidateQueries({ queryKey: [key] }),
+        ),
+      ]);
+    },
+  });
+}
+
+export function useTradeOutcome(id: string) {
+  const { session, request } = useAuth();
+  const queries = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      action,
+      input,
+    }: {
+      action: 'receipt' | 'problem';
+      input: TradeReceiptSubmission | TradeProblemSubmission;
+    }) => recordTradeOutcome(request, id, action, input),
+    onSettled: async () => {
+      const root = ['private', session?.user.id];
+
+      await Promise.all([
+        ...['trade', 'my-trades', 'my-listings', 'notifications'].map((key) =>
+          queries.invalidateQueries({ queryKey: [...root, key] }),
+        ),
         ...['listing', 'listings', 'proposal-items'].map((key) =>
           queries.invalidateQueries({ queryKey: [key] }),
         ),
