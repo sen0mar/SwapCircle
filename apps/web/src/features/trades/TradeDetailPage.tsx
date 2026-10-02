@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
 import { GroupInvitation } from '../groups/GroupInvitation';
+import { TradeAcceptance } from './TradeAcceptance';
 import { useTrade, useTradeVersion } from './useTrades';
 
 import { ProposalComposer } from '../browse/ProposalComposer';
@@ -37,7 +38,12 @@ export function TradeDetailPage() {
         <p role="status">Loading swap…</p>
       </section>
     );
-  if (trade.isError) {
+  if (
+    trade.isError &&
+    (!trade.data ||
+      (trade.error instanceof ApiError &&
+        [403, 404].includes(trade.error.status ?? 0)))
+  ) {
     const unavailable =
       trade.error instanceof ApiError &&
       [403, 404].includes(trade.error.status ?? 0);
@@ -75,12 +81,23 @@ export function TradeDetailPage() {
     (item) => item.recipientId === session?.user.id,
   );
   const withdrawn = trade.data.items.filter(
-    (item) => item.currentAvailability !== 'available',
+    (item) =>
+      trade.data.status === 'proposed' &&
+      item.currentAvailability !== 'available',
   );
 
   return (
     <article className="trade-detail" aria-labelledby="trade-title">
       <Link to="/swaps">← My Swaps</Link>
+      {trade.isError && (
+        <div role="alert">
+          Current agreement could not be refreshed. These are the last loaded
+          terms; refresh before accepting.
+          <Button onClick={() => void trade.refetch()}>
+            Retry current agreement
+          </Button>
+        </div>
+      )}
       <div className="section-heading">
         <div>
           <h1 ref={heading} tabIndex={-1} id="trade-title">
@@ -151,21 +168,18 @@ export function TradeDetailPage() {
             does not accept the invitation or terms.
           </p>
         )}
-        {self?.invitationStatus === 'invited' && (
-          <p role="status">
-            Your trade invitation is pending. Chat membership is separate; trade
-            response controls are not available yet.
-          </p>
-        )}
         {withdrawn.length > 0 && (
           <p role="alert">
             {withdrawn.length} proposed{' '}
             {withdrawn.length === 1 ? 'item is' : 'items are'} no longer
-            available. Review current availability before any later
-            confirmation.
+            available. Review current availability before acceptance.
           </p>
         )}
       </div>
+      <TradeAcceptance
+        key={`acceptance:${session?.user.id}:${id}`}
+        detail={trade.data}
+      />
       {trade.data.groupConversationId && (
         <GroupInvitation id={trade.data.groupConversationId} />
       )}
