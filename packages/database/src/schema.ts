@@ -245,7 +245,7 @@ export const actionQuotas = pgTable(
     check('quota_used_positive', sql`${table.used} > 0`),
     check(
       'quota_action_valid',
-      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report', 'conversation', 'message', 'trade')`,
+      sql`${table.action} IN ('profile', 'avatar', 'listing', 'photo', 'block', 'report', 'conversation', 'message', 'trade', 'coffee')`,
     ),
   ],
 );
@@ -718,5 +718,61 @@ export const itemReservations = pgTable(
       .on(table.listingId)
       .where(sql`${table.releasedAt} IS NULL`),
     index('item_reservations_trade_idx').on(table.tradeId),
+  ],
+);
+
+export const coffeeInvitations = pgTable(
+  'coffee_invitations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tradeId: uuid('trade_id')
+      .notNull()
+      .references(() => trades.id),
+    inviterId: uuid('inviter_id')
+      .notNull()
+      .references(() => profiles.id),
+    inviteeId: uuid('invitee_id')
+      .notNull()
+      .references(() => profiles.id),
+    operationKey: uuid('operation_key').notNull(),
+    offerToPay: boolean('offer_to_pay').notNull().default(false),
+    status: varchar('status', { length: 16 }).notNull().default('pending'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    respondedAt: timestamp('responded_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('coffee_operation_unique').on(
+      table.inviterId,
+      table.operationKey,
+    ),
+    uniqueIndex('coffee_active_pair_unique')
+      .on(
+        table.tradeId,
+        sql`least(${table.inviterId}, ${table.inviteeId})`,
+        sql`greatest(${table.inviterId}, ${table.inviteeId})`,
+      )
+      .where(sql`${table.status} IN ('pending', 'accepted')`),
+    check(
+      'coffee_distinct_pair',
+      sql`${table.inviterId} <> ${table.inviteeId}`,
+    ),
+    check(
+      'coffee_status_valid',
+      sql`${table.status} IN ('pending','accepted','declined','cancelled')`,
+    ),
+    check(
+      'coffee_response_consistent',
+      sql`(${table.status} = 'pending') = (${table.respondedAt} IS NULL)`,
+    ),
+    foreignKey({
+      columns: [table.tradeId, table.inviterId],
+      foreignColumns: [tradeParticipants.tradeId, tradeParticipants.userId],
+    }),
+    foreignKey({
+      columns: [table.tradeId, table.inviteeId],
+      foreignColumns: [tradeParticipants.tradeId, tradeParticipants.userId],
+    }),
   ],
 );

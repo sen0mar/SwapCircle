@@ -1,3 +1,5 @@
+import { createCoffeeRouter } from './features/coffee/coffee.routes.js';
+import type { CoffeeService } from './features/coffee/coffee.service.js';
 import { createNotificationsRouter } from './features/notifications/notifications.routes.js';
 import { createTradesRouter } from './features/trades/trades.routes.js';
 import type { TradesService } from './features/trades/trades.service.js';
@@ -26,6 +28,7 @@ export function createApiRouter(
   conversations?: ConversationsService,
   notifications?: NotificationsService,
   trades?: TradesService,
+  coffee?: CoffeeService,
 ): Router {
   const api = Router();
 
@@ -46,6 +49,8 @@ export function createApiRouter(
     api.use(createNotificationsRouter(verifyToken, notifications));
 
   if (trades) api.use(createTradesRouter(verifyToken, trades));
+
+  if (coffee) api.use(createCoffeeRouter(verifyToken, coffee));
 
   return api;
 }
