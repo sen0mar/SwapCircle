@@ -15,7 +15,7 @@ import {
   waitFor,
   cleanup,
 } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { http, HttpResponse, delay } from 'msw';
 import { expect, test, vi, afterEach } from 'vitest';
 import type { NotificationRead } from '@swapcircle/contracts';
@@ -28,6 +28,7 @@ import {
 } from '../src/features/notifications/notifications-api';
 import { startNotificationsRealtime } from '../src/features/notifications/notifications-realtime';
 import { NotificationContent } from '../src/features/notifications/NotificationContent';
+import { NotificationPage } from '../src/features/notifications/NotificationPage';
 import { NotificationBell } from '../src/features/notifications/NotificationBell';
 
 const state = vi.hoisted(() => ({ auth: {} as Record<string, unknown> }));
@@ -516,4 +517,99 @@ test('unavailable coffee notification exposes retry without linking to a guessed
   expect(
     screen.queryByRole('link', { name: 'View coffee in swap' }),
   ).toBeNull();
+});
+
+test('meeting notification page resolves an authorized link without deferred copy or exact details; previews never look up details', async () => {
+  const f = fixture();
+  const item = {
+    ...row(1),
+    event_type: 'meeting_change' as const,
+    resource_type: 'meetup' as const,
+  };
+  f.rows.splice(0, f.rows.length, item);
+  let lookups = 0;
+  const place = 'Synthetic private library entrance';
+  const meetingAt = '2026-10-25T01:30:00.123Z';
+  server.use(
+    http.get('*/api/v1/meetups/:id', () => {
+      lookups++;
+      return HttpResponse.json({
+        id: user,
+        tradeId: peer,
+        tradeVersion: 1,
+        revision: 2,
+        place,
+        mapLink: null,
+        meetingAt,
+        timeZone: 'Europe/Paris',
+        responses: [{ userId: user, response: null }],
+      });
+    }),
+  );
+  const view = render(
+    <QueryClientProvider client={f.queries}>
+      <MemoryRouter initialEntries={[`/notifications/${item.id}`]}>
+        <Routes>
+          <Route path="/notifications/:id" element={<NotificationPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  const link = await screen.findByRole('link', {
+    name: 'View meeting in swap',
+  });
+  expect(link).toHaveAttribute('href', `/swaps/${peer}#meeting`);
+  expect(screen.queryByText(/related feature is not available yet/)).toBeNull();
+  expect(screen.queryByText(place)).toBeNull();
+  expect(screen.queryByText(/Europe\/Paris/)).toBeNull();
+  expect(screen.queryByText(meetingAt)).toBeNull();
+  expect(lookups).toBe(1);
+  view.unmount();
+  render(
+    <QueryClientProvider client={f.queries}>
+      <MemoryRouter>
+        <NotificationContent item={item} />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  expect(
+    screen.getByRole('link', { name: 'View notification' }),
+  ).toHaveAttribute('href', `/notifications/${item.id}`);
+  expect(screen.queryByText(place)).toBeNull();
+  expect(screen.queryByText(/Europe\/Paris/)).toBeNull();
+  expect(screen.queryByText(meetingAt)).toBeNull();
+  expect(lookups).toBe(1);
+});
+
+test('unavailable meetup notification shows a generic retry without a swap link or deferred copy', async () => {
+  const f = fixture();
+  const item = {
+    ...row(1),
+    event_type: 'meeting_change' as const,
+    resource_type: 'meetup' as const,
+  };
+  f.rows.splice(0, f.rows.length, item);
+  server.use(
+    http.get(
+      '*/api/v1/meetups/:id',
+      () => new HttpResponse(null, { status: 404 }),
+    ),
+  );
+  render(
+    <QueryClientProvider client={f.queries}>
+      <MemoryRouter initialEntries={[`/notifications/${item.id}`]}>
+        <Routes>
+          <Route path="/notifications/:id" element={<NotificationPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByRole('button', { name: 'Retry meeting link' });
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'This meeting could not be loaded or is unavailable to this account.',
+  );
+  expect(
+    screen.queryByRole('link', { name: 'View meeting in swap' }),
+  ).toBeNull();
+  expect(screen.queryByText(/related feature is not available yet/)).toBeNull();
 });
