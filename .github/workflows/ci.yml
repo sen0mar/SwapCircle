@@ -68,6 +68,7 @@ jobs:
       - run: pnpm --filter @swapcircle/api test:groups-local
       - run: pnpm --filter @swapcircle/api test:revisions-local
       - run: pnpm --filter @swapcircle/api test:acceptances-local
+      - run: pnpm --filter @swapcircle/api test:lifecycle-local
       - run: pnpm --filter @swapcircle/api test:coffee-local
       - run: pnpm --filter @swapcircle/api test:meetings-local
       - run: pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
