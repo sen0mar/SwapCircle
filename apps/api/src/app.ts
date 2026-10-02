@@ -1,3 +1,4 @@
+import type { CoffeeService } from './features/coffee/coffee.service.js';
 import type { NotificationsService } from './features/notifications/notifications.service.js';
 import type { TradesService } from './features/trades/trades.service.js';
 import type { ConversationsService } from './features/conversations/conversations.service.js';
@@ -31,6 +32,7 @@ export function createApp({
   conversations,
   notifications,
   trades,
+  coffee,
   limits = developmentLimits,
 }: {
   allowedOrigins: readonly string[];
@@ -42,6 +44,7 @@ export function createApp({
   conversations?: ConversationsService;
   notifications?: NotificationsService;
   trades?: TradesService;
+  coffee?: CoffeeService;
   limits?: SafetyLimits;
 }): Express {
   const app = express();
@@ -98,6 +101,7 @@ export function createApp({
       conversations,
       notifications,
       trades,
+      coffee,
     ),
   );
   app.use(notFound);

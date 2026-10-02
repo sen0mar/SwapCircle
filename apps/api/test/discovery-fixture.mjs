@@ -1,3 +1,5 @@
+import { CoffeeService } from '../dist/features/coffee/coffee.service.js';
+import { CoffeeRepository } from '../dist/features/coffee/coffee.repository.js';
 import { NotificationsService } from '../dist/features/notifications/notifications.service.js';
 import { TradesService } from '../dist/features/trades/trades.service.js';
 import { TradesRepository } from '../dist/features/trades/trades.repository.js';
@@ -58,6 +60,7 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
   const makeApp = (limits = developmentLimits) => {
     const permissions = new SafetyPermissions(limits);
     return createApp({
+      coffee: new CoffeeService(new CoffeeRepository(runtime), permissions),
       trades: new TradesService(new TradesRepository(runtime), permissions),
       notifications: new NotificationsService(
         new NotificationsRepository(runtime),
@@ -112,6 +115,10 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
           'ALTER TABLE public.trade_acceptance_operations DISABLE TRIGGER acceptance_operations_append_only',
         );
         for (const { trade_id } of tradeIds.rows) {
+          await client.query(
+            'DELETE FROM public.coffee_invitations WHERE trade_id=$1',
+            [trade_id],
+          );
           await client.query(
             'DELETE FROM public.trade_acceptance_operations WHERE trade_id=$1',
             [trade_id],

@@ -1,3 +1,5 @@
+import { CoffeeService } from './features/coffee/coffee.service.js';
+import { CoffeeRepository } from './features/coffee/coffee.repository.js';
 import { NotificationsService } from './features/notifications/notifications.service.js';
 import { TradesService } from './features/trades/trades.service.js';
 import { TradesRepository } from './features/trades/trades.repository.js';
@@ -26,6 +28,7 @@ const pool = new Pool(databaseConfig(config.databaseUrl));
 const permissions = new SafetyPermissions(config.limits);
 
 createApp({
+  coffee: new CoffeeService(new CoffeeRepository(pool), permissions),
   trades: new TradesService(new TradesRepository(pool), permissions),
   notifications: new NotificationsService(
     new NotificationsRepository(pool),
