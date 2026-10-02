@@ -564,3 +564,84 @@ export const coffeeInvitationParamsSchema = z.strictObject({
   id: z.uuid(),
   invitationId: z.uuid(),
 });
+
+// UTC instants are deliberate: callers resolve local DST ambiguity before sending.
+export const meetingInstantSchema = z.iso
+  .datetime({ precision: 3 })
+  .refine(
+    (value) =>
+      Number.isFinite(Date.parse(value)) &&
+      new Date(value).getUTCFullYear() >= 1 &&
+      new Date(value).toISOString() === value,
+    'Use a valid exact UTC instant with milliseconds.',
+  );
+
+export const meetingTimeZoneSchema = z
+  .string()
+  .min(1)
+  .max(100)
+  .refine((value) => {
+    if (value !== 'UTC' && !value.includes('/')) return false;
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: value });
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Use a valid IANA time zone.');
+
+export const meetingMapLinkSchema = z
+  .url()
+  .max(2000)
+  .refine((value) => {
+    return /^https:\/\/[^/@?#]+(?:[/?#]|$)/i.test(value);
+  }, 'Use an HTTPS link without credentials.');
+
+const meetingArrangementFields = {
+  place: z.string().trim().min(1).max(500).nullable().default(null),
+  mapLink: meetingMapLinkSchema.nullable().default(null),
+  meetingAt: meetingInstantSchema,
+  timeZone: meetingTimeZoneSchema,
+};
+
+export const meetingCreateSchema = z
+  .strictObject({
+    ...meetingArrangementFields,
+    operationKey: z.uuid(),
+    expectedTradeVersion: z.number().int().positive(),
+  })
+  .refine(
+    (value) => value.place !== null || value.mapLink !== null,
+    'Provide a place or map link.',
+  );
+
+export const meetingUpdateSchema = meetingCreateSchema.safeExtend({
+  expectedRevision: z.number().int().positive(),
+});
+
+export const meetingResponseSchema = z.strictObject({
+  operationKey: z.uuid(),
+  expectedTradeVersion: z.number().int().positive(),
+  expectedRevision: z.number().int().positive(),
+  expectedResponse: z.enum(['confirmed', 'declined']).nullable(),
+  response: z.enum(['confirmed', 'declined']),
+});
+
+export const meetupSchema = z.strictObject({
+  ...meetingArrangementFields,
+  id: z.uuid(),
+  tradeId: z.uuid(),
+  tradeVersion: z.number().int().positive(),
+  revision: z.number().int().positive(),
+  responses: z.array(
+    z.strictObject({
+      userId: z.uuid(),
+      response: z.enum(['confirmed', 'declined']).nullable(),
+    }),
+  ),
+});
+
+export type MeetingCreate = z.infer<typeof meetingCreateSchema>;
+export type MeetingUpdate = z.infer<typeof meetingUpdateSchema>;
+export type MeetingResponse = z.infer<typeof meetingResponseSchema>;
+export type Meetup = z.infer<typeof meetupSchema>;
