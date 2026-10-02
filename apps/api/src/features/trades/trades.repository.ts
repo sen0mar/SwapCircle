@@ -209,6 +209,74 @@ export class TradesRepository {
     return result.rows[0];
   }
 
+  async expired(client: PoolClient, id: string) {
+    const result = await client.query<{ expired: boolean }>(
+      'SELECT expires_at <= clock_timestamp() AS expired FROM public.trades WHERE id=$1',
+      [id],
+    );
+    return result.rows[0]!.expired;
+  }
+
+  async expiringIds(client: PoolClient, actor: string) {
+    const result = await client.query<{ id: string }>(
+      `SELECT t.id FROM public.trades t WHERE t.status='proposed'
+       AND t.expires_at <= clock_timestamp() AND EXISTS
+       (SELECT 1 FROM public.trade_participants p WHERE p.trade_id=t.id AND p.user_id=$1 AND p.active)
+       ORDER BY t.id`,
+      [actor],
+    );
+    return result.rows.map((row) => row.id);
+  }
+
+  async hasHandover(client: PoolClient, id: string) {
+    const result = await client.query(
+      `SELECT 1 FROM public.trade_events WHERE trade_id=$1
+       AND event_type IN ('receipt_acknowledged','handover_reported','disputed','completed') LIMIT 1`,
+      [id],
+    );
+    return result.rowCount !== 0;
+  }
+
+  async close(
+    client: PoolClient,
+    id: string,
+    actor: string,
+    status: 'declined' | 'expired' | 'cancelled',
+  ) {
+    // Lock every reserved listing in the same order as final acceptance.
+    await client.query(
+      `SELECT id FROM public.listings WHERE id IN
+       (SELECT listing_id FROM public.item_reservations WHERE trade_id=$1 AND released_at IS NULL)
+       ORDER BY id FOR UPDATE`,
+      [id],
+    );
+    await client.query(
+      `WITH released AS (
+        UPDATE public.item_reservations SET released_at=clock_timestamp()
+        WHERE trade_id=$1 AND released_at IS NULL RETURNING listing_id
+       ) UPDATE public.listings SET availability='available',updated_at=clock_timestamp()
+       WHERE id IN (SELECT listing_id FROM released) AND availability='reserved'`,
+      [id],
+    );
+    if (status === 'declined')
+      await client.query(
+        `UPDATE public.trade_participants SET invitation_status='declined',responded_at=clock_timestamp()
+         WHERE trade_id=$1 AND user_id=$2`,
+        [id, actor],
+      );
+    await client.query(
+      'UPDATE public.trades SET status=$2,updated_at=clock_timestamp() WHERE id=$1',
+      [id, status],
+    );
+    const event = await client.query<{ id: string }>(
+      `INSERT INTO public.trade_events (trade_id,version_id,actor_id,event_type)
+       SELECT t.id,v.id,$2,$3 FROM public.trades t JOIN public.trade_versions v
+       ON v.trade_id=t.id AND v.version=t.current_version WHERE t.id=$1 RETURNING id`,
+      [id, actor, status],
+    );
+    return event.rows[0]!.id;
+  }
+
   async acceptanceOperation(client: PoolClient, actor: string, key: string) {
     const result = await client.query<{
       trade_id: string;

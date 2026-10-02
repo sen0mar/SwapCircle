@@ -1,9 +1,12 @@
+import type { PoolClient } from 'pg';
 import { createHash } from 'node:crypto';
 import {
   proposalCreationResultSchema,
   type ProposalCreation,
   type ProposalRevision,
   type TradeAcceptance,
+  type TradeTransition,
+  tradeTransitionResultSchema,
   tradeAcceptanceResultSchema,
 } from '@swapcircle/contracts';
 import { createNotification } from '../notifications/notifications.repository.js';
@@ -19,6 +22,118 @@ export class TradesService {
     private readonly repository: TradesRepository,
     private readonly permissions = new SafetyPermissions(),
   ) {}
+
+  private async close(
+    client: PoolClient,
+    id: string,
+    actor: string,
+    status: 'declined' | 'expired' | 'cancelled',
+  ) {
+    const eventId = await this.repository.close(client, id, actor, status);
+    for (const recipientId of await this.repository.participantIds(client, id))
+      await createNotification(client, {
+        recipient_id: recipientId,
+        domain_event_id: eventId,
+        event_type: 'trade_status',
+        resource_type: 'trade',
+        resource_id: id,
+      });
+  }
+
+  // Commit lazy expiry before any later rejected action rolls back its transaction.
+  private async refreshExpiry(actor: string, id?: string) {
+    await this.repository.transaction(async (client) => {
+      await lockProposalBoundary(client);
+      await this.repository.lockParticipants(client, [actor]);
+      await this.permissions.assertUnrestricted(client, [actor]);
+      const ids = id ? [id] : await this.repository.expiringIds(client, actor);
+      for (const tradeId of ids) {
+        const trade = await this.repository.lockTrade(client, tradeId, actor);
+        if (
+          trade?.status === 'proposed' &&
+          (await this.repository.expired(client, tradeId))
+        )
+          await this.close(client, tradeId, actor, 'expired');
+      }
+    });
+  }
+
+  async transition(
+    actor: string,
+    id: string,
+    action: 'decline' | 'cancel' | 'expire',
+    input: TradeTransition,
+  ) {
+    await this.refreshExpiry(actor, id);
+    const result = await this.repository.transaction(async (client) => {
+      await lockProposalBoundary(client);
+      await this.repository.lockParticipants(client, [actor]);
+      await this.permissions.assertUnrestricted(client, [actor]);
+      const trade = await this.repository.lockTrade(client, id, actor);
+      if (!trade)
+        throw new SafetyError(
+          404,
+          'TRADE_UNAVAILABLE',
+          'This trade is unavailable.',
+        );
+      if (trade.current_version !== input.expectedVersion)
+        throw new SafetyError(
+          409,
+          'STALE_PROPOSAL',
+          'The proposal changed. Reload its terms.',
+        );
+      if (
+        trade.status === 'proposed' &&
+        (await this.repository.expired(client, id))
+      ) {
+        await this.close(client, id, actor, 'expired');
+        if (action !== 'expire')
+          return new SafetyError(
+            409,
+            'PROPOSAL_EXPIRED',
+            'This proposal has expired.',
+          );
+        return tradeTransitionResultSchema.parse({
+          id,
+          currentVersion: trade.current_version,
+          status: 'expired',
+        });
+      }
+      const status =
+        action === 'decline'
+          ? 'declined'
+          : action === 'cancel'
+            ? 'cancelled'
+            : 'expired';
+      if (trade.status !== status) {
+        if (
+          (trade.status !== 'proposed' &&
+            !(trade.status === 'confirmed' && action === 'cancel')) ||
+          (action === 'expire' && !(await this.repository.expired(client, id)))
+        )
+          throw new SafetyError(
+            409,
+            'TERMS_FROZEN',
+            'This trade cannot be changed.',
+          );
+        if (await this.repository.hasHandover(client, id))
+          throw new SafetyError(
+            409,
+            'HANDOVER_RECORDED',
+            'This trade has a recorded handover and cannot be cancelled.',
+          );
+        await this.permissions.authorizeWrite(client, actor, 'trade');
+        await this.close(client, id, actor, status);
+      }
+      return tradeTransitionResultSchema.parse({
+        id,
+        currentVersion: trade.current_version,
+        status,
+      });
+    });
+    if (result instanceof SafetyError) throw result;
+    return result;
+  }
 
   async create(actor: string, input: ProposalCreation) {
     if (!input.participantIds.includes(actor))
@@ -68,6 +183,18 @@ export class TradesService {
             'OPERATION_CONFLICT',
             'This operation key was used for different terms.',
           );
+        const existing = await this.repository.lockTrade(
+          client,
+          previous.id,
+          actor,
+        );
+        if (
+          existing?.status === 'proposed' &&
+          (await this.repository.expired(client, previous.id))
+        ) {
+          await this.close(client, previous.id, actor, 'expired');
+          previous.status = 'expired';
+        }
         return proposalCreationResultSchema.parse({
           id: previous.id,
           currentVersion: previous.currentVersion,
@@ -170,7 +297,8 @@ export class TradesService {
   }
 
   async revise(actor: string, id: string, input: ProposalRevision) {
-    return this.repository.transaction(async (client) => {
+    await this.refreshExpiry(actor, id);
+    const result = await this.repository.transaction(async (client) => {
       await lockProposalBoundary(client);
       const previousParticipants = await this.repository.participantIds(
         client,
@@ -190,9 +318,18 @@ export class TradesService {
         );
 
       if (
-        trade.status !== 'proposed' ||
-        trade.expires_at.getTime() <= Date.now()
-      )
+        trade.status === 'proposed' &&
+        (await this.repository.expired(client, id))
+      ) {
+        await this.close(client, id, actor, 'expired');
+        return new SafetyError(
+          409,
+          'PROPOSAL_EXPIRED',
+          'This proposal has expired.',
+        );
+      }
+
+      if (trade.status !== 'proposed')
         throw new SafetyError(
           409,
           'TERMS_FROZEN',
@@ -240,8 +377,6 @@ export class TradesService {
           'A participant is unavailable.',
         );
 
-      await this.permissions.authorizeWrite(client, actor, 'trade');
-
       const listings = await this.repository.availableListings(
         client,
         input.transfers.map((transfer) => transfer.listingId),
@@ -261,6 +396,16 @@ export class TradesService {
             'An offered item has a different owner.',
           );
       }
+
+      if (await this.repository.expired(client, id)) {
+        await this.close(client, id, actor, 'expired');
+        return new SafetyError(
+          409,
+          'PROPOSAL_EXPIRED',
+          'This proposal has expired.',
+        );
+      }
+      await this.permissions.authorizeWrite(client, actor, 'trade');
 
       const eventId = await this.repository.insertRevision(
         client,
@@ -316,10 +461,13 @@ export class TradesService {
         status: 'proposed' as const,
       };
     });
+    if (result instanceof SafetyError) throw result;
+    return result;
   }
 
   async accept(actor: string, id: string, input: TradeAcceptance) {
-    return this.repository.transaction(async (client) => {
+    await this.refreshExpiry(actor, id);
+    const result = await this.repository.transaction(async (client) => {
       await lockProposalBoundary(client);
       await this.repository.lockOperation(client, actor, input.operationKey);
       const participants = await this.repository.participantIds(client, id);
@@ -357,8 +505,6 @@ export class TradesService {
         });
       }
 
-      await this.permissions.authorizeWrite(client, actor, 'trade');
-
       if (trade.current_version !== input.expectedVersion)
         throw new SafetyError(
           409,
@@ -383,7 +529,8 @@ export class TradesService {
           input.expectedVersion,
           actor,
         ))
-      )
+      ) {
+        await this.permissions.authorizeWrite(client, actor, 'trade');
         return this.repository.saveAcceptanceOperation(
           client,
           actor,
@@ -391,6 +538,13 @@ export class TradesService {
           id,
           input.expectedVersion,
           'confirmed',
+        );
+      }
+      if (trade.status === 'expired')
+        throw new SafetyError(
+          409,
+          'PROPOSAL_EXPIRED',
+          'This proposal has expired.',
         );
       if (trade.status !== 'proposed')
         throw new SafetyError(
@@ -466,12 +620,16 @@ export class TradesService {
             input.expectedVersion,
           )
         ).version?.unexpired
-      )
-        throw new SafetyError(
+      ) {
+        await this.close(client, id, actor, 'expired');
+        return new SafetyError(
           409,
           'PROPOSAL_EXPIRED',
           'This proposal has expired.',
         );
+      }
+
+      await this.permissions.authorizeWrite(client, actor, 'trade');
 
       if (
         !(await this.repository.hasAcceptance(
@@ -517,9 +675,12 @@ export class TradesService {
         status,
       );
     });
+    if (result instanceof SafetyError) throw result;
+    return result;
   }
 
   async version(actor: string, id: string, version: number) {
+    await this.refreshExpiry(actor, id);
     return this.repository.read(async (client) => {
       await this.permissions.assertUnrestricted(client, [actor]);
       const snapshot = await this.repository.version(
@@ -540,6 +701,7 @@ export class TradesService {
   }
 
   async page(actor: string, limit: number, after?: string) {
+    await this.refreshExpiry(actor);
     return this.repository.read(async (client) => {
       if (await this.repository.restricted(client, actor))
         throw new SafetyError(
@@ -553,6 +715,7 @@ export class TradesService {
   }
 
   async detail(actor: string, id: string) {
+    await this.refreshExpiry(actor, id);
     return this.repository.read(async (client) => {
       if (await this.repository.restricted(client, actor))
         throw new SafetyError(
