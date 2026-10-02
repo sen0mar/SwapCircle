@@ -1,4 +1,6 @@
 import {
+  tradeAcceptanceResultSchema,
+  type TradeAcceptance,
   proposalCreationResultSchema,
   tradeDetailSchema,
   tradePageSchema,
@@ -71,5 +73,21 @@ export function getTradeVersion(
     `/api/v1/trades/${encodeURIComponent(id)}/versions/${version}`,
     tradeVersionSchema,
     { signal },
+  );
+}
+
+export function acceptTrade(
+  request: typeof apiRequest,
+  id: string,
+  input: TradeAcceptance,
+) {
+  return request(
+    `/api/v1/trades/${encodeURIComponent(id)}/accept`,
+    tradeAcceptanceResultSchema,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
   );
 }

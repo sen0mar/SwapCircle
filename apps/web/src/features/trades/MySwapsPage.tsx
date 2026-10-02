@@ -5,7 +5,7 @@ import { useMyTrades } from './useTrades';
 
 const statuses: Record<string, string> = {
   proposed: 'Proposed · awaiting responses',
-  confirmed: 'Confirmed',
+  confirmed: 'Confirmed · agreement reached',
   completed: 'Completed',
   declined: 'Declined',
   expired: 'Expired',
@@ -55,6 +55,9 @@ export function MySwapsPage() {
                     {new Date(trade.expiresAt).toLocaleString()}
                   </time>
                 </p>
+                {trade.status === 'confirmed' && (
+                  <p>Items reserved · handover not yet confirmed.</p>
+                )}
                 {trade.status === 'proposed' && <p>Items are not reserved.</p>}
                 <Link to={`/swaps/${trade.id}`}>View swap</Link>
               </Card>

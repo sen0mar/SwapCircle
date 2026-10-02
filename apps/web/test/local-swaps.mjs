@@ -165,7 +165,7 @@ try {
   await expect(alicePage).toHaveURL(/\/swaps\/[0-9a-f-]+$/);
   const tradeId = alicePage.url().split('/').pop();
   await expect(
-    alicePage.getByRole('heading', { name: 'Current terms' }),
+    alicePage.getByRole('heading', { name: 'Current terms', exact: true }),
   ).toBeVisible();
   await expect(
     alicePage.getByText('This is a proposal.', { exact: false }),
@@ -205,10 +205,7 @@ try {
     .click();
   await expect(bobPage).toHaveURL(`${origin}/swaps/${tradeId}`);
   await expect(
-    bobPage.getByText(
-      'Your trade invitation is pending. Chat membership is separate; trade response controls are not available yet.',
-      { exact: true },
-    ),
+    bobPage.getByRole('button', { name: 'Review current terms', exact: true }),
   ).toBeVisible();
   await expect(bobPage.getByText(bobItem.title).first()).toBeVisible();
 
