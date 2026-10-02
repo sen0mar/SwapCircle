@@ -84,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      23,
+      24,
     );
 
     const publication = await pool.query<{ tablename: string }>(
@@ -129,6 +129,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'trade_events',
       'trade_acceptances',
       'trade_acceptance_operations',
+      'trade_outcome_operations',
       'item_reservations',
     ]) {
       const protection = await pool.query<{ relrowsecurity: boolean }>(
@@ -168,6 +169,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       'public.guard_proposal_terms()',
       'public.guard_new_trade_snapshot()',
       'private.guard_trade_handover()',
+      'private.guard_exchanged_listing()',
     ]) {
       for (const role of [
         'anon',
