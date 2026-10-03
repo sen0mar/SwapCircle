@@ -1,4 +1,7 @@
 import {
+  tradeOutcomeResultSchema,
+  type TradeReceiptSubmission,
+  type TradeProblemSubmission,
   tradeTransitionResultSchema,
   type TradeTransition,
   tradeAcceptanceResultSchema,
@@ -103,6 +106,23 @@ export function acceptTrade(
   return request(
     `/api/v1/trades/${encodeURIComponent(id)}/accept`,
     tradeAcceptanceResultSchema,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export function recordTradeOutcome(
+  request: typeof apiRequest,
+  id: string,
+  action: 'receipt' | 'problem',
+  input: TradeReceiptSubmission | TradeProblemSubmission,
+) {
+  return request(
+    `/api/v1/trades/${encodeURIComponent(id)}/${action}`,
+    tradeOutcomeResultSchema,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
