@@ -30,9 +30,19 @@ export type Interest = z.infer<typeof interestSchema>;
 export const interestCatalogueSchema = z.array(interestSchema);
 
 export const profileUpdateSchema = z.strictObject({
-  displayName: z.string().trim().min(1).max(80),
-  biography: z.string().trim().max(1000),
-  approximateLocation: z.string().trim().max(120),
+  displayName: z
+    .string()
+    .trim()
+    .min(1, 'Enter a display name.')
+    .max(80, 'Use at most 80 characters for your display name.'),
+  biography: z
+    .string()
+    .trim()
+    .max(1000, 'Use at most 1,000 characters for your biography.'),
+  approximateLocation: z
+    .string()
+    .trim()
+    .max(120, 'Use at most 120 characters for your approximate location.'),
   interestIds: z
     .array(interestIdSchema)
     .max(30)
@@ -74,8 +84,16 @@ export const listingAvailabilitySchema = z.enum([
   'disputed',
 ]);
 export const listingCreateSchema = z.strictObject({
-  title: z.string().trim().min(1).max(120),
-  description: z.string().trim().min(1).max(5000),
+  title: z
+    .string()
+    .trim()
+    .min(1, 'Enter an item title.')
+    .max(120, 'Use at most 120 characters for the title.'),
+  description: z
+    .string()
+    .trim()
+    .min(1, 'Describe your item.')
+    .max(5000, 'Use at most 5,000 characters for the description.'),
   condition: listingConditionSchema,
 });
 export const listingRevisionSchema = z.strictObject({
