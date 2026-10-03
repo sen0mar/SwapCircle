@@ -1,6 +1,12 @@
+import { readFileSync } from 'node:fs';
+
 export class DatabaseConfigurationError extends Error {}
 
-export function databaseConfig(value: string | undefined, runtime = true) {
+export function databaseConfig(
+  value: string | undefined,
+  runtime = true,
+  environment: NodeJS.ProcessEnv = process.env,
+) {
   if (!value)
     throw new DatabaseConfigurationError(
       'Missing database connection configuration.',
@@ -24,7 +30,7 @@ export function databaseConfig(value: string | undefined, runtime = true) {
     url.pathname !== '/postgres' ||
     url.search ||
     url.hash ||
-    (runtime && url.username !== 'swapcircle_runtime')
+    (runtime && !validRuntimeUsername(url, environment.SUPABASE_URL))
   )
     throw new DatabaseConfigurationError(
       'Invalid database connection configuration.',
@@ -37,8 +43,28 @@ export function databaseConfig(value: string | undefined, runtime = true) {
     max: runtime ? 5 : 1,
     idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 5_000,
-    ssl: local ? (false as const) : { rejectUnauthorized: true as const },
+    ssl: local
+      ? (false as const)
+      : {
+          rejectUnauthorized: true as const,
+          ...(environment.DATABASE_CA_CERT_PATH
+            ? { ca: readFileSync(environment.DATABASE_CA_CERT_PATH, 'utf8') }
+            : {}),
+        },
   };
+}
+
+function validRuntimeUsername(url: URL, supabaseUrl: string | undefined) {
+  if (url.username === 'swapcircle_runtime') return true;
+
+  const ref = /^swapcircle_runtime\.([a-z0-9]{20})$/.exec(url.username)?.[1];
+
+  return Boolean(
+    ref &&
+    supabaseUrl === `https://${ref}.supabase.co` &&
+    /^aws-[0-9]+-[a-z0-9-]+\.pooler\.supabase\.com$/.test(url.hostname) &&
+    url.port === '5432',
+  );
 }
 
 export function assertLocalTarget(
