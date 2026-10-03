@@ -108,8 +108,10 @@ test('readiness reflects dependency failure separately from liveness and bounds 
 
 test('Sentry allowlist removes hostile payloads and preserves matching private map coordinates', () => {
   const id = '12345678-1234-1234-1234-123456789012';
-  const filename =
-    'file:///private/host/apps/api/dist/features/trades/trades.service.js';
+  const filename = new URL(
+    '../dist/features/trades/trades.service.js',
+    import.meta.url,
+  ).href;
   const event = scrubEvent({
     type: undefined,
     event_id: 'a'.repeat(32),
@@ -380,4 +382,51 @@ test('a refused real database connection returns unavailable without leaking cre
   } finally {
     await pool.end();
   }
+});
+
+test('external dist files and URLs cannot resolve against the API namespace', () => {
+  const debugId = '12345678-1234-1234-1234-123456789012';
+  const own = new URL('../dist/middleware/authenticate.js', import.meta.url)
+    .href;
+  const outside = [
+    new URL('../../../packages/contracts/dist/index.js', import.meta.url).href,
+    new URL('../node_modules/third-party/dist/index.js', import.meta.url).href,
+    new URL('../dist-other/index.js', import.meta.url).href,
+    'https://example.org/apps/api/dist/index.js',
+    `${own}?email=private@example.org`,
+    '/foreign/checkout/apps/api/dist/index.js',
+  ];
+  const event = scrubEvent({
+    type: undefined,
+    exception: {
+      values: [
+        {
+          stacktrace: {
+            frames: [own, ...outside].map((filename) => ({
+              filename,
+              lineno: 1,
+            })),
+          },
+        },
+      ],
+    },
+    debug_meta: {
+      images: [own, ...outside].map((code_file) => ({
+        type: 'sourcemap',
+        code_file,
+        debug_id: debugId,
+      })),
+    },
+  });
+
+  assert.deepEqual(event.exception?.values?.[0]?.stacktrace?.frames, [
+    { filename: 'app:///middleware/authenticate.js', lineno: 1, in_app: true },
+  ]);
+  assert.deepEqual(event.debug_meta?.images, [
+    {
+      type: 'sourcemap',
+      code_file: 'app:///middleware/authenticate.js',
+      debug_id: debugId,
+    },
+  ]);
 });
