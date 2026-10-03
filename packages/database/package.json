@@ -8,7 +8,8 @@
     "build": "tsc",
     "generate": "drizzle-kit generate",
     "test": "node --test test/*.test.ts",
-    "local": "node --env-file-if-exists=.env scripts/local.ts"
+    "local": "node --env-file-if-exists=.env scripts/local.ts",
+    "backup": "node --env-file-if-exists=.env scripts/backup.ts"
   },
   "exports": {
     ".": {
