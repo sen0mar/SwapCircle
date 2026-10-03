@@ -38,7 +38,7 @@ jobs:
   database:
     runs-on: ubuntu-latest
     # The prior full database job used 18 minutes before pairwise coffee coverage.
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
