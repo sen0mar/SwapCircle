@@ -1,4 +1,9 @@
+import { fileURLToPath } from 'node:url';
 import type { ErrorEvent, StackFrame } from '@sentry/node';
+
+// Resolves the same API dist root from source tests and compiled runtime code.
+// Render may change the checkout prefix; it must never change the namespace.
+const applicationRoot = fileURLToPath(new URL('../../dist/', import.meta.url));
 
 export function safeRevision(value: unknown): string {
   return typeof value === 'string' && /^[a-f0-9]{40}$/.test(value)
@@ -7,11 +12,26 @@ export function safeRevision(value: unknown): string {
 }
 
 function safeFilename(filename: string): string | undefined {
-  const match = filename.match(
-    /\/dist\/((?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.js)$/,
-  );
+  let path = filename;
 
-  return match ? `app:///${match[1]}` : undefined;
+  if (filename.startsWith('file:')) {
+    try {
+      const url = new URL(filename);
+
+      if (url.search || url.hash) return undefined;
+      path = fileURLToPath(url);
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (!path.startsWith(applicationRoot)) return undefined;
+
+  const relative = path.slice(applicationRoot.length);
+
+  return /^(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.js$/.test(relative)
+    ? `app:///${relative}`
+    : undefined;
 }
 
 function safeFrame(frame: StackFrame): StackFrame | null {
