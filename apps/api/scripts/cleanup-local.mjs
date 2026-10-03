@@ -31,8 +31,9 @@ async function main() {
   const photos = new PhotosService(new PhotosRepository(runtime), storage);
   try {
     const listings = (
-      await runtime.query(`SELECT listing_id, owner_id FROM public.listing_photos
-      WHERE state='deleting' OR (state='pending' AND created_at < now() - interval '10 minutes')
+      await runtime.query(`SELECT p.listing_id, p.owner_id FROM public.listing_photos p
+      WHERE (p.state='deleting' OR (p.state='pending' AND p.created_at < now() - interval '10 minutes'))
+      AND NOT EXISTS (SELECT 1 FROM public.trade_items i WHERE i.listing_id=p.listing_id)
       GROUP BY listing_id, owner_id ORDER BY listing_id LIMIT 16`)
     ).rows;
     // At most 16 listings × three slots plus 48 queued avatars per invocation.
