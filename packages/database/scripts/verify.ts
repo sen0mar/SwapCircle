@@ -1,19 +1,32 @@
 import assert from 'node:assert/strict';
 import { Pool } from 'pg';
 import { databaseConfig } from '../src/config.ts';
+import { verifyPermissions } from './verify-permissions.ts';
 
-export async function verify(pool: Pool, runtimeUrl: string) {
-  const runtime = new Pool(databaseConfig(runtimeUrl));
+export async function verify(
+  pool: Pool,
+  runtimeUrl: string,
+  environment: NodeJS.ProcessEnv = process.env,
+) {
+  const runtime = new Pool(databaseConfig(runtimeUrl, true, environment));
 
   try {
     const role = await runtime.query('select current_user');
 
     assert.equal(role.rows[0].current_user, 'swapcircle_runtime');
 
-    await assert.rejects(
-      runtime.query('create table public.forbidden_probe (id int)'),
-      { code: '42501' },
-    );
+    const runtimeClient = await runtime.connect();
+
+    try {
+      await runtimeClient.query('begin');
+      await assert.rejects(
+        runtimeClient.query('create table public.forbidden_probe (id int)'),
+        { code: '42501' },
+      );
+    } finally {
+      await runtimeClient.query('rollback');
+      runtimeClient.release();
+    }
 
     const client = await pool.connect();
 
@@ -71,7 +84,7 @@ export async function verify(pool: Pool, runtimeUrl: string) {
     }
 
     const roles = await pool.query(
-      "select rolsuper, rolcreatedb, rolcreaterole, rolbypassrls, rolinherit from pg_roles where rolname = 'swapcircle_runtime'",
+      "select rolsuper, rolcreatedb, rolcreaterole, rolbypassrls, rolinherit, rolreplication, rolcanlogin from pg_roles where rolname = 'swapcircle_runtime'",
     );
 
     assert.deepEqual(roles.rows[0], {
@@ -80,7 +93,27 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       rolcreaterole: false,
       rolbypassrls: false,
       rolinherit: false,
+      rolreplication: false,
+      rolcanlogin: true,
     });
+
+    assert.equal(
+      (
+        await pool.query(
+          "select count(*)::int as count from pg_auth_members where member = 'swapcircle_runtime'::regrole",
+        )
+      ).rows[0].count,
+      0,
+    );
+
+    assert.deepEqual(
+      (
+        await pool.query(
+          "select has_schema_privilege('swapcircle_runtime','public','CREATE') as schema_create, has_database_privilege('swapcircle_runtime',current_database(),'CREATE') as database_create",
+        )
+      ).rows[0],
+      { schema_create: false, database_create: false },
+    );
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
@@ -211,6 +244,8 @@ export async function verify(pool: Pool, runtimeUrl: string) {
       );
       assert.equal(result.rows[0]?.execute, false);
     }
+
+    await verifyPermissions(pool);
 
     const searchIndex = await pool.query<{ indexdef: string }>(
       "SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND indexname='listings_search_idx'",
