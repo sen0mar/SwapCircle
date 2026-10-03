@@ -10,6 +10,7 @@ import { safeDestination } from '../src/features/auth/safe-destination';
 import { identitySchema } from '@swapcircle/contracts';
 import { http, HttpResponse } from 'msw';
 import { server } from './setup';
+import { actionError } from '../src/features/safety/action-error';
 
 function fixture() {
   let callback: (_event: string, session: Session | null) => void = () => {};
@@ -278,4 +279,33 @@ test('account lifecycle clears composer drafts and failed/pending payloads and c
     screen.queryByText('pending: Interrupted private body'),
   ).not.toBeInTheDocument();
   expect(queries.getQueryCache().getAll()).toHaveLength(0);
+});
+
+test('a lost SDK session is an actionable authorization error before any write', async () => {
+  const auth = fixture();
+  const queries = new QueryClient();
+  let request: ReturnType<typeof useAuth>['request'];
+  function Probe() {
+    request = useAuth().request;
+    return null;
+  }
+  render(
+    <QueryClientProvider client={queries}>
+      <AuthProvider client={auth.client}>
+        <Probe />
+      </AuthProvider>
+    </QueryClientProvider>,
+  );
+  act(() => auth.emit('alice'));
+  vi.spyOn(auth.client.auth, 'getSession').mockResolvedValue({
+    data: { session: null },
+    error: null,
+  });
+  const error = await request!('/api/v1/identity', identitySchema).catch(
+    (error: unknown) => error,
+  );
+  expect(error).toMatchObject({ code: 'UNAUTHORIZED', status: 401 });
+  expect(actionError(error)).toBe(
+    'Your session could not be verified. Sign in again to continue.',
+  );
 });

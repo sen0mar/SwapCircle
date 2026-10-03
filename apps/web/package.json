@@ -23,7 +23,8 @@
     "test:coffee-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-coffee.mjs",
     "test:meetings-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-meetings.mjs",
     "test:lifecycle-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-lifecycle.mjs",
-    "test:completion-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-completion.mjs"
+    "test:completion-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-completion.mjs",
+    "test:accessibility-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-accessibility.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

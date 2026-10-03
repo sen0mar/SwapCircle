@@ -49,6 +49,7 @@ const suites = {
       'meetings',
       'lifecycle',
       'completion',
+      'accessibility',
     ],
   },
 };
