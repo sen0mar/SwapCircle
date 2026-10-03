@@ -7,9 +7,23 @@ export function safeRevision(value: unknown): string {
 }
 
 function safeFilename(filename: string): string | undefined {
-  const match = filename.match(/\/(assets\/[a-zA-Z0-9_-]+\.js)$/);
+  try {
+    const url = new URL(filename);
 
-  return match ? `app:///${match[1]}` : undefined;
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      url.origin !== globalThis.location.origin ||
+      url.search ||
+      url.hash
+    )
+      return undefined;
+
+    const match = url.pathname.match(/^\/(assets\/[a-zA-Z0-9_-]+\.js)$/);
+
+    return match ? `app:///${match[1]}` : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function safeFrame(frame: StackFrame): StackFrame | null {

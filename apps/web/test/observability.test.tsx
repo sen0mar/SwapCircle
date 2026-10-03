@@ -13,7 +13,7 @@ const revision = 'a'.repeat(40);
 
 test('Sentry allowlist removes hostile payloads and preserves matching private map coordinates', () => {
   const id = '12345678-1234-1234-1234-123456789012';
-  const filename = 'https://public.example/assets/index-abc123.js';
+  const filename = `${globalThis.location.origin}/assets/index-abc123.js`;
   const event = scrubEvent({
     type: undefined,
     event_id: 'a'.repeat(32),
@@ -122,4 +122,49 @@ test('browser monitoring sends only scrubbed events with replay and sessions dis
   );
   await Sentry.close(2000);
   vi.unstubAllEnvs();
+});
+
+test('external origins, extension assets and URL values cannot resolve as app assets', () => {
+  const debugId = '12345678-1234-1234-1234-123456789012';
+  const own = `${globalThis.location.origin}/assets/index-abc123.js`;
+  const outside = [
+    'https://external.example/assets/index-abc123.js',
+    'chrome-extension://synthetic/assets/index-abc123.js',
+    'file:///assets/index-abc123.js',
+    `${own}?email=private@example.org`,
+    `${own}#private-message`,
+  ];
+  const event = scrubEvent({
+    type: undefined,
+    exception: {
+      values: [
+        {
+          stacktrace: {
+            frames: [own, ...outside].map((filename) => ({
+              filename,
+              lineno: 1,
+            })),
+          },
+        },
+      ],
+    },
+    debug_meta: {
+      images: [own, ...outside].map((code_file) => ({
+        type: 'sourcemap',
+        code_file,
+        debug_id: debugId,
+      })),
+    },
+  });
+
+  assert.deepEqual(event.exception?.values?.[0]?.stacktrace?.frames, [
+    { filename: 'app:///assets/index-abc123.js', lineno: 1, in_app: true },
+  ]);
+  assert.deepEqual(event.debug_meta?.images, [
+    {
+      type: 'sourcemap',
+      code_file: 'app:///assets/index-abc123.js',
+      debug_id: debugId,
+    },
+  ]);
 });
