@@ -27,6 +27,7 @@ export default defineConfig({
       '@radix-ui/react-dialog',
       '@radix-ui/react-slot',
       '@supabase/supabase-js',
+      '@sentry/react',
       '@tanstack/react-query',
       '@swapcircle/contracts > zod',
       'lucide-react',
