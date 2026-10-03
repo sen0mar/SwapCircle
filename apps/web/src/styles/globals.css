@@ -1687,3 +1687,19 @@
   flex: 0 0 auto;
   margin-top: 4px;
 }
+
+.trade-lifecycle-dialog select,
+.trade-lifecycle-dialog textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
+}
+.trade-lifecycle-dialog textarea {
+  min-height: 120px;
+  resize: vertical;
+}

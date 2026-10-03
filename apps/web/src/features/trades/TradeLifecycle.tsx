@@ -8,7 +8,7 @@ import {
 } from '../../components/ui/dialog';
 import { ApiError } from '../../lib/api-client';
 import type { TradeDetail } from './trades-api';
-import { lifecycleSummary } from './lifecycle-copy';
+import { hasHandover, lifecycleSummary } from './lifecycle-copy';
 import { useTrade, useTradeTransition } from './useTrades';
 
 export function TradeLifecycle({
@@ -28,6 +28,7 @@ export function TradeLifecycle({
     status: TradeDetail['status'];
   } | null>(null);
   const terminal = lifecycleSummary(detail.status);
+  const protectedHandover = hasHandover(detail);
   const permitted = ['proposed', 'confirmed'].includes(detail.status);
   const changed =
     review &&
@@ -57,6 +58,12 @@ export function TradeLifecycle({
         {terminal ? 'Closed swap' : 'Swap actions'}
       </h2>
       {terminal && <p role="status">{terminal}</p>}
+      {protectedHandover && (
+        <p>
+          Cancellation is unavailable after a receipt, handover, or dispute is
+          recorded. Items are not released.
+        </p>
+      )}
       {permitted && (
         <>
           <p>
@@ -71,7 +78,7 @@ export function TradeLifecycle({
           <div className="notification-actions">
             {detail.status === 'proposed' && (
               <Button
-                disabled={!current || transition.isPending}
+                disabled={!current || protectedHandover || transition.isPending}
                 onClick={(event) => {
                   trigger.current = event.currentTarget;
                   open('decline');
@@ -81,7 +88,7 @@ export function TradeLifecycle({
               </Button>
             )}
             <Button
-              disabled={!current || transition.isPending}
+              disabled={!current || protectedHandover || transition.isPending}
               onClick={(event) => {
                 trigger.current = event.currentTarget;
                 open('cancel');
@@ -163,6 +170,7 @@ export function TradeLifecycle({
                 !review ||
                 !!changed ||
                 !current ||
+                protectedHandover ||
                 rejected ||
                 transition.isPending
               }

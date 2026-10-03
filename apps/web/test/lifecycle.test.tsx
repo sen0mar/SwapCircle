@@ -134,3 +134,33 @@ test('failed authoritative read disables lifecycle writes until status recovers'
   );
   expect(state.calls()).toBe(0);
 });
+
+test('recorded receipt disables ordinary cancellation with an explanation', async () => {
+  const state = mount();
+  await screen.findByRole('button', { name: 'Cancel confirmed swap' });
+  state.queries.setQueryData<TradeDetail>(
+    ['private', self, 'trade', id],
+    (detail) =>
+      detail && {
+        ...detail,
+        events: [
+          {
+            id,
+            actorId: self,
+            version: 1,
+            eventType: 'receipt_acknowledged',
+            createdAt: detail.createdAt,
+          },
+        ],
+      },
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Cancel confirmed swap' }),
+    ).toBeDisabled(),
+  );
+  expect(
+    screen.getByText(/Cancellation is unavailable after a receipt/),
+  ).toBeVisible();
+  expect(state.calls()).toBe(0);
+});
