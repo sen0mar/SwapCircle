@@ -81,3 +81,30 @@ test('cleanup guards the actual runtime target independently of local migration 
   assert.throws(() => assertLocalRuntimeTarget(runtime, 'production'));
   assert.throws(() => assertLocalRuntimeTarget(local, 'development'));
 });
+
+test('hosted session runtime binds the username to the Supabase project and pooler', () => {
+  const ref = 'tpanyqfgmbpsiejqjocd';
+  const value = `postgresql://swapcircle_runtime.${ref}:synthetic@aws-0-eu-west-1.pooler.supabase.com:5432/postgres`;
+  const environment = { SUPABASE_URL: `https://${ref}.supabase.co` };
+
+  assert.equal(databaseConfig(value, true, environment).max, 5);
+  assert.deepEqual(databaseConfig(value, true, environment).ssl, {
+    rejectUnauthorized: true,
+  });
+
+  for (const invalid of [
+    value.replace('5432', '6543'),
+    value.replace(
+      'aws-0-eu-west-1.pooler.supabase.com',
+      'evil.pooler.supabase.com',
+    ),
+    value.replace(ref, 'aaaaaaaaaaaaaaaaaaaa'),
+    value.replace('swapcircle_runtime', 'postgres'),
+  ]) {
+    assert.throws(() => databaseConfig(invalid, true, environment));
+  }
+
+  assert.throws(() => databaseConfig(value, true, {}));
+  assert.throws(() => assertLocalRuntimeTarget(value, 'test'));
+  assert.throws(() => assertLocalTarget(value, 'test'));
+});
