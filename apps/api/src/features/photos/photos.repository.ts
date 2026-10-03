@@ -99,6 +99,24 @@ export class PhotosRepository {
     return result.rows[0];
   }
 
+  async retainedByHistory(client: PoolClient, listingId: string) {
+    const result = await client.query(
+      'SELECT 1 FROM public.trade_items WHERE listing_id=$1 LIMIT 1',
+      [listingId],
+    );
+    return Boolean(result.rowCount);
+  }
+
+  async claimAbandoned(client: PoolClient, id: string) {
+    const result = await client.query(
+      `UPDATE public.listing_photos SET state='deleting' WHERE id=$1
+       AND (state='deleting' OR (state='pending' AND created_at < now() - interval '10 minutes'))
+       RETURNING id`,
+      [id],
+    );
+    return Boolean(result.rowCount);
+  }
+
   async markDeleting(client: PoolClient, id: string) {
     await client.query(
       "UPDATE public.listing_photos SET state='deleting' WHERE id=$1",

@@ -142,7 +142,22 @@ export class PhotosService {
 
       if (!row) throw new PhotoError(404, 'NOT_FOUND', 'Photo not found.');
 
-      if (onlyAbandoned && row.state === 'active') return null;
+      if (await this.repository.retainedByHistory(client, listingId)) {
+        if (onlyAbandoned) return null;
+        throw new PhotoError(
+          409,
+          'PHOTO_RETAINED',
+          'This photo is retained with trade history.',
+        );
+      }
+
+      // Recheck age/state under the same listing/photo locks as activation.
+      // A stale candidate cannot claim a freshly reserved or activated upload.
+      if (
+        onlyAbandoned &&
+        !(await this.repository.claimAbandoned(client, row.id))
+      )
+        return null;
 
       if (row.state === 'active' && listing.availability !== 'available')
         throw new PhotoError(
