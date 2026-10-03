@@ -442,11 +442,11 @@ try {
   ).toBeVisible();
   const restoredImage = page.locator(`img[src="${photo.url}"]`).first();
   await expect(restoredImage).toBeVisible();
-  assert.ok(
-    await restoredImage.evaluate(
-      (node) => node.complete && node.naturalWidth > 0,
-    ),
-  );
+  await expect
+    .poll(() =>
+      restoredImage.evaluate((node) => node.complete && node.naturalWidth > 0),
+    )
+    .toBe(true);
   await page.screenshot({
     path: new URL('listing.png', evidence).pathname,
     fullPage: true,
@@ -523,6 +523,7 @@ try {
   // Retained candidates must be excluded before LIMIT, otherwise the same first
   // sixteen listings starve all later orphan handles on every invocation.
   const protectedKeys = [];
+  const protectedTransfers = [];
   for (let i = 0; i < 17; i++) {
     const id = `00000000-0000-4000-8000-${randomUUID().replaceAll('-', '').slice(0, 12)}`;
     await fixture.migration.query(
@@ -530,13 +531,11 @@ try {
       VALUES ($1,$2,'Synthetic retained image','Synthetic cleanup fairness fixture','good')`,
       [id, alice.id],
     );
-    await fixture.migration.query(
-      `INSERT INTO public.trade_items
-      (trade_id,version_id,listing_id,owner_id,recipient_id,listing_revision,title_snapshot,description_snapshot,condition_snapshot)
-      SELECT trade_id,version_id,$1,owner_id,recipient_id,listing_revision,title_snapshot,description_snapshot,condition_snapshot
-      FROM public.trade_items WHERE listing_id=$2 LIMIT 1`,
-      [id, items[0].id],
-    );
+    protectedTransfers.push({
+      listingId: id,
+      ownerId: alice.id,
+      recipientId: bob.id,
+    });
     const key = `${id}/${randomUUID()}.webp`;
     await fixture.migration.query(
       `INSERT INTO public.listing_photos (listing_id,owner_id,storage_key,position,state)
@@ -546,6 +545,27 @@ try {
     await fixture.storage.upload(key, imageBytes);
     protectedKeys.push(key);
   }
+  const protectedTrade = await api(
+    '/trades',
+    alice,
+    {
+      operationKey: randomUUID(),
+      participantIds: [alice.id, bob.id],
+      transfers: [
+        ...protectedTransfers,
+        { listingId: items[1].id, ownerId: bob.id, recipientId: alice.id },
+      ],
+      meetingMode: 'meet_to_swap',
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    },
+    'POST',
+  );
+  await api(
+    `/trades/${protectedTrade.id}/cancel`,
+    alice,
+    { expectedVersion: 1 },
+    'POST',
+  );
   for (let i = 0; i < 2; i++) {
     const id = `ffffffff-ffff-4fff-8fff-${randomUUID().replaceAll('-', '').slice(0, 12)}`;
     const key = `${id}/${randomUUID()}.webp`;
