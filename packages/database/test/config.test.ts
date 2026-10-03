@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { assertLocalTarget, databaseConfig } from '../src/config.ts';
+import {
+  assertLocalRuntimeTarget,
+  assertLocalTarget,
+  databaseConfig,
+} from '../src/config.ts';
 
 const local = 'postgresql://postgres:synthetic@127.0.0.1:55432/postgres';
 
@@ -56,4 +60,24 @@ test('invalid and missing configuration fails without reflecting secrets', () =>
         error.message.includes('configuration'),
     );
   }
+});
+
+test('cleanup guards the actual runtime target independently of local migration credentials', () => {
+  assertLocalTarget(local, 'development');
+  const runtime = local.replace(
+    'postgres:synthetic',
+    'swapcircle_runtime:synthetic',
+  );
+  assertLocalRuntimeTarget(runtime, 'development');
+  assert.throws(() =>
+    assertLocalRuntimeTarget(
+      runtime.replace('127.0.0.1', 'db.hosted.example'),
+      'development',
+    ),
+  );
+  assert.throws(() =>
+    assertLocalRuntimeTarget(runtime.replace('55432', '5432'), 'development'),
+  );
+  assert.throws(() => assertLocalRuntimeTarget(runtime, 'production'));
+  assert.throws(() => assertLocalRuntimeTarget(local, 'development'));
 });

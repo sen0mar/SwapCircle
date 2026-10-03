@@ -59,3 +59,14 @@ export function assertLocalTarget(
       'Refusing operation: requires the isolated SwapCircle local database and development/test environment.',
     );
 }
+
+export function assertLocalRuntimeTarget(
+  value: string | undefined,
+  environment: string | undefined,
+) {
+  databaseConfig(value);
+  const target = new URL(value!);
+  // Reuse the exact local authority check, while retaining runtime-role validation.
+  target.username = 'postgres';
+  assertLocalTarget(target.href, environment);
+}

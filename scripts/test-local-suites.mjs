@@ -50,6 +50,7 @@ const suites = {
       'lifecycle',
       'completion',
       'accessibility',
+      'backup',
     ],
   },
 };
