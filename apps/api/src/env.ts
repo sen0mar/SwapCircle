@@ -32,6 +32,17 @@ const environmentSchema = z.object({
     .min(1000)
     .max(3600000)
     .default(60000),
+  SENTRY_DSN: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().url().optional(),
+  ),
+  BUILD_REVISION: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .regex(/^[a-f0-9]{40}$/)
+      .default('unknown'),
+  ),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   CORS_ORIGINS: z
     .string()
@@ -53,6 +64,8 @@ export function readEnvironment(
   }
 
   return {
+    sentryDsn: result.data.SENTRY_DSN,
+    revision: result.data.BUILD_REVISION,
     limits: {
       allowance: result.data.WRITE_ALLOWANCE,
       windowSeconds: result.data.WRITE_WINDOW_SECONDS,

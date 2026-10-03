@@ -7,9 +7,14 @@ test('protected route preserves its query and fragment through a single OAuth co
 }) => {
   let exchanges = 0;
   const outdatedDependencies: string[] = [];
+  const unoptimizedMonitoringModules: string[] = [];
 
   page.on('request', (request) => {
-    if (new URL(request.url()).pathname === '/auth/v1/token') exchanges++;
+    const path = new URL(request.url()).pathname;
+
+    if (path === '/auth/v1/token') exchanges++;
+    if (path.includes('/node_modules/.pnpm/@sentry+'))
+      unoptimizedMonitoringModules.push(path);
   });
 
   page.on('response', (response) => {
@@ -27,6 +32,7 @@ test('protected route preserves its query and fragment through a single OAuth co
 
   expect(exchanges).toBe(1);
   expect(outdatedDependencies).toEqual([]);
+  expect(unoptimizedMonitoringModules).toEqual([]);
 });
 
 test('SDK OAuth callback, reload, protected route and sign-out lifecycle (synthetic transport)', async ({

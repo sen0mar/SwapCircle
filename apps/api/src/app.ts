@@ -1,3 +1,6 @@
+import { requestLogging } from './observability/logger.js';
+import type { Logger } from 'pino';
+import type { HealthService } from './features/health/health.service.js';
 import type { MeetingsService } from './features/meetings/meetings.service.js';
 import type { CoffeeService } from './features/coffee/coffee.service.js';
 import type { NotificationsService } from './features/notifications/notifications.service.js';
@@ -25,6 +28,8 @@ import type { PhotosService } from './features/photos/photos.service.js';
 
 export function createApp({
   allowedOrigins,
+  logger,
+  health,
   verifyToken = async () => null,
   profiles,
   listings,
@@ -38,6 +43,8 @@ export function createApp({
   limits = developmentLimits,
 }: {
   allowedOrigins: readonly string[];
+  logger?: Logger;
+  health?: HealthService;
   verifyToken?: VerifyToken;
   profiles?: ProfilesService;
   listings?: ListingsService;
@@ -54,6 +61,7 @@ export function createApp({
 
   app.disable('x-powered-by');
   app.use(requestId);
+  app.use(requestLogging(logger));
   app.use(helmet());
 
   app.use(
@@ -106,6 +114,7 @@ export function createApp({
       trades,
       coffee,
       meetings,
+      health,
     ),
   );
   app.use(notFound);
