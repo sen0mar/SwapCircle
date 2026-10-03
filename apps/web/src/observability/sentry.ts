@@ -23,6 +23,9 @@ export function initializeMonitoring(
       frameContextLines: 0,
     },
     sendClientReports: false,
+    // No tracing integration or sampling; static mode also honors the deny hook.
+    traceLifecycle: 'static',
+    tracePropagationTargets: [],
     defaultIntegrations: false,
     integrations: [Sentry.globalHandlersIntegration()],
     replaysSessionSampleRate: 0,

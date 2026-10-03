@@ -12,6 +12,9 @@ export function readinessController(health: HealthService) {
     const result = await health.readiness();
 
     response.setHeader('Cache-Control', 'no-store');
+    if (result.status === 'unavailable')
+      response.locals.monitoringErrorCode = 'DATABASE_UNAVAILABLE';
+
     response.status(result.status === 'ready' ? 200 : 503).json(result);
   };
 }

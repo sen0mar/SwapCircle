@@ -4,6 +4,7 @@ import { test } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { createLogger } from '../src/observability/logger.js';
+import { HealthRepository } from '../src/features/health/health.repository.js';
 import { HealthService } from '../src/features/health/health.service.js';
 import { scrubEvent } from '../src/observability/privacy.js';
 import { readinessSchema } from '@swapcircle/contracts';
@@ -79,7 +80,7 @@ test('readiness reflects dependency failure separately from liveness and bounds 
     const app = createApp({
       allowedOrigins: [],
       health: new HealthService(
-        { query } as unknown as Pick<Pool, 'query'>,
+        new HealthRepository({ query } as unknown as Pick<Pool, 'query'>),
         revision,
         20,
       ),
@@ -370,7 +371,7 @@ test('a refused real database connection returns unavailable without leaking cre
   try {
     const app = createApp({
       allowedOrigins: [],
-      health: new HealthService(pool, revision),
+      health: new HealthService(new HealthRepository(pool), revision),
     });
     const response = await request(app).get('/api/v1/ready').expect(503);
 

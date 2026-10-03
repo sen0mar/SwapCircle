@@ -6,10 +6,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 jobs:
   checks:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -37,6 +38,7 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
   database:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     # The prior full database job used 18 minutes before pairwise coffee coverage.
     timeout-minutes: 35
