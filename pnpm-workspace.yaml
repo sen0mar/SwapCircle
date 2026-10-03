@@ -3,6 +3,7 @@ packages:
   - packages/*
 minimumReleaseAge: 1440
 allowBuilds:
+  '@sentry/cli': true
   esbuild: true
   msw: false
   sharp: true

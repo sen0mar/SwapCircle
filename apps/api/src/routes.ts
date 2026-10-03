@@ -12,6 +12,7 @@ import type { SafetyService } from './features/safety/safety.service.js';
 import { createSafetyRouter } from './features/safety/safety.routes.js';
 import { createListingsRouter } from './features/listings/listings.routes.js';
 import type { ListingsService } from './features/listings/listings.service.js';
+import type { HealthService } from './features/health/health.service.js';
 import { Router } from 'express';
 import type { VerifyToken } from './auth/verify.js';
 import { createHealthRouter } from './features/health/health.routes.js';
@@ -32,10 +33,11 @@ export function createApiRouter(
   trades?: TradesService,
   coffee?: CoffeeService,
   meetings?: MeetingsService,
+  health?: HealthService,
 ): Router {
   const api = Router();
 
-  api.use(createHealthRouter());
+  api.use(createHealthRouter(health));
   api.use(createIdentityRouter(verifyToken));
 
   if (profiles) api.use(createProfilesRouter(verifyToken, profiles));

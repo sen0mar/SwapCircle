@@ -1,3 +1,11 @@
+import {
+  initializeMonitoring,
+  reportError,
+  installFatalErrorHandlers,
+} from './observability/sentry.js';
+import { createLogger } from './observability/logger.js';
+import { HealthRepository } from './features/health/health.repository.js';
+import { HealthService } from './features/health/health.service.js';
 import { MeetingsRepository } from './features/meetings/meetings.repository.js';
 import { MeetingsService } from './features/meetings/meetings.service.js';
 import { CoffeeService } from './features/coffee/coffee.service.js';
@@ -24,12 +32,28 @@ import { PhotosRepository } from './features/photos/photos.repository.js';
 import { PhotosService } from './features/photos/photos.service.js';
 import { createPhotoStorage } from './features/photos/photos.storage.js';
 
+installFatalErrorHandlers();
+
 const config = readEnvironment(process.env);
+initializeMonitoring(config.sentryDsn, config.revision);
+
+const logger = createLogger();
 const pool = new Pool(databaseConfig(config.databaseUrl));
+
+pool.on('error', (error) => {
+  const eventId = reportError(error);
+
+  logger.error(
+    { eventId, errorCode: 'DATABASE_UNAVAILABLE' },
+    'database connection failed',
+  );
+});
 
 const permissions = new SafetyPermissions(config.limits);
 
 createApp({
+  logger,
+  health: new HealthService(new HealthRepository(pool), config.revision),
   meetings: new MeetingsService(new MeetingsRepository(pool), permissions),
   coffee: new CoffeeService(new CoffeeRepository(pool), permissions),
   trades: new TradesService(new TradesRepository(pool), permissions),
@@ -57,5 +81,5 @@ createApp({
     createPhotoStorage(config.supabaseUrl, config.supabaseServiceRoleKey),
   ),
 }).listen(config.port, () => {
-  console.info(`SwapCircle API listening on port ${config.port}`);
+  logger.info({ revision: config.revision }, 'API listening');
 });

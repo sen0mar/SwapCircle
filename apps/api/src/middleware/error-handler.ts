@@ -1,3 +1,4 @@
+import { reportError } from '../observability/sentry.js';
 import { SafetyError } from '../features/safety/safety.permissions.js';
 import { z } from 'zod';
 import type { ErrorRequestHandler } from 'express';
@@ -9,13 +10,28 @@ export const errorHandler: ErrorRequestHandler = (
   response,
   next,
 ) => {
+  // Keep the four-argument Express error-middleware signature.
+  void next;
+
+  // Capture failures even when the connection can no longer receive an envelope.
+  if (!(error instanceof SafetyError) && !(error instanceof z.ZodError)) {
+    response.locals.monitoringErrorCode = 'INTERNAL_ERROR';
+  }
+
   if (response.headersSent) {
-    next(error);
+    response.locals.monitoringEventId = reportError(
+      error,
+      String(response.getHeader('X-Request-Id')),
+    );
+    response.destroy();
 
     return;
   }
 
   if (error instanceof SafetyError || error instanceof z.ZodError) {
+    response.locals.monitoringErrorCode =
+      error instanceof SafetyError ? error.code : 'INVALID_INPUT';
+
     if (error instanceof SafetyError && error.retryAfterSeconds !== undefined)
       response.setHeader('Retry-After', error.retryAfterSeconds);
     response
@@ -57,6 +73,15 @@ export const errorHandler: ErrorRequestHandler = (
               'INTERNAL_ERROR',
               'The request could not be completed.',
             ] as const);
+
+  response.locals.monitoringErrorCode = code;
+
+  if (status === 500) {
+    response.locals.monitoringEventId = reportError(
+      error,
+      String(response.getHeader('X-Request-Id')),
+    );
+  }
 
   response
     .status(status)
