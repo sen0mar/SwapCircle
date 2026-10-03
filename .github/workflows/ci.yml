@@ -3,11 +3,16 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      api_release_revision:
+        description: Optional exact checked SHA for a controlled API release
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.api_release_revision != '' && github.run_id || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && inputs.api_release_revision != '') }}
 jobs:
   checks:
     if: github.event_name != 'workflow_dispatch'
@@ -76,7 +81,7 @@ jobs:
         run: pnpm db:stop
   private-source-maps:
     # Explicit dispatch is a trusted maintainer operation; PRs never receive secrets.
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: (github.event_name == 'workflow_dispatch' && inputs.api_release_revision == '') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 15
@@ -106,3 +111,11 @@ jobs:
           SENTRY_WEB_PROJECT: ${{ vars.SENTRY_WEB_PROJECT }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: node scripts/sentry-source-maps.mjs
+  api-release:
+    if: github.event_name == 'workflow_dispatch' && inputs.api_release_revision != ''
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/api-release.yml
+    with:
+      revision: ${{ inputs.api_release_revision }}

@@ -1,0 +1,190 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { URL } from 'node:url';
+import {
+  releaseRevision,
+  successfulChecks,
+  intendedDeploy,
+  intendedReadiness,
+  intendedService,
+  buildCommand,
+  startCommand,
+  repository,
+} from './api-release.mjs';
+
+const revision = 'a'.repeat(40);
+const environment = {
+  RELEASE_REVISION: revision,
+  GITHUB_SHA: revision,
+  GITHUB_REPOSITORY: repository,
+  GITHUB_EVENT_NAME: 'workflow_dispatch',
+  GITHUB_REF_TYPE: 'branch',
+};
+const run = {
+  head_sha: revision,
+  head_repository: { full_name: repository },
+  head_branch: 'main',
+  event: 'push',
+  path: '.github/workflows/ci.yml',
+  status: 'completed',
+  conclusion: 'success',
+};
+const jobs = ['checks', 'database'].map((name) => ({
+  name,
+  status: 'completed',
+  conclusion: 'success',
+}));
+
+test('release rejects PRs, foreign repositories, tags and a different checked-out SHA', () => {
+  assert.equal(releaseRevision(environment), revision);
+  for (const change of [
+    { GITHUB_EVENT_NAME: 'pull_request' },
+    { GITHUB_REPOSITORY: 'fork/SwapCircle' },
+    { GITHUB_REF_TYPE: 'tag' },
+    { GITHUB_SHA: 'b'.repeat(40) },
+  ])
+    assert.throws(() => releaseRevision({ ...environment, ...change }));
+});
+
+test('exact trusted CI requires successful checks and database, never skipped/neutral/missing', () => {
+  successfulChecks(run, jobs, revision, 'main');
+  for (const change of [
+    { head_sha: 'b'.repeat(40) },
+    { event: 'pull_request' },
+    { head_branch: 'fork' },
+    { head_repository: { full_name: 'fork/SwapCircle' } },
+    { path: '.github/workflows/other.yml' },
+    { status: 'in_progress' },
+    { conclusion: 'failure' },
+  ])
+    assert.throws(() =>
+      successfulChecks({ ...run, ...change }, jobs, revision, 'main'),
+    );
+  for (const conclusion of ['skipped', 'neutral', 'failure', null])
+    assert.throws(() =>
+      successfulChecks(
+        run,
+        [jobs[0], { ...jobs[1], conclusion }],
+        revision,
+        'main',
+      ),
+    );
+  assert.throws(() =>
+    successfulChecks(run, jobs.slice(0, 1), revision, 'main'),
+  );
+});
+
+test('hook acceptance and wrong healthy build never count as success', () => {
+  assert.equal(
+    intendedDeploy(
+      { commit: { id: revision }, status: 'build_in_progress' },
+      revision,
+    ),
+    false,
+  );
+  assert.equal(
+    intendedDeploy({ commit: { id: revision }, status: 'live' }, revision),
+    true,
+  );
+  assert.throws(() =>
+    intendedDeploy(
+      { commit: { id: 'b'.repeat(40) }, status: 'live' },
+      revision,
+    ),
+  );
+  assert.throws(() =>
+    intendedDeploy(
+      { commit: { id: revision }, status: 'build_failed' },
+      revision,
+    ),
+  );
+  assert.equal(
+    intendedReadiness({ status: 200 }, { status: 'ready', revision }, revision),
+    true,
+  );
+  assert.equal(
+    intendedReadiness(
+      { status: 200 },
+      { status: 'ready', revision: 'b'.repeat(40) },
+      revision,
+    ),
+    false,
+  );
+  assert.equal(
+    intendedReadiness(
+      { status: 503 },
+      { status: 'unavailable', revision },
+      revision,
+    ),
+    false,
+  );
+});
+
+test('service validation refuses unrelated services, paid plans and automatic deploys', () => {
+  const env = {
+    RENDER_SERVICE_ID: 'srv-intended',
+    RENDER_API_URL: 'https://swapcircle-staging-api.onrender.com',
+  };
+  const service = {
+    id: env.RENDER_SERVICE_ID,
+    ownerId: 'tea-d5qvc063jp1c73fekfag',
+    name: 'swapcircle-staging-api',
+    type: 'web_service',
+    repo: `https://github.com/${repository}`,
+    autoDeployTrigger: 'off',
+    serviceDetails: {
+      plan: 'free',
+      runtime: 'node',
+      healthCheckPath: '/api/v1/ready',
+      url: env.RENDER_API_URL,
+      envSpecificDetails: { buildCommand, startCommand },
+    },
+  };
+
+  intendedService(service, env);
+  for (const change of [
+    { id: 'srv-d96t0c67r5hc738ck5k0' },
+    { name: 'stafflow-api' },
+    { autoDeployTrigger: 'commit' },
+    { serviceDetails: { ...service.serviceDetails, plan: 'starter' } },
+  ])
+    assert.throws(() => intendedService({ ...service, ...change }, env));
+});
+
+test('release configuration keeps global serialization and secrets isolated from PR jobs', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const ci = await readFile(
+    new URL('../.github/workflows/ci.yml', import.meta.url),
+    'utf8',
+  );
+  const release = await readFile(
+    new URL('../.github/workflows/api-release.yml', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(
+    ci,
+    /inputs\.api_release_revision != '' && github\.run_id \|\| github\.ref/,
+  );
+  assert.match(
+    ci,
+    /cancel-in-progress: \$\{\{ !\(github\.event_name == 'workflow_dispatch' && inputs\.api_release_revision != ''\) \}\}/,
+  );
+  assert.match(
+    release,
+    /group: swapcircle-staging-release\n {2}cancel-in-progress: false/,
+  );
+  assert.match(release, /github\.event_name == 'workflow_dispatch'/);
+  assert.match(release, /environment: staging/);
+  assert.ok(
+    release.indexOf('api-release.mjs checks') <
+      release.indexOf('secrets.MIGRATION_DATABASE_URL'),
+  );
+  assert.ok(
+    release.indexOf('release-migrations.ts') <
+      release.indexOf('api-release.mjs deploy'),
+  );
+  assert.ok(!release.includes('secrets.DATABASE_URL'));
+  assert.ok(!release.includes('secrets.SUPABASE_SERVICE_ROLE_KEY'));
+  assert.ok(!ci.includes('secrets: inherit'));
+});
