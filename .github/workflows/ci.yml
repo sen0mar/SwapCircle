@@ -2,6 +2,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -71,3 +72,35 @@ jobs:
           if-no-files-found: ignore
       - if: always()
         run: pnpm db:stop
+  private-source-maps:
+    # Explicit dispatch is a trusted maintainer operation; PRs never receive secrets.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build with private maps and public revision
+        env:
+          SENTRY_SOURCE_MAPS: '1'
+          VITE_BUILD_REVISION: ${{ github.sha }}
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+        run: |
+          pnpm build
+          pnpm --filter @swapcircle/api exec tsc --sourceMap --inlineSources
+      - name: Upload and remove private maps
+        env:
+          BUILD_REVISION: ${{ github.sha }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_API_PROJECT: ${{ vars.SENTRY_API_PROJECT }}
+          SENTRY_WEB_PROJECT: ${{ vars.SENTRY_WEB_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: node scripts/sentry-source-maps.mjs

@@ -39,6 +39,8 @@ test('startup rejects missing/unsafe configuration without exposing values', () 
       CORS_ORIGINS: 'http://127.0.0.1:5173, https://example.org',
     }),
     {
+      sentryDsn: undefined,
+      revision: 'unknown',
       limits: {
         allowance: 120,
         windowSeconds: 3600,
