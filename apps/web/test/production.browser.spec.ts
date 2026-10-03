@@ -14,6 +14,20 @@ test('production is signed out and contains no profile fixture', async ({
   ).toBeVisible();
 
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: /favorite|follow|connect|going/i }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', { name: /events|favorites|follow/i }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(/12K\+|28K\+|4\.8K\+|online now|delivered|read receipt/i),
+  ).toHaveCount(0);
+  await page.goto('http://127.0.0.1:4174/dev/api-status');
+  await expect(
+    page.getByRole('heading', { name: 'Page not found' }),
+  ).toBeVisible();
+  await page.goto('http://127.0.0.1:4174');
   await expect(page.getByText('Alex Example')).toHaveCount(0);
 
   await expect(
