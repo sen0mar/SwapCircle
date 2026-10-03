@@ -21,7 +21,9 @@
     "db:reset": "pnpm --filter @swapcircle/database local reset",
     "db:migrate": "pnpm --filter @swapcircle/database local migrate",
     "db:seed": "pnpm --filter @swapcircle/database local seed",
-    "db:verify": "pnpm --filter @swapcircle/database local verify"
+    "db:verify": "pnpm --filter @swapcircle/database local verify",
+    "test:api-local": "node scripts/test-local-suites.mjs api",
+    "test:journeys-local": "node scripts/test-local-suites.mjs journeys"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

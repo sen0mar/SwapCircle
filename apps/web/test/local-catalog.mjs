@@ -56,16 +56,6 @@ try {
       'PUT',
     );
   }
-  const item = await api(
-    '/listings',
-    alice,
-    {
-      title,
-      description: 'A camera ready for another outing.',
-      condition: 'good',
-    },
-    'POST',
-  );
   for (const [user, itemTitle, filename] of [
     [bob, 'Everyday backpack', 'backpack.jpg'],
     [carol, 'A field guide', 'books.jpg'],
@@ -164,11 +154,46 @@ try {
       json: { ...alice.session, expires_in: 3600, token_type: 'bearer' },
     }),
   );
-  await page.goto(`${origin}/listings/${item.id}/edit`);
+  await page.goto(`${origin}/listings/new`);
   await page.getByRole('button', { name: 'Continue with Google' }).click();
   await expect(
     page.getByText('Your session is verified.', { exact: false }),
   ).toBeVisible();
+  // Publish through the real production form, then read it from a separate
+  // signed-out browser context. The catalogue is not pre-seeded with this item.
+  await page.goto(`${origin}/listings/new`);
+  await expect(
+    page.getByRole('heading', { name: 'List an item', exact: true }),
+  ).toBeVisible();
+  await page.getByLabel('Title', { exact: true }).fill(title);
+  await page
+    .getByLabel('Description', { exact: true })
+    .fill('A camera ready for another outing.');
+  const publication = page.waitForResponse(
+    (response) =>
+      response.url() === `${apiOrigin}/api/v1/listings` &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Create item', exact: true }).click();
+  const response = await publication;
+  assert.equal(response.status(), 201);
+  const item = await response.json();
+  assert.equal(item.ownerId, alice.id);
+  assert.equal(item.title, title);
+  assert.equal(item.availability, 'available');
+  const visitor = await browser.newContext();
+  const publicPage = await visitor.newPage();
+  await publicPage.goto(`${origin}/listings/${item.id}`);
+  await expect(
+    publicPage.getByRole('heading', { name: title, exact: true }),
+  ).toBeVisible();
+  await expect(
+    publicPage.getByRole('link', { name: 'Local Alice', exact: true }),
+  ).toBeVisible();
+  await expect(
+    publicPage.getByRole('link', { name: 'Edit item', exact: true }),
+  ).toHaveCount(0);
+  await visitor.close();
   await page.goto(`${origin}/listings/${item.id}/edit`);
   await expect(page.getByRole('heading', { name: 'Edit item' })).toBeVisible();
   await page.getByLabel('Choose photos').setInputFiles({
@@ -307,7 +332,7 @@ try {
   await expect(page.getByRole('link', { name: title })).toBeVisible();
   assert.deepEqual(errors, []);
   console.info(
-    'Local production browser: real JWT/API/database/Storage upload, search, owner profile, Back/reload filters, public and personalized discovery, empty/error/recovery, both themes at 360/768/800/1280/1600px and axe passed. External OAuth handoff was simulated; application data was real and synthetic.',
+    'Local production browser: real JWT/API/database/Storage form publication and independent public read, upload, search, owner profile, Back/reload filters, public and personalized discovery, empty/error/recovery, both themes at 360/768/800/1280/1600px and axe passed. External OAuth handoff was simulated; application data was real and synthetic.',
   );
 } finally {
   await browser?.close();

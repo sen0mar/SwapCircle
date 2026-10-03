@@ -337,6 +337,17 @@ try {
     { code: '42501' },
   );
 
+  // A valid token cannot acknowledge on behalf of a forged recipient/actor.
+  for (const identity of [{ recipient_id: alice.id }, { actorId: alice.id }]) {
+    await request(app)
+      .put('/api/v1/notifications/read-all')
+      .set(auth(bob))
+      .send({ notification_ids: [first, peer], ...identity })
+      .expect(400);
+    assert.equal((await row(first)).read_at, null);
+    assert.equal((await row(peer)).read_at, null);
+  }
+
   await read(bob, first).expect(403);
   await read(alice, randomUUID()).expect(403);
   await readAll(alice, [second, peer]).expect(403);
@@ -422,7 +433,7 @@ try {
     0,
   );
   console.info(
-    'Local notifications passed: all seven types; recipient-only SQL/PostgREST reads; anon/service-role/client write/RPC denial; immutable retry and per-recipient dedup; concurrent unique-index commit/rollback waits; recipient-only real Realtime INSERT/UPDATE delivery; shared domain rollback/retry/conflict; ownership-checked atomic mixed-set rejection; monotonic read retries; concurrent single/all reads; late-commit/new-arrival exclusion; post-update rollback and safe errors; restrictions; persistence and separate message read state.',
+    'Local notifications passed: all seven types; recipient-only SQL/PostgREST reads; anon/service-role/client write/RPC denial; immutable retry and per-recipient dedup; concurrent unique-index commit/rollback waits; recipient-only real Realtime INSERT/UPDATE delivery; shared domain rollback/retry/conflict; forged actor/recipient rejection, ownership-checked atomic mixed-set rejection; monotonic read retries; concurrent single/all reads; late-commit/new-arrival exclusion; post-update rollback and safe errors; restrictions; persistence and separate message read state.',
   );
 } finally {
   for (const user of fixture.users) {

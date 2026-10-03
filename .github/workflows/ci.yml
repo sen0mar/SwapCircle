@@ -53,40 +53,21 @@ jobs:
       - run: pnpm db:setup
       - run: pnpm db:reset
       - run: pnpm db:verify
-      - run: pnpm --filter @swapcircle/api test:auth-local
-      - run: pnpm --filter @swapcircle/api test:profiles-local
-      - run: pnpm --filter @swapcircle/api test:listings-local
-      - run: pnpm --filter @swapcircle/api test:photos-local
-      - run: pnpm --filter @swapcircle/api test:discovery-local
-      - run: pnpm --filter @swapcircle/api test:safety-local
-      - run: pnpm --filter @swapcircle/api test:conversations-local
-      - run: pnpm --filter @swapcircle/api test:messages-local
-      - run: pnpm --filter @swapcircle/api test:unread-local
-      - run: pnpm --filter @swapcircle/api test:notifications-local
-      - run: pnpm --filter @swapcircle/api test:trades-local
-      - run: pnpm --filter @swapcircle/api test:proposals-local
-      - run: pnpm --filter @swapcircle/api test:groups-local
-      - run: pnpm --filter @swapcircle/api test:revisions-local
-      - run: pnpm --filter @swapcircle/api test:acceptances-local
-      - run: pnpm --filter @swapcircle/api test:lifecycle-local
-      - run: pnpm --filter @swapcircle/api test:outcomes-local
-      - run: pnpm --filter @swapcircle/api test:coffee-local
-      - run: pnpm --filter @swapcircle/api test:meetings-local
+      - name: Verify migration generation has no drift
+        run: |
+          pnpm --filter @swapcircle/database generate
+          test -z "$(git status --porcelain -- packages/database/migrations)"
+      - run: pnpm test:api-local
       - run: pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
-      - run: pnpm --filter @swapcircle/web test:catalog-local
-      - run: pnpm --filter @swapcircle/web test:safety-local
-      - run: pnpm --filter @swapcircle/web test:inbox-local
-      - run: pnpm --filter @swapcircle/web test:composer-local
-      - run: pnpm --filter @swapcircle/web test:realtime-local
-      - run: pnpm --filter @swapcircle/web test:unread-local
-      - run: pnpm --filter @swapcircle/web test:notifications-local
-      - run: pnpm --filter @swapcircle/web test:swaps-local
-      - run: pnpm --filter @swapcircle/web test:groups-local
-      - run: pnpm --filter @swapcircle/web test:revisions-local
-      - run: pnpm --filter @swapcircle/web test:acceptances-local
-      - run: pnpm --filter @swapcircle/web test:coffee-local
-      - run: pnpm --filter @swapcircle/web test:meetings-local
-      - run: pnpm --filter @swapcircle/web test:lifecycle-local
-      - run: pnpm --filter @swapcircle/web test:completion-local
+      - run: pnpm test:journeys-local
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: local-suite-failure-evidence
+          path: |
+            test-results/local-*-failure.json
+            apps/web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
       - if: always()
         run: pnpm db:stop
