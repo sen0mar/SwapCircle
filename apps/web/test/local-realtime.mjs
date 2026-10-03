@@ -143,6 +143,32 @@ try {
     context.newPage(),
     otherContext.newPage(),
   ]);
+  // Observe subscription lifecycle on the actual browser transport. Keep only
+  // topic names; no message/Auth payloads are recorded.
+  const activeTopics = new Set();
+  page.on('websocket', (socket) => {
+    const socketTopics = new Set();
+    socket.on('framesent', ({ payload }) => {
+      try {
+        const frame = JSON.parse(String(payload));
+        const event = Array.isArray(frame) ? frame[3] : frame.event;
+        const topic = Array.isArray(frame) ? frame[2] : frame.topic;
+        if (!topic?.startsWith('realtime:')) return;
+        if (event === 'phx_join') {
+          socketTopics.add(topic);
+          activeTopics.add(topic);
+        } else if (event === 'phx_leave') {
+          socketTopics.delete(topic);
+          activeTopics.delete(topic);
+        }
+      } catch {
+        /* Non-JSON control frame. */
+      }
+    });
+    socket.on('close', () => {
+      for (const topic of socketTopics) activeTopics.delete(topic);
+    });
+  });
   const errors = [];
   for (const current of [page, peer])
     current.on('pageerror', (error) => errors.push(error.message));
@@ -343,7 +369,19 @@ try {
     });
   }
   await page.getByRole('button', { name: 'Open account', exact: true }).click();
+  await expect
+    .poll(() => activeTopics.has(`realtime:inbox:${alice.id}:${direct.id}`))
+    .toBe(true);
+  await expect
+    .poll(() => activeTopics.has(`realtime:notifications:${alice.id}`))
+    .toBe(true);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect
+    .poll(() => [...activeTopics].filter((topic) => topic.includes(alice.id)))
+    .toEqual([]);
+  await expect(page.locator('[data-message-order]')).toHaveCount(0);
+  await expect(page.getByLabel('Message draft')).toHaveCount(0);
+
   await signIn(page, stranger);
   await page.goto(`${origin}/inbox/${direct.id}`);
   await expect(
@@ -373,7 +411,7 @@ try {
   ).toHaveCount(0);
   assert.deepEqual(errors, []);
   console.log(
-    'Local Realtime: production UI live sends in two isolated sessions with actual Postgres Changes frames and event-before-response reconciliation; offline transport plus 35-message ordered paginated recovery; live delivery after reconnect; refreshed auth on an existing SDK channel; malicious outsider filter receives zero events; open-thread membership revocation clears history; same-browser account isolation; mobile Light/Dark axe passed. Synthetic data cleaned up.',
+    'Local Realtime: production UI live sends in two isolated sessions with actual Postgres Changes frames and event-before-response reconciliation; offline transport plus 35-message ordered paginated recovery; live delivery after reconnect; refreshed auth on an existing SDK channel; malicious outsider filter receives zero events; open-thread membership revocation clears history; logout transport subscription teardown/cache clearing and same-browser account isolation; mobile Light/Dark axe passed. Synthetic data cleaned up.',
   );
 } finally {
   if (browser) await browser.close();
