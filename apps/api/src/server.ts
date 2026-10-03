@@ -4,6 +4,7 @@ import {
   installFatalErrorHandlers,
 } from './observability/sentry.js';
 import { createLogger } from './observability/logger.js';
+import { HealthRepository } from './features/health/health.repository.js';
 import { HealthService } from './features/health/health.service.js';
 import { MeetingsRepository } from './features/meetings/meetings.repository.js';
 import { MeetingsService } from './features/meetings/meetings.service.js';
@@ -52,7 +53,7 @@ const permissions = new SafetyPermissions(config.limits);
 
 createApp({
   logger,
-  health: new HealthService(pool, config.revision),
+  health: new HealthService(new HealthRepository(pool), config.revision),
   meetings: new MeetingsService(new MeetingsRepository(pool), permissions),
   coffee: new CoffeeService(new CoffeeRepository(pool), permissions),
   trades: new TradesService(new TradesRepository(pool), permissions),

@@ -95,6 +95,8 @@ test('browser monitoring sends only scrubbed events with replay and sessions dis
     Sentry.BrowserOptions | undefined;
 
   assert.equal(options?.defaultIntegrations, false);
+  assert.equal(options?.traceLifecycle, 'static');
+  assert.deepEqual(options?.tracePropagationTargets, []);
   assert.equal(options?.replaysSessionSampleRate, 0);
   assert.equal(options?.replaysOnErrorSampleRate, 0);
   assert.equal(options?.dataCollection?.httpHeaders, false);

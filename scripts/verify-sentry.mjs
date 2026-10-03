@@ -86,8 +86,28 @@ async function checkStored(component, project, eventId) {
     !event.errors?.length,
     'Sentry reported event/source-map processing errors.',
   );
+  const frames =
+    event.entries
+      ?.filter((entry) => entry.type === 'exception')
+      .flatMap(
+        (entry) =>
+          entry.data.values?.flatMap(
+            (value) => value.stacktrace?.frames ?? [],
+          ) ?? [],
+      ) ?? [];
+  const expected =
+    component === 'API' ? /middleware\/authenticate\.ts$/ : /src\/main\.tsx$/;
+
+  assert.ok(
+    frames.some(
+      (frame) =>
+        expected.test(frame.filename ?? '') &&
+        Number.isSafeInteger(frame.lineNo),
+    ),
+    'Stored event lacks a resolved original application source coordinate.',
+  );
   console.info(
-    `${component}: stored event and source-map processing verified.`,
+    `${component}: stored event resolves to the expected original TypeScript source.`,
   );
   return true;
 }
