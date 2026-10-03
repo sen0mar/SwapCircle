@@ -188,3 +188,50 @@ test('release configuration keeps global serialization and secrets isolated from
   assert.ok(!release.includes('secrets.SUPABASE_SERVICE_ROLE_KEY'));
   assert.ok(!ci.includes('secrets: inherit'));
 });
+
+test('provisioning refuses admin, wrong-project and shared runtime passwords before transmission', async () => {
+  const { provisioningTarget } = await import('./provision-api.mjs');
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const folder = mkdtempSync(`${tmpdir()}/swapcircle-provision-`);
+  const cert = `${folder}/ca.crt`;
+
+  writeFileSync(cert, 'Synthetic configuration test CA');
+  const target = {
+    DATABASE_URL:
+      'postgres://swapcircle_runtime.tpanyqfgmbpsiejqjocd:runtime-password@aws-0-eu-west-1.pooler.supabase.com:5432/postgres',
+    MIGRATION_DATABASE_URL:
+      'postgres://postgres.tpanyqfgmbpsiejqjocd:admin-password@aws-0-eu-west-1.pooler.supabase.com:5432/postgres',
+    DATABASE_CA_CERT_PATH: cert,
+    SUPABASE_URL: 'https://tpanyqfgmbpsiejqjocd.supabase.co',
+    FRONTEND_URL: 'https://swapcircle-staging.pages.dev',
+  };
+  const authorization = 'configure-approved-project';
+
+  try {
+    provisioningTarget(target, authorization);
+    for (const change of [
+      { DATABASE_URL: undefined },
+      { DATABASE_URL: target.MIGRATION_DATABASE_URL },
+      {
+        DATABASE_URL: target.DATABASE_URL.replace(
+          'runtime-password',
+          'admin-password',
+        ),
+      },
+      {
+        DATABASE_URL: target.DATABASE_URL.replace(
+          'tpanyqfgmbpsiejqjocd',
+          'aaaaaaaaaaaaaaaaaaaa',
+        ),
+      },
+      { DATABASE_URL: target.DATABASE_URL.replace(':5432/', ':6543/') },
+    ])
+      assert.throws(() =>
+        provisioningTarget({ ...target, ...change }, authorization),
+      );
+    assert.throws(() => provisioningTarget(target, undefined));
+  } finally {
+    rmSync(folder, { recursive: true });
+  }
+});

@@ -4,6 +4,8 @@ import process from 'node:process';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
+import { pathToFileURL } from 'node:url';
+import { hostedTarget } from '../packages/database/scripts/hosted-target.ts';
 import {
   buildCommand,
   startCommand,
@@ -14,12 +16,22 @@ import {
 
 const { fetch, AbortSignal } = globalThis;
 
+export function provisioningTarget(environment, authorization) {
+  assert.ok(
+    environment.DATABASE_URL,
+    'Restricted runtime credentials required.',
+  );
+  return hostedTarget({ ...environment, HOSTED_AUTHORIZATION: authorization });
+}
+
 async function main() {
   assert.equal(process.env.HOSTED_AUTHORIZATION, 'configure-approved-project');
   assert.equal(process.versions.node, '24.13.0');
   assert.equal(statSync('.env.hosted').mode & 0o777, 0o600);
   const original = readFileSync('.env.hosted', 'utf8');
   const privateEnvironment = parseEnv(original);
+
+  provisioningTarget(privateEnvironment, process.env.HOSTED_AUTHORIZATION);
   const revision = execFileSync('git', ['rev-parse', 'HEAD'], {
     encoding: 'utf8',
   }).trim();
@@ -183,9 +195,14 @@ async function main() {
   );
 }
 
-main().catch(() => {
-  console.error(
-    'Provisioning refused or failed. Inspect exact CI/target/service state; recover existing identity after an unknown outcome before retrying. Provider payloads and credentials withheld.',
-  );
-  process.exitCode = 1;
-});
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch(() => {
+    console.error(
+      'Provisioning refused or failed. Inspect exact CI/target/service state; recover existing identity after an unknown outcome before retrying. Provider payloads and credentials withheld.',
+    );
+    process.exitCode = 1;
+  });
+}
