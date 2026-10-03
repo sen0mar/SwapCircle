@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Avatar } from '../account/Avatar';
 import { ConversationDenied } from './inbox-api';
@@ -64,6 +64,15 @@ export function InboxPage() {
 
 function ConversationList({ selected }: { selected: string | undefined }) {
   const inbox = useInbox();
+  const location = useLocation();
+  const returnId: unknown = location.state?.returnToConversation;
+  const returnLink = useRef<HTMLAnchorElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => {
+    if (!selected && typeof returnId === 'string' && inbox.isSuccess)
+      (returnLink.current ?? title.current)?.focus();
+  }, [selected, returnId, inbox.isSuccess]);
 
   return (
     <section
@@ -71,7 +80,9 @@ function ConversationList({ selected }: { selected: string | undefined }) {
       tabIndex={0}
       aria-labelledby="conversations-title"
     >
-      <h2 id="conversations-title">Conversations</h2>
+      <h2 id="conversations-title" ref={title} tabIndex={-1}>
+        Conversations
+      </h2>
       <p className="inbox-note">Newest conversations first</p>
       {inbox.isPending ? (
         <p role="status">Loading conversations…</p>
@@ -112,6 +123,9 @@ function ConversationList({ selected }: { selected: string | undefined }) {
                   <li key={conversation.id}>
                     <Link
                       to={`/inbox/${conversation.id}`}
+                      ref={
+                        returnId === conversation.id ? returnLink : undefined
+                      }
                       aria-current={
                         selected === conversation.id ? 'page' : undefined
                       }
@@ -247,7 +261,11 @@ function Thread({
   return (
     <section className="panel inbox-thread" aria-labelledby="thread-title">
       <header className="thread-header">
-        <Link className="inbox-back" to="/inbox">
+        <Link
+          className="inbox-back"
+          to="/inbox"
+          state={{ returnToConversation: id }}
+        >
           Back to conversations
         </Link>
         <div className="thread-identity">

@@ -108,10 +108,13 @@ function TradeNotificationSummary({ id }: { id: string }) {
   if (trade.isPending) return <p role="status">Loading current swap status…</p>;
   if (trade.isError)
     return (
-      <p>
-        This swap cannot be loaded or is unavailable to this account. The
-        notification remains in your history.
-      </p>
+      <div>
+        <p role="alert">
+          This swap cannot be loaded or is unavailable to this account. The
+          notification remains in your history.
+        </p>
+        <Button onClick={() => void trade.refetch()}>Retry swap status</Button>
+      </div>
     );
 
   return (

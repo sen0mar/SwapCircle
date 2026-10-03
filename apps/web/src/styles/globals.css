@@ -180,7 +180,7 @@
     font-family: var(--font-ui);
     color: var(--text-primary);
     background: var(--bg-base);
-    font-size: 16px;
+    font-size: 100%;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
   }
@@ -207,6 +207,16 @@
     outline-offset: 2px;
     box-shadow: 0 0 0 2px var(--bg-surface);
   }
+  h1,
+  h2,
+  h3,
+  p,
+  li {
+    overflow-wrap: anywhere;
+  }
+  fieldset {
+    min-width: 0;
+  }
   h1 {
     font-size: clamp(2rem, 4vw, 3rem);
     font-weight: 700;
@@ -214,7 +224,7 @@
     letter-spacing: -0.035em;
   }
   h2 {
-    font-size: 20px;
+    font-size: 1.25rem;
     font-weight: 600;
     line-height: 1.3;
   }
@@ -239,6 +249,7 @@
   }
   .header-inner {
     min-height: 64px;
+    flex-wrap: wrap;
     display: flex;
     align-items: center;
     gap: 24px;
@@ -249,7 +260,7 @@
     gap: 8px;
     min-height: 44px;
     color: var(--text-primary);
-    font-size: 24px;
+    font-size: 1.5rem;
     font-weight: 700;
     letter-spacing: -1px;
     text-decoration: none;
@@ -265,7 +276,8 @@
     align-self: stretch;
     align-items: stretch;
     gap: 20px;
-    font-size: 14px;
+    flex-wrap: wrap;
+    font-size: 0.875rem;
   }
   nav a,
   .future-nav {
@@ -293,7 +305,7 @@
     padding: 8px 12px;
     background: var(--bg-inset);
     border-radius: var(--radius-md);
-    font-size: 14px;
+    font-size: 0.875rem;
     margin-left: auto;
   }
   .header-controls {
@@ -309,19 +321,19 @@
     gap: 8px;
     min-height: 44px;
     min-width: 44px;
-    font-size: 14px;
+    font-size: 0.875rem;
     white-space: nowrap;
   }
   .theme-picker {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
   }
   .theme-picker select {
     min-height: 44px;
-    width: 92px;
+    width: 5.75rem;
     padding: 8px;
     background: var(--bg-surface);
     color: var(--text-primary);
@@ -349,14 +361,14 @@
     min-height: 380px;
   }
   .eyebrow {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
     margin-bottom: 24px;
   }
   .hero-description {
     max-width: 560px;
     margin-top: 20px;
-    font-size: 18px;
+    font-size: 1.125rem;
   }
   .hero-actions {
     display: flex;
@@ -373,7 +385,7 @@
     padding: 10px 16px;
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-default);
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
   }
   .action-primary {
@@ -390,7 +402,7 @@
     background: var(--accent-primary-active);
   }
   .availability-note {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-muted);
     margin-top: 16px;
   }
@@ -476,7 +488,7 @@
       padding-block: 8px;
     }
     .wordmark {
-      font-size: 22px;
+      font-size: 1.375rem;
       margin-right: auto;
     }
     .brand-mark {
@@ -507,7 +519,7 @@
       min-height: auto;
     }
     .hero-description {
-      font-size: 16px;
+      font-size: 1rem;
     }
     .hero-actions {
       flex-direction: column;
@@ -531,9 +543,15 @@
     border-radius: 8px;
     background: var(--bg-surface);
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+  .ui-button svg {
+    flex-shrink: 0;
   }
   .ui-button:hover:not(:disabled) {
     background: var(--bg-subtle);
@@ -559,6 +577,7 @@
   }
   .ui-input {
     width: 100%;
+    min-width: 0;
     min-height: 44px;
     padding: 8px 12px;
     border: 1px solid var(--border-strong);
@@ -577,7 +596,7 @@
     box-shadow: var(--shadow-card);
   }
   .ui-feedback {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
   }
   .ui-feedback-error {
@@ -600,14 +619,19 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+    overflow-wrap: anywhere;
+  }
+  .ui-modal > * {
+    flex-shrink: 0;
+    min-width: 0;
   }
   .ui-modal h2 {
-    font-size: 24px;
+    font-size: 1.5rem;
     font-weight: 600;
     padding-right: 44px;
   }
   .ui-modal h3 {
-    font-size: 20px;
+    font-size: 1.25rem;
     font-weight: 600;
   }
   .ui-modal p {
@@ -649,7 +673,7 @@
     width: 100%;
     min-height: 44px;
     padding: 8px 12px;
-    border: 1px solid var(--border-default);
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
     background: var(--bg-surface);
     color: var(--text-primary);
@@ -756,7 +780,7 @@
     gap: 8px;
     align-items: center;
     min-height: 44px;
-    font-size: 14px;
+    font-size: 0.875rem;
   }
   .listing-grid,
   .member-grid {
@@ -781,18 +805,18 @@
     gap: 8px;
     background: var(--bg-subtle);
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 0.875rem;
   }
   .listing-copy {
     overflow-wrap: anywhere;
     padding: 16px;
   }
   .listing-copy h3 {
-    font-size: 16px;
+    font-size: 1rem;
     font-weight: 600;
   }
   .listing-copy p {
-    font-size: 14px;
+    font-size: 0.875rem;
     margin-top: 8px;
   }
   .listing-copy .listing-owner {
@@ -820,7 +844,7 @@
     border-radius: 999px;
     background: var(--accent-primary-soft);
     color: var(--accent-primary-text);
-    font-size: 12px;
+    font-size: 0.75rem;
     overflow-wrap: anywhere;
   }
   .member-preview {
@@ -841,18 +865,18 @@
     color: var(--text-muted);
   }
   .member-name {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--text-primary);
   }
   .member-location {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
   .message-action {
     margin-top: 16px;
   }
   .message-action p {
-    font-size: 12px;
+    font-size: 0.75rem;
     margin-top: 8px;
   }
   .member-preview .message-action button {
@@ -870,10 +894,10 @@
   }
   .conversation-preview > p {
     margin-top: 8px;
-    font-size: 14px;
+    font-size: 0.875rem;
   }
   .preview-caption {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
   .collection-notice {
     min-height: 140px;
@@ -905,7 +929,7 @@
     background: var(--bg-subtle);
     border: 1px dashed var(--border-strong);
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 0.875rem;
   }
   .development-preview select {
     min-height: 44px;
@@ -917,7 +941,7 @@
     padding: 8px;
   }
   .development-preview p {
-    font-size: 12px;
+    font-size: 0.75rem;
   }
   @media (min-width: 1280px) and (max-width: 1439px) {
     .listing-grid,
@@ -971,10 +995,12 @@
   .profile-page,
   .member-page,
   .settings-page {
+    grid-template-columns: minmax(0, 1fr);
     display: grid;
     gap: 20px;
   }
   .profile-form {
+    min-width: 0;
     display: grid;
     gap: 20px;
     max-width: 640px;
@@ -989,7 +1015,7 @@
   }
   .profile-field p {
     margin: 0;
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
   }
   .profile-field p[role='alert'] {
@@ -1014,6 +1040,8 @@
     margin-bottom: 8px;
   }
   .profile-interests label {
+    max-width: 100%;
+    overflow-wrap: anywhere;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -1038,11 +1066,11 @@
 }
 .catalog-page h1,
 .listing-detail h1 {
-  font-size: 28px;
+  font-size: 1.75rem;
   font-weight: 650;
 }
 .listing-copy h2 {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
 }
 .catalog-pagination {
@@ -1086,7 +1114,8 @@
   margin-top: 24px;
   min-width: 0;
 }
-.listing-photo-editor input[type='file'] {
+.listing-photo-editor input[type='file'],
+.avatar-editor input[type='file'] {
   max-width: 100%;
 }
 .profile-avatar,
@@ -1101,6 +1130,8 @@
   background: var(--bg-subtle);
 }
 .avatar-editor {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   display: grid;
   justify-items: start;
   gap: 8px;
@@ -1127,7 +1158,7 @@
 }
 .listing-detail h2 {
   margin-top: 20px;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
 }
 .listing-description {
@@ -1222,7 +1253,7 @@
   overflow-wrap: anywhere;
 }
 .shelf-item h2 {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
 }
 .shelf-actions {
@@ -1263,7 +1294,7 @@
 .catalog-filters select,
 .member-interest-filter select {
   min-height: 44px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   padding: 8px 12px;
   background: var(--bg-surface);
@@ -1284,7 +1315,7 @@
 }
 
 .member-preview h3 {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -1382,7 +1413,7 @@
 .thread-header p,
 .composer-shell p {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .conversation-list,
@@ -1433,6 +1464,16 @@
   align-items: center;
   gap: 12px;
   margin-block: 12px;
+}
+
+.thread-identity > div {
+  min-width: 0;
+}
+
+.inbox-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .thread-identity h2,
@@ -1550,7 +1591,7 @@
   border-radius: var(--radius-md);
   background: var(--bg-subtle);
   color: var(--accent-primary-text);
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 .notification-panel {
@@ -1576,12 +1617,12 @@
   border-top: 1px solid var(--border-subtle);
 }
 .notification-heading h3 {
-  font-size: 16px;
+  font-size: 1rem;
 }
 .notification-list time,
 .notification-read {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .notification-actions a {
   display: inline-flex;
@@ -1693,7 +1734,7 @@
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--bg-elevated);
   color: var(--text-primary);

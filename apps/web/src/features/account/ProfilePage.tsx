@@ -35,7 +35,8 @@ export function ProfilePage() {
         key={profile.data.id}
         profile={profile.data}
         interests={interests.data ?? []}
-        interestsAvailable={!interests.isError}
+        interestsAvailable={interests.isSuccess}
+        interestsPending={interests.isPending}
       />
       <AvatarEditor profile={profile.data} />
       {interests.isError && (
@@ -57,10 +58,12 @@ function ProfileForm({
   profile,
   interests,
   interestsAvailable,
+  interestsPending,
 }: {
   profile: CurrentProfile;
   interests: Interest[];
   interestsAvailable: boolean;
+  interestsPending: boolean;
 }) {
   const save = useSaveProfile();
   const {
@@ -152,7 +155,11 @@ function ProfileForm({
       </div>
       <fieldset className="profile-interests">
         <legend>Interests</legend>
-        {interests.length === 0 ? (
+        {interestsPending ? (
+          <p role="status">Loading interests…</p>
+        ) : !interestsAvailable ? (
+          <p>Interest choices are unavailable.</p>
+        ) : interests.length === 0 ? (
           <p>No interests are available yet.</p>
         ) : (
           interests.map((interest) => (

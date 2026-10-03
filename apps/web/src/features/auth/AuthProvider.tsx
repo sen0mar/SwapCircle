@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '../../lib/api-client';
+import { ApiError, apiRequest } from '../../lib/api-client';
 import { supabase } from './client';
 import { MessageComposerProvider } from '../inbox/MessageComposerProvider';
 
@@ -141,7 +141,7 @@ export function AuthProvider({
       !data.session ||
       data.session.user.id !== state.session?.user.id
     )
-      throw new Error('Sign in to continue.');
+      throw new ApiError('Sign in to continue.', 'UNAUTHORIZED', 401);
 
     const headers = new Headers(options.headers);
 

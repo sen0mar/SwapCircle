@@ -115,6 +115,7 @@ function fixture() {
           <Link to={`/inbox/${denied}`}>Denied fixture</Link>
           <Routes>
             <Route path="/inbox/:id" element={<InboxPage />} />
+            <Route path="/inbox" element={<InboxPage />} />
           </Routes>
         </MemoryRouter>
       </MessageComposerProvider>
@@ -742,3 +743,22 @@ test.each(['access revalidation', 'reconnect', 'focus'] as const)(
     }
   },
 );
+
+test('returning to conversations restores focus to the originating thread and preserves its draft', async () => {
+  fixture();
+  const user = userEvent.setup();
+  await screen.findByLabelText('Message draft');
+  await user.type(
+    screen.getByLabelText('Message draft'),
+    'Unsent return draft',
+  );
+  await user.click(screen.getByRole('link', { name: 'Back to conversations' }));
+  const origin = screen.getByRole('link', { name: /Reader Bob.*plain text/ });
+  expect(origin).toHaveFocus();
+  await user.keyboard('{Enter}');
+  await screen.findByLabelText('Message draft');
+  expect(screen.getByLabelText('Message draft')).toHaveValue(
+    'Unsent return draft',
+  );
+  expect(screen.getByRole('heading', { name: 'Reader Bob' })).toHaveFocus();
+});
