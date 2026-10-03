@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite';
 import { initializeTheme } from './src/theme/theme';
 
 export default defineConfig({
+  build: {
+    sourcemap: process.env.SENTRY_SOURCE_MAPS === '1' ? 'hidden' : false,
+  },
   resolve: {
     // Read workspace contracts directly so a running dev server never serves stale dist output.
     alias: {

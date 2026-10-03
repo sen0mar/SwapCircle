@@ -38,6 +38,7 @@
     }
   },
   "dependencies": {
+    "@sentry/node": "11.3.0",
     "@supabase/supabase-js": "^2.116.0",
     "@swapcircle/contracts": "workspace:*",
     "@swapcircle/database": "workspace:*",
@@ -46,6 +47,8 @@
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
     "pg": "8.23.0",
+    "pino": "10.3.1",
+    "pino-http": "11.0.0",
     "sharp": "0.34.4",
     "zod": "^4.6.5"
   },

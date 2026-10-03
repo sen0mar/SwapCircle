@@ -4,6 +4,13 @@ export const livenessSchema = z.object({ status: z.literal('ok') });
 
 export type Liveness = z.infer<typeof livenessSchema>;
 
+export const readinessSchema = z.object({
+  status: z.enum(['ready', 'unavailable']),
+  revision: z.union([z.literal('unknown'), z.string().regex(/^[a-f0-9]{40}$/)]),
+});
+
+export type Readiness = z.infer<typeof readinessSchema>;
+
 export const apiErrorSchema = z.object({
   error: z.object({
     code: z.string().regex(/^[A-Z_]{1,64}$/),
