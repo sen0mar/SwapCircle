@@ -520,8 +520,67 @@ try {
   });
   fixture.runtime.query = originalQuery;
   await Sentry.close(2000);
+  // Retained candidates must be excluded before LIMIT, otherwise the same first
+  // sixteen listings starve all later orphan handles on every invocation.
+  const protectedKeys = [];
+  for (let i = 0; i < 17; i++) {
+    const id = `00000000-0000-4000-8000-${randomUUID().replaceAll('-', '').slice(0, 12)}`;
+    await fixture.migration.query(
+      `INSERT INTO public.listings (id,owner_id,title,description,condition)
+      VALUES ($1,$2,'Synthetic retained image','Synthetic cleanup fairness fixture','good')`,
+      [id, alice.id],
+    );
+    await fixture.migration.query(
+      `INSERT INTO public.trade_items
+      (trade_id,version_id,listing_id,owner_id,recipient_id,listing_revision,title_snapshot,description_snapshot,condition_snapshot)
+      SELECT trade_id,version_id,$1,owner_id,recipient_id,listing_revision,title_snapshot,description_snapshot,condition_snapshot
+      FROM public.trade_items WHERE listing_id=$2 LIMIT 1`,
+      [id, items[0].id],
+    );
+    const key = `${id}/${randomUUID()}.webp`;
+    await fixture.migration.query(
+      `INSERT INTO public.listing_photos (listing_id,owner_id,storage_key,position,state)
+      VALUES ($1,$2,$3,0,'deleting')`,
+      [id, alice.id, key],
+    );
+    await fixture.storage.upload(key, imageBytes);
+    protectedKeys.push(key);
+  }
+  for (let i = 0; i < 2; i++) {
+    const id = `ffffffff-ffff-4fff-8fff-${randomUUID().replaceAll('-', '').slice(0, 12)}`;
+    const key = `${id}/${randomUUID()}.webp`;
+    await fixture.migration.query(
+      `INSERT INTO public.listings (id,owner_id,title,description,condition)
+      VALUES ($1,$2,'Synthetic orphan image','Synthetic cleanup fairness fixture','good')`,
+      [id, alice.id],
+    );
+    await fixture.migration.query(
+      `INSERT INTO public.listing_photos (listing_id,owner_id,storage_key,position,state)
+      VALUES ($1,$2,$3,0,'deleting')`,
+      [id, alice.id, key],
+    );
+    await fixture.storage.upload(key, imageBytes);
+    execFileSync('pnpm', ['--filter', '@swapcircle/api', 'cleanup:local'], {
+      cwd: new URL('../../..', import.meta.url),
+      env: { ...process.env, CLEANUP_LOCAL_SYNTHETIC: '1' },
+      stdio: 'pipe',
+    });
+    assert.equal(
+      (
+        await fixture.migration.query(
+          'SELECT 1 FROM public.listing_photos WHERE listing_id=$1',
+          [id],
+        )
+      ).rowCount,
+      0,
+    );
+    assert.equal((await fetch(fixture.storage.publicUrl(key))).ok, false);
+  }
+  for (const key of protectedKeys)
+    assert.ok((await fetch(fixture.storage.publicUrl(key))).ok);
+  assert.equal((await counts()).messages, before.messages);
   console.log(
-    'Recovery: actual SQL/accounts/messages/history and separate object-byte restore, corruption refusal, atomic cleanup race/history/recent upload protection, production visual recovery and private local monitoring passed.',
+    'Recovery: actual SQL/accounts/messages/history and separate object-byte restore, corruption refusal, atomic cleanup race/history/recent upload protection and bounded fairness, production visual recovery and private local monitoring passed.',
   );
 } finally {
   if (browser) await browser.close();
