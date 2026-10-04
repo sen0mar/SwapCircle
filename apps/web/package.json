@@ -9,6 +9,7 @@
     "test": "node --test test/*.test.mjs && vitest run",
     "build": "tsc --noEmit && vite build",
     "test:browser": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && pnpm build && playwright test --config test/playwright.config.ts",
+    "test:release-build": "node test/release-build.mjs",
     "test:catalog-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-catalog.mjs",
     "test:safety-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-safety-ui.mjs",
     "test:inbox-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm --filter @swapcircle/api build && node --env-file=../../packages/database/.env test/local-inbox.mjs",
@@ -39,7 +40,8 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-hook-form": "^7.88.0",
-    "react-router-dom": "7.18.4"
+    "react-router-dom": "7.18.4",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

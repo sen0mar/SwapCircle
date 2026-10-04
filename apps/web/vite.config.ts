@@ -5,6 +5,10 @@ import tailwindcss from '@tailwindcss/vite';
 import { initializeTheme } from './src/theme/theme';
 
 export default defineConfig({
+  // Controlled releases supply an allowlist explicitly; never load local dotenv files.
+  ...(process.env.SWAPCIRCLE_RELEASE_BUILD === '1'
+    ? { envDir: false as const }
+    : {}),
   build: {
     sourcemap: process.env.SENTRY_SOURCE_MAPS === '1' ? 'hidden' : false,
   },

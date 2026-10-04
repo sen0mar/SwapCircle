@@ -1,3 +1,4 @@
+import './lib/browser-validation';
 import { initializeMonitoring, reportReactError } from './observability/sentry';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';

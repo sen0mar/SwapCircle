@@ -20,6 +20,22 @@ export function releaseRevision(environment) {
   assert.equal(environment.GITHUB_EVENT_NAME, 'workflow_dispatch');
   assert.equal(environment.GITHUB_SHA, environment.RELEASE_REVISION);
   assert.equal(environment.GITHUB_REF_TYPE, 'branch');
+  if (
+    'API_RELEASE_REVISION' in environment ||
+    'FRONTEND_RELEASE_REVISION' in environment
+  ) {
+    const inputs = [
+      environment.API_RELEASE_REVISION,
+      environment.FRONTEND_RELEASE_REVISION,
+    ].filter(Boolean);
+
+    assert.equal(
+      inputs.length,
+      1,
+      'Choose exactly one controlled release input.',
+    );
+    assert.equal(inputs[0], environment.RELEASE_REVISION);
+  }
 
   return environment.RELEASE_REVISION;
 }
