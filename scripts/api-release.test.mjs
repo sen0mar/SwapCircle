@@ -157,10 +157,7 @@ test('release configuration keeps global serialization and secrets isolated from
     new URL('../.github/workflows/ci.yml', import.meta.url),
     'utf8',
   );
-  const release = await readFile(
-    new URL('../.github/workflows/api-release.yml', import.meta.url),
-    'utf8',
-  );
+  const release = ci.slice(ci.indexOf('  api-release:\n'));
 
   assert.match(
     ci,
@@ -172,9 +169,13 @@ test('release configuration keeps global serialization and secrets isolated from
   );
   assert.match(
     release,
-    /group: swapcircle-staging-release\n {2}cancel-in-progress: false/,
+    /group: swapcircle-staging-release\n {6}cancel-in-progress: false/,
   );
-  assert.match(release, /github\.event_name == 'workflow_dispatch'/);
+  assert.match(
+    release,
+    /github\.repository == 'sen0mar\/SwapCircle' && github\.event_name == 'workflow_dispatch' && inputs\.api_release_revision != ''/,
+  );
+  assert.ok(!release.includes('uses: ./.github/workflows/'));
   assert.match(release, /environment: staging/);
   assert.ok(
     release.indexOf('api-release.mjs checks') <
@@ -187,6 +188,21 @@ test('release configuration keeps global serialization and secrets isolated from
   assert.ok(!release.includes('secrets.DATABASE_URL'));
   assert.ok(!release.includes('secrets.SUPABASE_SERVICE_ROLE_KEY'));
   assert.ok(!ci.includes('secrets: inherit'));
+
+  const migration = release.slice(
+    release.indexOf('      - name: Verify and apply'),
+    release.indexOf('      - name: Deploy and verify'),
+  );
+  const deploy = release.slice(
+    release.indexOf('      - name: Deploy and verify'),
+  );
+
+  assert.match(migration, /secrets\.MIGRATION_DATABASE_URL/);
+  assert.match(migration, /secrets\.DATABASE_CA_CERT/);
+  assert.ok(!migration.includes('secrets.RENDER_API_KEY'));
+  assert.match(deploy, /secrets\.RENDER_API_KEY/);
+  assert.ok(!deploy.includes('secrets.MIGRATION_DATABASE_URL'));
+  assert.ok(!deploy.includes('secrets.DATABASE_CA_CERT'));
 });
 
 test('provisioning refuses admin, wrong-project and shared runtime passwords before transmission', async () => {
