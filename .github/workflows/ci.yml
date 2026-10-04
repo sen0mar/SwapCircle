@@ -88,7 +88,7 @@ jobs:
     # Explicit dispatch is a trusted maintainer operation; PRs never receive secrets.
     if: (github.event_name == 'workflow_dispatch' && inputs.api_release_revision == '' && inputs.frontend_release_revision == '') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    environment: staging
+    environment: production
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -122,10 +122,10 @@ jobs:
       contents: read
       actions: read
     runs-on: ubuntu-latest
-    environment: staging
+    environment: production
     timeout-minutes: 55
     concurrency:
-      group: swapcircle-staging-release
+      group: swapcircle-production-release
       cancel-in-progress: false
     env:
       RELEASE_REVISION: ${{ inputs.frontend_release_revision || inputs.api_release_revision }}
@@ -157,7 +157,7 @@ jobs:
           HOSTED_AUTHORIZATION: configure-approved-project
           HOSTED_REVIEWED_MIGRATION_SHA256: a3b4e7945b9ce81257aa83344e2b7b77af0a243031e21396ef73a356122bd29d
           SUPABASE_URL: https://tpanyqfgmbpsiejqjocd.supabase.co
-          FRONTEND_URL: https://swapcircle-staging.pages.dev
+          FRONTEND_URL: https://swapcircle.pages.dev
         run: |
           umask 077
           printf '%s' "$DATABASE_CA_CERT" > "$DATABASE_CA_CERT_PATH"
