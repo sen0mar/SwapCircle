@@ -161,11 +161,11 @@ test('release configuration keeps global serialization and secrets isolated from
 
   assert.match(
     ci,
-    /inputs\.api_release_revision != '' && github\.run_id \|\| github\.ref/,
+    /inputs\.frontend_release_revision != ''\) && github\.run_id \|\| github\.ref/,
   );
   assert.match(
     ci,
-    /cancel-in-progress: \$\{\{ !\(github\.event_name == 'workflow_dispatch' && inputs\.api_release_revision != ''\) \}\}/,
+    /cancel-in-progress: \$\{\{ !\(github\.event_name == 'workflow_dispatch' && \(inputs\.api_release_revision != '' \|\| inputs\.frontend_release_revision != ''\)\) \}\}/,
   );
   assert.match(
     release,
@@ -173,7 +173,7 @@ test('release configuration keeps global serialization and secrets isolated from
   );
   assert.match(
     release,
-    /github\.repository == 'sen0mar\/SwapCircle' && github\.event_name == 'workflow_dispatch' && inputs\.api_release_revision != ''/,
+    /github\.repository == 'sen0mar\/SwapCircle' && github\.event_name == 'workflow_dispatch' && \(inputs\.api_release_revision != '' \|\| inputs\.frontend_release_revision != ''\)/,
   );
   assert.ok(!release.includes('uses: ./.github/workflows/'));
   assert.match(release, /environment: staging/);
