@@ -977,6 +977,28 @@
 }
 
 @layer components {
+  .demo-notice {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    font-size: 0.875rem;
+  }
+  .demo-notice p,
+  .demo-data-notice p {
+    margin: 0;
+  }
+  .demo-notice summary {
+    min-height: 44px;
+    padding-block: 12px;
+    cursor: pointer;
+  }
+  .demo-data-notice {
+    display: grid;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
   .auth-panel {
     display: flex;
     flex-direction: column;
