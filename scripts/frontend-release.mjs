@@ -13,7 +13,7 @@ import {
 
 const { fetch, AbortSignal, URL } = globalThis;
 export const account = '40baa5468a639e3f2372271a6b88a17b';
-export const project = 'swapcircle-staging';
+export const project = 'swapcircle';
 export const apiOrigin = 'https://swapcircle-staging-api.onrender.com';
 export const supabaseOrigin = 'https://tpanyqfgmbpsiejqjocd.supabase.co';
 const output = 'apps/web/dist';

@@ -26,7 +26,7 @@ function transport(
     assert.equal(url.pathname, '/auth/v1/authorize');
     assert.equal(
       url.searchParams.get('redirect_to'),
-      'https://swapcircle-staging.pages.dev/auth/callback',
+      'https://swapcircle.pages.dev/auth/callback',
     );
     const google = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     google.searchParams.set('client_id', environment.GOOGLE_CLIENT_ID);

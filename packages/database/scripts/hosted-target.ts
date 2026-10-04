@@ -1,7 +1,7 @@
 import { databaseConfig, DatabaseConfigurationError } from '../src/config.ts';
 
 export const hostedRef = 'tpanyqfgmbpsiejqjocd';
-export const hostedOrigin = 'https://swapcircle-staging.pages.dev';
+export const hostedOrigin = 'https://swapcircle.pages.dev';
 
 export function hostedTarget(environment: NodeJS.ProcessEnv) {
   const url = environment.MIGRATION_DATABASE_URL;

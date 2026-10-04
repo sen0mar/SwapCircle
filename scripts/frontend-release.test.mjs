@@ -113,6 +113,8 @@ test('Pages upload refuses unrelated accounts, projects, branches, Git integrati
   );
   for (const change of [
     { name: 'other' },
+    { name: 'swapcircle-staging', subdomain: 'swapcircle-staging.pages.dev' },
+    { subdomain: 'swapcircle-staging.pages.dev' },
     { production_branch: 'preview' },
     { source: { type: 'github' } },
     { deployment_configs: { production: { env_vars: { SECRET: 'private' } } } },
@@ -161,7 +163,7 @@ test('full release keeps readiness, build, private maps, audit, upload and deplo
     assert.ok(!upload.includes(`secrets.${name}`));
   assert.match(
     release,
-    /group: swapcircle-staging-release\n {6}cancel-in-progress: false/,
+    /group: swapcircle-production-release\n {6}cancel-in-progress: false/,
   );
   assert.ok(!ci.includes('secrets: inherit'));
 });

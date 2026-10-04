@@ -56,10 +56,7 @@ async function main() {
   );
   assert.equal(privateEnvironment.RENDER_SERVICE_ID, '');
   assert.equal(privateEnvironment.RENDER_API_URL, '');
-  assert.equal(
-    privateEnvironment.FRONTEND_URL,
-    'https://swapcircle-staging.pages.dev',
-  );
+  assert.equal(privateEnvironment.FRONTEND_URL, 'https://swapcircle.pages.dev');
   assert.equal(
     privateEnvironment.SUPABASE_URL,
     'https://tpanyqfgmbpsiejqjocd.supabase.co',
