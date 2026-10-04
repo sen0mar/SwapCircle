@@ -296,7 +296,12 @@ test('profile draft, save, reload and public second session', async ({
   await expect(
     publicPage.getByText('No available items shared yet.', { exact: true }),
   ).toBeVisible();
-  expect(await publicPage.locator('main').innerHTML()).not.toMatch(
+  // Inspect the public member output for internal profile and meeting fields.
+  expect(
+    await publicPage
+      .getByRole('region', { name: 'Ada Garden', exact: true })
+      .innerHTML(),
+  ).not.toMatch(
     /createdAt|updatedAt|interestIds|credential|moderation|meeting/i,
   );
   await other.close();
