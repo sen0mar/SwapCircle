@@ -727,8 +727,10 @@ export function ProposalComposer({
                 </div>
               ))}
               <p>
-                <strong>Meet to swap</strong> is the default. Coffee invitations
-                will be available after eligibility checks are implemented.
+                <strong>Meet to swap</strong> is the default. After sending a
+                proposal, you can invite someone for optional coffee in the swap
+                details if you share at least two interests. Coffee requires
+                separate consent.
               </p>
               {error && (
                 <p role="alert" className="ui-feedback-error">
