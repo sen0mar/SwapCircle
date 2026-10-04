@@ -8,11 +8,15 @@ on:
         description: Optional exact checked SHA for a controlled API release
         required: false
         type: string
+      frontend_release_revision:
+        description: Optional exact checked SHA for a controlled API and frontend release
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.api_release_revision != '' && github.run_id || github.ref }}-${{ github.event_name }}
-  cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && inputs.api_release_revision != '') }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && (inputs.api_release_revision != '' || inputs.frontend_release_revision != '') && github.run_id || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && (inputs.api_release_revision != '' || inputs.frontend_release_revision != '')) }}
 jobs:
   checks:
     if: github.event_name != 'workflow_dispatch'
@@ -35,6 +39,7 @@ jobs:
       - run: pnpm build
       - run: pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
       - run: pnpm test:browser
+      - run: pnpm --filter @swapcircle/web test:release-build
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -81,7 +86,7 @@ jobs:
         run: pnpm db:stop
   private-source-maps:
     # Explicit dispatch is a trusted maintainer operation; PRs never receive secrets.
-    if: (github.event_name == 'workflow_dispatch' && inputs.api_release_revision == '') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: (github.event_name == 'workflow_dispatch' && inputs.api_release_revision == '' && inputs.frontend_release_revision == '') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 15
@@ -112,18 +117,25 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: node scripts/sentry-source-maps.mjs
   api-release:
-    if: github.repository == 'sen0mar/SwapCircle' && github.event_name == 'workflow_dispatch' && inputs.api_release_revision != ''
+    if: github.repository == 'sen0mar/SwapCircle' && github.event_name == 'workflow_dispatch' && (inputs.api_release_revision != '' || inputs.frontend_release_revision != '')
     permissions:
       contents: read
       actions: read
     runs-on: ubuntu-latest
     environment: staging
-    timeout-minutes: 35
+    timeout-minutes: 55
     concurrency:
       group: swapcircle-staging-release
       cancel-in-progress: false
     env:
-      RELEASE_REVISION: ${{ inputs.api_release_revision }}
+      RELEASE_REVISION: ${{ inputs.frontend_release_revision || inputs.api_release_revision }}
+      API_RELEASE_REVISION: ${{ inputs.api_release_revision }}
+      FRONTEND_RELEASE_REVISION: ${{ inputs.frontend_release_revision }}
+      VITE_API_URL: https://swapcircle-staging-api.onrender.com
+      VITE_SUPABASE_URL: https://tpanyqfgmbpsiejqjocd.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_BUILD_REVISION: ${{ inputs.frontend_release_revision || inputs.api_release_revision }}
+      VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -157,3 +169,32 @@ jobs:
           RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
           RENDER_API_URL: ${{ vars.RENDER_API_URL }}
         run: node scripts/api-release.mjs deploy
+      - name: Build browser-only assets and private API maps
+        if: inputs.frontend_release_revision != ''
+        run: |
+          pnpm --filter @swapcircle/api... build
+          pnpm --filter @swapcircle/api exec tsc --sourceMap --inlineSources
+          node scripts/frontend-release.mjs build
+      - name: Upload and remove release source maps
+        if: inputs.frontend_release_revision != ''
+        env:
+          BUILD_REVISION: ${{ inputs.frontend_release_revision }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_API_PROJECT: ${{ vars.SENTRY_API_PROJECT }}
+          SENTRY_WEB_PROJECT: ${{ vars.SENTRY_WEB_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: node scripts/sentry-source-maps.mjs
+      - name: Audit public frontend assets
+        if: inputs.frontend_release_revision != ''
+        run: node scripts/frontend-release.mjs audit
+      - name: Require exact readiness and upload to existing Pages project
+        if: inputs.frontend_release_revision != ''
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/frontend-release.mjs upload
+      - name: Smoke the actual deployed frontend
+        if: inputs.frontend_release_revision != ''
+        run: |
+          pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
+          node scripts/frontend-smoke.mjs

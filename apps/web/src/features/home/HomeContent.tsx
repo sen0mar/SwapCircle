@@ -84,36 +84,38 @@ export function HomeContent({
             </Link>
           </div>
           {listingContent ??
-            (state === 'ready' && listings.length ? (
-              <>
-                <div className="listing-grid">
-                  {listings.map((listing) => (
-                    <ListingCard key={listing.title} listing={listing} />
-                  ))}
-                </div>
-                <p className="availability-note">
-                  Sample listings for design preview. Item details are not
-                  available yet.
-                </p>
-              </>
-            ) : (
-              <CollectionNotice state={notice} subject="listings" />
-            ))}
+            (import.meta.env.DEV &&
+              (state === 'ready' && listings.length ? (
+                <>
+                  <div className="listing-grid">
+                    {listings.map((listing) => (
+                      <ListingCard key={listing.title} listing={listing} />
+                    ))}
+                  </div>
+                  <p className="availability-note">
+                    Sample listings for design preview. Item details are not
+                    available yet.
+                  </p>
+                </>
+              ) : (
+                <CollectionNotice state={notice} subject="listings" />
+              )))}
         </section>
         <section aria-labelledby="members-title">
           <div className="section-heading">
             <h2 id="members-title">Discover your community</h2>
           </div>
           {memberContent ??
-            (state === 'ready' && members.length ? (
-              <div className="member-grid">
-                {members.map((member) => (
-                  <MemberPreview key={member.name} member={member} />
-                ))}
-              </div>
-            ) : (
-              <CollectionNotice state={notice} subject="members" />
-            ))}
+            (import.meta.env.DEV &&
+              (state === 'ready' && members.length ? (
+                <div className="member-grid">
+                  {members.map((member) => (
+                    <MemberPreview key={member.name} member={member} />
+                  ))}
+                </div>
+              ) : (
+                <CollectionNotice state={notice} subject="members" />
+              )))}
         </section>
       </div>
       <aside
@@ -129,26 +131,29 @@ export function HomeContent({
               Explore public profiles and interests below. Shared interests are
               optional for swapping and messaging.
             </p>
-          ) : state === 'ready' && members.length ? (
-            <>
-              <p>Sample interests from the preview community</p>
-              <div className="interest-list">
-                {Array.from(
-                  new Set(members.flatMap((member) => member.interests)),
-                ).map((interest) => (
-                  <InterestChip key={interest}>{interest}</InterestChip>
-                ))}
-              </div>
-              <MessageUnavailable />
-            </>
           ) : (
-            <p className="availability-note">
-              Interest discovery is not available yet.
-            </p>
+            import.meta.env.DEV &&
+            (state === 'ready' && members.length ? (
+              <>
+                <p>Sample interests from the preview community</p>
+                <div className="interest-list">
+                  {Array.from(
+                    new Set(members.flatMap((member) => member.interests)),
+                  ).map((interest) => (
+                    <InterestChip key={interest}>{interest}</InterestChip>
+                  ))}
+                </div>
+                <MessageUnavailable />
+              </>
+            ) : (
+              <p className="availability-note">
+                Interest discovery is not available yet.
+              </p>
+            ))
           )}
         </Card>
         {live && <PrivateConversationPreview />}
-        {!live && (
+        {import.meta.env.DEV && !live && (
           <section aria-labelledby="conversations-title">
             <div className="section-heading">
               <h2 id="conversations-title">Conversations</h2>

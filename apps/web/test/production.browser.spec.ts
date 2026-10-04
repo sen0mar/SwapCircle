@@ -36,7 +36,7 @@ test('production is signed out and contains no profile fixture', async ({
 
   for (const file of await readdir('dist/assets')) {
     expect(await readFile(`dist/assets/${file}`, 'utf8')).not.toMatch(
-      /Alex Example|Development-only profile fixture|Synthetic profile for development previews|Open development account preview|Jamie Demo|Priya Demo|This is a sample conversation, not a real message.|Development homepage preview|Sample content|Development API status|Connecting to the API/,
+      /Alex Example|Development-only profile fixture|Synthetic profile for development previews|Open development account preview|Jamie Demo|Priya Demo|This is a sample conversation, not a real message.|Development homepage preview|Sample content|Sample listings for design preview|Sample interests from the preview community|Synthetic conversation previews|Messaging is not available yet|Interest discovery is not available yet|Development API status|Connecting to the API/,
     );
   }
 
