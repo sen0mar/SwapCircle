@@ -8,6 +8,8 @@ import { URL } from 'node:url';
 import process from 'node:process';
 import console from 'node:console';
 import { chromium, expect } from '@playwright/test';
+// Load the actual release driver too: its runtime imports must resolve in this workspace.
+import '../../../scripts/frontend-smoke.mjs';
 import {
   apiOrigin,
   supabaseOrigin,

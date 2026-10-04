@@ -15,7 +15,7 @@ const { fetch, AbortSignal, URL } = globalThis;
 const require = createRequire(
   new URL('../apps/web/package.json', import.meta.url),
 );
-const { chromium } = require('playwright');
+const { chromium } = require('@playwright/test');
 
 export async function smoke(environment) {
   await requireReady(environment);
