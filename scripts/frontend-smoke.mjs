@@ -17,6 +17,12 @@ const require = createRequire(
 );
 const { chromium } = require('@playwright/test');
 
+export async function requireUnavailableItem(page) {
+  await page
+    .getByRole('heading', { name: 'Item unavailable', exact: true })
+    .waitFor({ timeout: 60_000 });
+}
+
 export async function smoke(environment) {
   await requireReady(environment);
   const localHtml = await readFile('apps/web/dist/index.html', 'utf8');
@@ -150,10 +156,7 @@ export async function smoke(environment) {
     await visit(
       `${frontendOrigin}/listings/00000000-0000-4000-8000-000000000000`,
     );
-    await page
-      .getByText(/not found|unavailable/i)
-      .first()
-      .waitFor({ timeout: 60_000 });
+    await requireUnavailableItem(page);
     await page.screenshot({
       path: `${directory}/safe-unavailable.png`,
       fullPage: true,
