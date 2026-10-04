@@ -7,7 +7,7 @@ import { setTimeout } from 'node:timers/promises';
 const { fetch, AbortSignal } = globalThis;
 
 export const repository = 'sen0mar/SwapCircle';
-export const frontendOrigin = 'https://swapcircle-staging.pages.dev';
+export const frontendOrigin = 'https://swapcircle.pages.dev';
 export const buildCommand =
   'corepack pnpm install --frozen-lockfile && corepack pnpm --filter @swapcircle/api... build';
 export const startCommand = 'node scripts/start-api.mjs';

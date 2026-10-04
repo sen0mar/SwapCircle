@@ -31,6 +31,7 @@ test('hosted operations refuse missing authorization and mismatched targets befo
     { HOSTED_AUTHORIZATION: undefined },
     { SUPABASE_URL: 'https://aaaaaaaaaaaaaaaaaaaa.supabase.co' },
     { FRONTEND_URL: 'https://preview.pages.dev' },
+    { FRONTEND_URL: 'https://swapcircle-staging.pages.dev' },
     { DATABASE_CA_CERT_PATH: undefined },
     {
       MIGRATION_DATABASE_URL: environment.MIGRATION_DATABASE_URL.replace(
