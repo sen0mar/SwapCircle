@@ -105,6 +105,14 @@ export async function smoke(environment) {
       await page
         .getByRole('heading', { name: 'Less stuff. More connection.' })
         .waitFor();
+      await page
+        .getByText('No available items shared yet.', { exact: true })
+        .or(page.locator('.listing-card').first())
+        .waitFor({ timeout: 60_000 });
+      await page
+        .getByText('Loading members…', { exact: true })
+        .waitFor({ state: 'hidden' });
+      assert.equal(await page.getByRole('alert').count(), 0);
       await page.screenshot({
         path: `${directory}/home-${theme}.png`,
         fullPage: true,
@@ -113,10 +121,7 @@ export async function smoke(environment) {
     await visit(`${frontendOrigin}/browse?condition=good`);
     await reload();
     await page.getByRole('heading', { name: 'Browse', exact: true }).waitFor();
-    assert.equal(
-      await page.getByLabel('Condition', { exact: true }).inputValue(),
-      'good',
-    );
+    assert.equal(await page.getByLabel('Condition').inputValue(), 'good');
     await visit(`${frontendOrigin}/account/settings`);
     await page
       .getByRole('heading', { name: 'Sign in to SwapCircle' })
