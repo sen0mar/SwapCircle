@@ -1,5 +1,6 @@
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
+import { DemoDataNotice } from '../../components/layout/DemoNotice';
 import { useAuth } from './AuthProvider';
 import { safeDestination } from './safe-destination';
 import { useGoogleSignIn } from './useGoogleSignIn';
@@ -20,7 +21,8 @@ export function SignInPage() {
       aria-labelledby="sign-in-title"
     >
       <h1 id="sign-in-title">Sign in to SwapCircle</h1>
-      <p>Use your Google account to continue.</p>
+      <p>Use your Google account to try the demo.</p>
+      <DemoDataNotice />
       {(error || restorationError) && (
         <p role="alert">{error || restorationError}</p>
       )}
