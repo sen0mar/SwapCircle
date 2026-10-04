@@ -169,14 +169,14 @@ test('release configuration keeps global serialization and secrets isolated from
   );
   assert.match(
     release,
-    /group: swapcircle-staging-release\n {6}cancel-in-progress: false/,
+    /group: swapcircle-production-release\n {6}cancel-in-progress: false/,
   );
   assert.match(
     release,
     /github\.repository == 'sen0mar\/SwapCircle' && github\.event_name == 'workflow_dispatch' && \(inputs\.api_release_revision != '' \|\| inputs\.frontend_release_revision != ''\)/,
   );
   assert.ok(!release.includes('uses: ./.github/workflows/'));
-  assert.match(release, /environment: staging/);
+  assert.match(release, /environment: production/);
   assert.ok(
     release.indexOf('api-release.mjs checks') <
       release.indexOf('secrets.MIGRATION_DATABASE_URL'),
@@ -220,7 +220,7 @@ test('provisioning refuses admin, wrong-project and shared runtime passwords bef
       'postgres://postgres.tpanyqfgmbpsiejqjocd:admin-password@aws-0-eu-west-1.pooler.supabase.com:5432/postgres',
     DATABASE_CA_CERT_PATH: cert,
     SUPABASE_URL: 'https://tpanyqfgmbpsiejqjocd.supabase.co',
-    FRONTEND_URL: 'https://swapcircle-staging.pages.dev',
+    FRONTEND_URL: 'https://swapcircle.pages.dev',
   };
   const authorization = 'configure-approved-project';
 
