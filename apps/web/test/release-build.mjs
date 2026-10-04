@@ -134,6 +134,12 @@ try {
       theme,
     );
   }
+  await visit(`${origin}/browse?condition=good`);
+  await reload();
+  await expect(
+    page.getByRole('heading', { name: 'Browse', exact: true }),
+  ).toBeVisible();
+  assert.equal(await page.getByLabel('Condition').inputValue(), 'good');
   await visit(`${origin}/account/settings`);
   await expect(
     page.getByRole('heading', { name: 'Sign in to SwapCircle' }),
