@@ -6,6 +6,7 @@ import { mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { frontendOrigin } from './api-release.mjs';
 import { apiOrigin } from './frontend-release.mjs';
+import { requireUnavailableItem } from './frontend-smoke.mjs';
 
 const { fetch, AbortSignal, URL } = globalThis;
 
@@ -158,10 +159,7 @@ export async function verifyPublicRelease(revision) {
       .filter({ hasText: 'Sign-in could not be completed' })
       .waitFor();
     await visit('/listings/00000000-0000-4000-8000-000000000000');
-    await page
-      .getByText(/not found|unavailable/i)
-      .first()
-      .waitFor({ timeout: 60_000 });
+    await requireUnavailableItem(page);
     await collect();
     assert.deepEqual(errors, [], 'Public review encountered a page error.');
     assert.deepEqual(

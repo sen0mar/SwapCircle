@@ -9,7 +9,7 @@ import process from 'node:process';
 import console from 'node:console';
 import { chromium, expect } from '@playwright/test';
 // Load the actual release driver too: its runtime imports must resolve in this workspace.
-import '../../../scripts/frontend-smoke.mjs';
+import { requireUnavailableItem } from '../../../scripts/frontend-smoke.mjs';
 import {
   apiOrigin,
   supabaseOrigin,
@@ -151,6 +151,29 @@ try {
       .getByRole('alert')
       .filter({ hasText: 'Sign-in could not be completed' }),
   ).toBeVisible();
+
+  const missingItem = '00000000-0000-4000-8000-000000000000';
+
+  await page.route(`${apiOrigin}/api/v1/listings/${missingItem}`, (route) =>
+    route.fulfill({
+      status: 404,
+      json: { error: { code: 'NOT_FOUND', message: 'Item not found.' } },
+    }),
+  );
+  await visit(`${origin}/listings/${missingItem}`);
+  await expect(
+    page
+      .getByRole('complementary', { name: 'Portfolio demo' })
+      .locator('details'),
+  ).not.toHaveAttribute('open');
+  // Exercise the deployed smoke's assertion while unrelated notice text is hidden.
+  await requireUnavailableItem(page);
+  await expect(
+    page.getByText('This item cannot be found or has been withdrawn.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+
   await visit(`${origin}/dev/api-status`);
   await expect(
     page.getByRole('heading', { name: 'Page not found' }),
