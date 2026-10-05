@@ -123,12 +123,12 @@ test('hook acceptance and wrong healthy build never count as success', () => {
 test('service validation refuses unrelated services, paid plans and automatic deploys', () => {
   const env = {
     RENDER_SERVICE_ID: 'srv-intended',
-    RENDER_API_URL: 'https://swapcircle-staging-api.onrender.com',
+    RENDER_API_URL: 'https://swapcircle-wqu8.onrender.com',
   };
   const service = {
     id: env.RENDER_SERVICE_ID,
     ownerId: 'tea-d5qvc063jp1c73fekfag',
-    name: 'swapcircle-staging-api',
+    name: 'SwapCircle',
     type: 'web_service',
     repo: `https://github.com/${repository}`,
     autoDeployTrigger: 'off',
@@ -145,6 +145,13 @@ test('service validation refuses unrelated services, paid plans and automatic de
   for (const change of [
     { id: 'srv-d96t0c67r5hc738ck5k0' },
     { name: 'stafflow-api' },
+    { name: 'swapcircle-staging-api' },
+    {
+      serviceDetails: {
+        ...service.serviceDetails,
+        url: 'https://swapcircle-staging-api.onrender.com',
+      },
+    },
     { autoDeployTrigger: 'commit' },
     { serviceDetails: { ...service.serviceDetails, plan: 'starter' } },
   ])
