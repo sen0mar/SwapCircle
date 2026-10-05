@@ -62,7 +62,7 @@ export function intendedService(service, environment) {
   assert.match(environment.RENDER_SERVICE_ID ?? '', /^srv-[a-z0-9]+$/);
   assert.equal(service.id, environment.RENDER_SERVICE_ID);
   assert.equal(service.ownerId, 'tea-d5qvc063jp1c73fekfag');
-  assert.equal(service.name, 'swapcircle-staging-api');
+  assert.equal(service.name, 'SwapCircle');
   assert.equal(service.type, 'web_service');
   assert.equal(service.repo, `https://github.com/${repository}`);
   assert.equal(service.autoDeployTrigger, 'off');
@@ -78,9 +78,9 @@ export function intendedService(service, environment) {
     startCommand,
   );
   assert.equal(service.serviceDetails.url, environment.RENDER_API_URL);
-  assert.match(
+  assert.equal(
     environment.RENDER_API_URL,
-    /^https:\/\/swapcircle-staging-api[a-z0-9-]*\.onrender\.com$/,
+    'https://swapcircle-wqu8.onrender.com',
   );
 }
 

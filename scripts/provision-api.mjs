@@ -104,7 +104,7 @@ async function main() {
     'Service inventory requires pagination before creation.',
   );
   assert.ok(
-    !services.some((item) => item.service.name === 'swapcircle-staging-api'),
+    !services.some((item) => item.service.name === 'SwapCircle'),
     'Intended service already exists; recover its identity instead of creating another.',
   );
   const values = {
@@ -124,7 +124,7 @@ async function main() {
   );
   const payload = {
     type: 'web_service',
-    name: 'swapcircle-staging-api',
+    name: 'SwapCircle',
     ownerId: 'tea-d5qvc063jp1c73fekfag',
     repo: `https://github.com/${repository}`,
     branch,
@@ -170,11 +170,11 @@ async function main() {
   const created = await response.json();
   const service = created.service ?? created;
 
-  assert.equal(service.name, 'swapcircle-staging-api');
+  assert.equal(service.name, 'SwapCircle');
   assert.match(service.id, /^srv-[a-z0-9]+$/);
   assert.match(
     service.serviceDetails.url,
-    /^https:\/\/swapcircle-staging-api[a-z0-9-]*\.onrender\.com$/,
+    /^https:\/\/swapcircle(?:-[a-z0-9]+)?\.onrender\.com$/,
   );
   assert.equal(readFileSync('.env.hosted', 'utf8'), original);
   writeFileSync(
