@@ -30,23 +30,42 @@ const app = createApp({
 const ids = [];
 
 try {
-  const signup = await createClient(
-    status.API_URL,
-    status.ANON_KEY,
-    options,
-  ).auth.signUp({
-    email: `disabled-signup-${randomUUID()}@example.invalid`,
-    password: `Local-${randomUUID()}!`,
+  const registrationEmail = `unconfirmed-signup-${randomUUID()}@example.invalid`;
+  const registrationPassword = `Local-${randomUUID()}!`;
+  const signupClient = createClient(status.API_URL, status.ANON_KEY, options);
+  const signup = await signupClient.auth.signUp({
+    email: registrationEmail,
+    password: registrationPassword,
   });
 
   if (signup.data.user) ids.push(signup.data.user.id);
 
   assert.equal(
-    signup.error?.code,
-    'signup_disabled',
-    'Public signup must remain disabled',
+    signup.error,
+    null,
+    'Local registration must remain available for OAuth compatibility',
   );
-  assert.equal(signup.data.session, null);
+  assert.ok(
+    signup.data.user,
+    'Local registration did not create a confirmation-pending user',
+  );
+  assert.equal(
+    signup.data.session,
+    null,
+    'Email registration must not issue an unconfirmed session',
+  );
+
+  const unconfirmed = await signupClient.auth.signInWithPassword({
+    email: registrationEmail,
+    password: registrationPassword,
+  });
+
+  assert.equal(
+    unconfirmed.error?.code,
+    'email_not_confirmed',
+    'Unconfirmed email accounts must not sign in',
+  );
+  assert.equal(unconfirmed.data.session, null);
 
   for (let index = 0; index < 2; index++) {
     const email = `auth-check-${randomUUID()}@example.invalid`;

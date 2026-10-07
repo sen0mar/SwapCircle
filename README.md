@@ -154,8 +154,14 @@ job. Browser tests mock OAuth transport while exercising the real browser SDK;
 those tests do not replace the manual Google OAuth integration checkpoint.
 
 Password login does not send email or create accounts. Local `[auth.email].enable_signup = true` enables the email provider;
-`[auth].enable_signup = false` prevents new accounts for all providers, including
-Google. Existing provisioned Google accounts can still sign in locally. Provision confirmed synthetic
+`[auth].enable_signup = true` preserves first-time Google OAuth accounts. The
+pinned CLI cannot disable email registration separately while keeping password
+login and first-time OAuth accounts: the email flag disables the entire provider,
+and the global flag disables new accounts for all providers. Local email
+registration is therefore permitted at the Auth endpoint with confirmation
+required (`enable_confirmations = true`); the app exposes no registration or reset
+UI. Local email delivery goes only to the isolated SMTP inbox, not real recipients.
+Provision confirmed synthetic
 accounts with passwords through trusted local tooling; no demo seed or hosted
 account changes are part of this feature. Passwords are passed directly to
 Supabase, never trimmed, logged, or stored by application code. AuthProvider owns
@@ -175,7 +181,8 @@ reload/logout and safe redirects, then deletes its temporary Auth accounts.
 It rebuilds the web bundle for local configuration; run `pnpm build` afterward
 before other preview suites.
 
-See the official [password login SDK reference](https://supabase.com/docs/reference/javascript/auth-signinwithpassword),
+See the [Supabase CLI provider/signup clarification](https://github.com/supabase/cli/pull/4469)
+and official [password login SDK reference](https://supabase.com/docs/reference/javascript/auth-signinwithpassword),
 [password auth guide](https://supabase.com/docs/guides/auth/passwords), and
 [Auth rate limits](https://supabase.com/docs/guides/auth/rate-limits).
 

@@ -30,12 +30,13 @@ port = 55434
 enabled = true
 [auth]
 enabled = true
-# Existing provisioned accounts only, including local Google accounts.
-enable_signup = false
+# Preserve first-time Google OAuth accounts in the isolated local stack.
+enable_signup = true
 site_url = "http://127.0.0.1:5173"
 additional_redirect_urls = ["http://127.0.0.1:5173/auth/callback", "http://127.0.0.1:5173/auth/callback?next=*"]
 [auth.email]
-# CLI maps this to email-provider availability; signup is disabled above.
+# CLI maps this to email-provider availability, including password login.
+# Email registration is possible locally, but requires confirmation.
 enable_signup = true
 enable_confirmations = true
 [edge_runtime]
