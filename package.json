@@ -25,7 +25,8 @@
     "test:api-local": "node scripts/test-local-suites.mjs api",
     "test:journeys-local": "node scripts/test-local-suites.mjs journeys",
     "verify:release-public": "node scripts/release-verification.mjs",
-    "backup:local": "pnpm --filter @swapcircle/database backup"
+    "backup:local": "pnpm --filter @swapcircle/database backup",
+    "demo:seed": "pnpm --filter @swapcircle/api demo:seed"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
