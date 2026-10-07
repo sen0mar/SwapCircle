@@ -113,7 +113,8 @@ CI runs a fresh isolated local rebuild and privilege checks without hosted secre
 
 ## Authentication
 
-The browser uses Supabase Google OAuth with PKCE. `/sign-in` starts the SDK flow,
+The browser uses Supabase Google OAuth with PKCE and email/password sign-in for
+provisioned, confirmed accounts. `/sign-in` calls the Supabase SDK,
 `/auth/callback` exchanges the one-use code, and `/account` checks the protected
 Express `/api/v1/identity` endpoint. The callback accepts only implemented local
 destinations. Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in
@@ -148,10 +149,35 @@ token remains valid until expiry, as with Supabase's standard JWT lifecycle.
 `pnpm --filter @swapcircle/api test:auth-local` verifies real SDK sessions for two
 temporary synthetic users against **only** the loopback stack on port 55431,
 checks valid/tampered/missing tokens, signs out and deletes those users. It uses
-an administrative test-only email link to obtain fixtures; no email/password
-login is exposed in the app. This check is included in the isolated database CI
+temporary random passwords to verify successful and rejected password sign-in. This check is included in the isolated database CI
 job. Browser tests mock OAuth transport while exercising the real browser SDK;
 those tests do not replace the manual Google OAuth integration checkpoint.
+
+Password login does not send email or create accounts. Local `[auth.email].enable_signup = true` enables the email provider;
+`[auth].enable_signup = false` prevents new accounts for all providers, including
+Google. Existing provisioned Google accounts can still sign in locally. Provision confirmed synthetic
+accounts with passwords through trusted local tooling; no demo seed or hosted
+account changes are part of this feature. Passwords are passed directly to
+Supabase, never trimmed, logged, or stored by application code. AuthProvider owns
+SDK sessions and the same cache/draft cleanup for both login methods. The form
+uses shared Zod validation, generic failures, and disables both methods while a
+request is pending. Supabase Auth enforces IP-based `/token` rate limits (including
+password login); frontend disabling is only duplicate-request protection.
+
+Hosted prerequisites: email provider enabled, confirmed provisioned accounts with
+passwords, HTTPS, and reviewed Supabase Auth rate limits. If CAPTCHA is enabled,
+this form needs a CAPTCHA token integration before hosted password login can
+succeed. Public registration, reset, and email delivery remain out of scope and
+require custom SMTP before adding those workflows. No hosted settings were changed.
+`pnpm --filter @swapcircle/web test:password-local` runs the production browser
+form against loopback Supabase and Express, checks failures and two accounts,
+reload/logout and safe redirects, then deletes its temporary Auth accounts.
+It rebuilds the web bundle for local configuration; run `pnpm build` afterward
+before other preview suites.
+
+See the official [password login SDK reference](https://supabase.com/docs/reference/javascript/auth-signinwithpassword),
+[password auth guide](https://supabase.com/docs/guides/auth/passwords), and
+[Auth rate limits](https://supabase.com/docs/guides/auth/rate-limits).
 
 ## Profiles and interests
 

@@ -154,3 +154,88 @@ test('rejected identity offers a working reauthentication path', async ({
     0,
   );
 });
+
+test('password sign-in preserves safe next, reloads, logs out and switches accounts through SDK events', async ({
+  page,
+}) => {
+  const ids = [
+    'a8ded912-c170-4988-8750-9747558e8a87',
+    'b8ded912-c170-4988-8750-9747558e8a87',
+  ];
+  const grants: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === '/auth/v1/token') {
+      grants.push(url.searchParams.get('grant_type')!);
+      expect(request.postDataJSON()).toMatchObject({
+        email: 'browser-demo@example.invalid',
+        password: 'Synthetic password with spaces ',
+      });
+    }
+  });
+  for (const id of ids) {
+    await signInFixture(page, '/account?view=session#details', id, 'password');
+    await page.reload();
+    await expect(
+      page.getByText('Your session is verified.', { exact: false }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Open account' }).click();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await expect(page.getByLabel('Password', { exact: true })).toHaveValue('');
+    await expect(page.getByLabel('Email', { exact: true })).toHaveValue('');
+    await expect(
+      page.getByRole('button', { name: 'Open account' }),
+    ).toHaveCount(0);
+  }
+  expect(grants).toEqual(['password', 'password']);
+});
+
+test('password validation, generic rejection and pending state do not expose credentials or provider errors', async ({
+  page,
+}) => {
+  let requests = 0;
+  let finish!: () => void;
+  await page.route('**/auth/v1/token?grant_type=password', async (route) => {
+    requests++;
+    await new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    await route.fulfill({
+      status: 400,
+      json: {
+        error: 'invalid_grant',
+        error_description: 'private-provider-detail',
+      },
+    });
+  });
+  await page.goto('/sign-in?next=https://evil.invalid');
+  await page.getByRole('button', { name: 'Sign in with email' }).click();
+  await expect(page.getByText('Enter a valid email address.')).toBeVisible();
+  await expect(page.getByText('Enter your password.')).toBeVisible();
+  expect(requests).toBe(0);
+  await page
+    .getByLabel('Email', { exact: true })
+    .fill('unknown@example.invalid');
+  await page.getByLabel('Password', { exact: true }).fill('wrong secret');
+  await page.getByLabel('Password', { exact: true }).press('Enter');
+  await expect(
+    page.getByRole('button', { name: 'Signing in…' }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: 'Continue with Google' }),
+  ).toBeDisabled();
+  await expect.poll(() => requests).toBe(1);
+  finish();
+  await expect(page.getByRole('alert')).toContainText('Sign-in failed.');
+  await expect(page.getByText('private-provider-detail')).toHaveCount(0);
+  await expect(page.getByLabel('Password', { exact: true })).toHaveValue('');
+  await expect(
+    page.getByRole('button', { name: 'Continue with Google' }),
+  ).toBeEnabled();
+});
+
+test('password login rejects external next destinations', async ({ page }) => {
+  await signInFixture(page, '/account', undefined, 'password');
+  await page.goto('/sign-in?next=https://evil.invalid');
+  await expect(page).toHaveURL(/\/account$/);
+});

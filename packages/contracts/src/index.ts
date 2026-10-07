@@ -707,3 +707,11 @@ export type TradeReceiptSubmission = z.infer<
 export type TradeProblemSubmission = z.infer<
   typeof tradeProblemSubmissionSchema
 >;
+
+// Login accepts existing credentials without imposing signup password policy.
+export const passwordSignInSchema = z.strictObject({
+  email: z.string().trim().pipe(z.email('Enter a valid email address.')),
+  password: z.string().min(1, 'Enter your password.'),
+});
+
+export type PasswordSignIn = z.infer<typeof passwordSignInSchema>;

@@ -4,6 +4,7 @@ export async function signInFixture(
   page: Page,
   destination = '/account',
   id = 'a8ded912-c170-4988-8750-9747558e8a87',
+  method: 'google' | 'password' = 'google',
 ) {
   const now = Math.floor(Date.now() / 1000);
 
@@ -44,7 +45,9 @@ export async function signInFixture(
             id,
             aud: 'authenticated',
             role: 'authenticated',
-            app_metadata: { provider: 'google' },
+            app_metadata: {
+              provider: method === 'google' ? 'google' : 'email',
+            },
             user_metadata: {},
             created_at: new Date().toISOString(),
           },
@@ -58,7 +61,17 @@ export async function signInFixture(
   );
 
   await page.goto(destination);
-  await page.getByRole('button', { name: 'Continue with Google' }).click();
+  if (method === 'password') {
+    await page
+      .getByLabel('Email', { exact: true })
+      .fill('browser-demo@example.invalid');
+    await page
+      .getByLabel('Password', { exact: true })
+      .fill('Synthetic password with spaces ');
+    await page.getByRole('button', { name: 'Sign in with email' }).click();
+  } else {
+    await page.getByRole('button', { name: 'Continue with Google' }).click();
+  }
 
   await expect(page).toHaveURL(
     new URL(destination, 'http://127.0.0.1:4173').href,

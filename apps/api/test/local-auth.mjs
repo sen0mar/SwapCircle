@@ -30,30 +30,49 @@ const app = createApp({
 const ids = [];
 
 try {
+  const signup = await createClient(
+    status.API_URL,
+    status.ANON_KEY,
+    options,
+  ).auth.signUp({
+    email: `disabled-signup-${randomUUID()}@example.invalid`,
+    password: `Local-${randomUUID()}!`,
+  });
+
+  if (signup.data.user) ids.push(signup.data.user.id);
+
+  assert.equal(
+    signup.error?.code,
+    'signup_disabled',
+    'Public signup must remain disabled',
+  );
+  assert.equal(signup.data.session, null);
+
   for (let index = 0; index < 2; index++) {
     const email = `auth-check-${randomUUID()}@example.invalid`;
+
+    const password = `Local-check-${randomUUID()}!`;
 
     const created = await admin.auth.admin.createUser({
       email,
       email_confirm: true,
+      password,
     });
 
     assert.equal(created.error, null, 'Synthetic user creation failed');
     ids.push(created.data.user.id);
 
-    const link = await admin.auth.admin.generateLink({
-      type: 'magiclink',
-      email,
-    });
-
-    assert.equal(link.error, null, 'Synthetic login link generation failed');
-
     const client = createClient(status.API_URL, status.ANON_KEY, options);
 
-    const login = await client.auth.verifyOtp({
-      type: 'magiclink',
-      token_hash: link.data.properties.hashed_token,
+    const rejected = await client.auth.signInWithPassword({
+      email,
+      password: `wrong-${randomUUID()}`,
     });
+
+    assert.ok(rejected.error, 'Invalid password must be rejected');
+    assert.equal(rejected.data.session, null);
+
+    const login = await client.auth.signInWithPassword({ email, password });
 
     assert.equal(login.error, null, 'Synthetic SDK session failed');
 

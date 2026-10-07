@@ -51,6 +51,7 @@ const suites = {
       'completion',
       'accessibility',
       'backup',
+      'password',
     ],
   },
 };
