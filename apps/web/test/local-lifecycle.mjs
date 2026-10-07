@@ -5,7 +5,7 @@ import process from 'node:process';
 import { URL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { setTimeout } from 'node:timers';
 import { chromium, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
@@ -27,6 +27,11 @@ const interests = (
 const output = new URL('../test-results/lifecycle-local/', import.meta.url);
 let preview;
 let browser;
+let stage = 'setup';
+const diagnosticPages = [];
+
+// Keep source locations available beyond Playwright matcher internals.
+Error.stackTraceLimit = 40;
 
 const api = async (path, user, body, method = 'GET') => {
   const response = await fetch(`${apiOrigin}/api/v1${path}`, {
@@ -42,7 +47,8 @@ const api = async (path, user, body, method = 'GET') => {
   return response.json();
 };
 
-const signIn = async (page, user, destination) => {
+const signIn = async (page, user, destination, account) => {
+  stage = `sign-in-${account}-start`;
   await page.route(
     `${fixture.publicAuth.url}/auth/v1/authorize?*`,
     async (route) => {
@@ -63,9 +69,11 @@ const signIn = async (page, user, destination) => {
   );
   await page.goto(`${origin}/swaps`);
   await page.getByRole('button', { name: 'Continue with Google' }).click();
+  stage = `sign-in-${account}-session`;
   await expect(
     page.getByRole('link', { name: 'My Swaps' }).first(),
   ).toBeVisible();
+  stage = `sign-in-${account}-destination`;
   await page.goto(`${origin}${destination}`);
   await expect(page).toHaveURL(`${origin}${destination}`);
 };
@@ -210,13 +218,17 @@ try {
       }
     }
   };
-  await signIn(alicePage, alice, `/swaps/${declined.id}`);
-  await signIn(bobPage, bob, `/swaps/${declined.id}`);
-  await signIn(outsider, stranger, `/swaps/${declined.id}`);
+  diagnosticPages.push(alicePage, bobPage, outsider);
+  await signIn(alicePage, alice, `/swaps/${declined.id}`, 'alice');
+  await signIn(bobPage, bob, `/swaps/${declined.id}`, 'bob');
+  await signIn(outsider, stranger, `/swaps/${declined.id}`, 'outsider');
+  stage = 'outsider-access-denied';
   await expect(
     outsider.getByRole('heading', { name: 'Swap unavailable' }),
   ).toBeVisible();
   await expect(outsider.getByText('Synthetic camera')).toHaveCount(0);
+
+  stage = 'independent-coffee-cancellation';
 
   // A separate coffee cancellation does not close the proposal.
   const invitation = await api(
@@ -253,6 +265,7 @@ try {
       const trigger = lifecycle(bobPage).getByRole('button', {
         name: 'Decline proposal',
       });
+      stage = `decline-dialog-${theme}-${width}`;
       await trigger.focus();
       await bobPage.keyboard.press('Enter');
       const dialog = bobPage.getByRole('dialog');
@@ -314,7 +327,10 @@ try {
     (await api(`/trades/${declined.id}`, alice)).events.at(-1).eventType,
     'declined',
   );
+  stage = 'declined-capture';
   await capture(bobPage, 'declined');
+
+  stage = 'expiry';
 
   // Only the local synthetic fixture clock is changed, never the browser clock.
   await fixture.migration.query(
@@ -329,6 +345,8 @@ try {
     alicePage.getByRole('button', { name: 'Review current terms' }),
   ).toHaveCount(0);
   await capture(alicePage, 'expired');
+
+  stage = 'confirmed-cancellation';
 
   // Confirmed cancellation does not release locally while the response is withheld.
   const accept = (id, user, key = randomUUID()) =>
@@ -417,6 +435,8 @@ try {
       .filter({ has: alicePage.locator(`a[href="/swaps/${competing.id}"]`) }),
   ).not.toContainText('no longer available');
 
+  stage = 'outdated-version';
+
   // Outdated tab submits its exact reviewed version, then reads authoritative current terms.
   await bobPage.goto(`${origin}/swaps/${stale.id}`);
   await lifecycle(bobPage)
@@ -457,6 +477,8 @@ try {
     .click();
   await expect(lifecycle(bobPage)).toContainText('cancelled, not completed');
 
+  stage = 'same-version-change';
+
   // A proposal becomes confirmed in another tab without a version change.
   await bobPage.goto(`${origin}/swaps/${sameVersion.id}`);
   await lifecycle(bobPage)
@@ -493,6 +515,8 @@ try {
     .getByRole('button', { name: 'Confirm cancellation', exact: true })
     .click();
   await expect(lifecycle(bobPage)).toContainText('cancelled, not completed');
+
+  stage = 'acceptance-replay';
 
   // A lost final acceptance can be replayed as confirmed after later cancellation.
   // The client must use the fresh detail, never that historical response status.
@@ -542,6 +566,8 @@ try {
     'available',
   );
 
+  stage = 'private-notifications';
+
   const notifications = (
     await fixture.migration.query(
       "SELECT id,resource_id FROM public.notifications WHERE recipient_id=$1 AND event_type='trade_status' ORDER BY created_at DESC",
@@ -574,6 +600,8 @@ try {
     outsider.getByRole('link', { name: 'View swap', exact: true }),
   ).toHaveCount(0);
   await expect(outsider.getByText(/cancelled, not completed/)).toHaveCount(0);
+  stage = 'revoked-access';
+
   // An actual revision removes a member from a proposal; their original
   // recipient-only invitation remains without granting access to its target.
   const third = await item(stranger, 'Synthetic group book');
@@ -633,6 +661,44 @@ try {
   console.info(
     'Real lifecycle browser journey passed: declined/expired/cancelled/history, separate coffee, held response, released availability, stale tab, historical confirmed acceptance replay, private notifications, revoked access, keyboard focus/trap, Light/Dark responsive and axe.',
   );
+} catch (error) {
+  // Only named stages, source locations and UI booleans; never payloads, URLs,
+  // tokens, assertion diffs, or private page text in uploaded CI diagnostics.
+  const pages = await Promise.all(
+    diagnosticPages.map(async (page) => ({
+      signedIn: await page
+        .getByRole('button', { name: 'Open account' })
+        .isVisible()
+        .catch(() => false),
+      signInPage: await page
+        .getByRole('heading', { name: 'Sign in to SwapCircle' })
+        .isVisible()
+        .catch(() => false),
+      unavailable: await page
+        .getByRole('heading', { name: 'Swap unavailable' })
+        .isVisible()
+        .catch(() => false),
+      lifecycle: await page
+        .getByRole('region', { name: 'Swap lifecycle' })
+        .isVisible()
+        .catch(() => false),
+      dialog: await page
+        .getByRole('dialog')
+        .isVisible()
+        .catch(() => false),
+    })),
+  );
+  const locations = String(error?.stack ?? '')
+    .split('\n')
+    .filter((line) => /local-lifecycle\.mjs:\d+:\d+/.test(line))
+    .map((line) => line.match(/local-lifecycle\.mjs:\d+:\d+/)[0]);
+  const diagnostic = new URL('../../../test-results/', import.meta.url);
+  await mkdir(diagnostic, { recursive: true });
+  await writeFile(
+    new URL('local-lifecycle-failure.json', diagnostic),
+    JSON.stringify({ stage, locations, pages }, null, 2),
+  );
+  throw error;
 } finally {
   if (browser) await browser.close();
   if (preview) process.kill(-preview.pid, 'SIGTERM');

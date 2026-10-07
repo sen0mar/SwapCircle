@@ -1007,6 +1007,12 @@
     max-width: 480px;
     margin-inline: auto;
   }
+  .auth-form {
+    display: grid;
+    gap: 16px;
+    width: 100%;
+    min-width: 0;
+  }
   .auth-panel > h1,
   .auth-panel > p {
     margin: 0;

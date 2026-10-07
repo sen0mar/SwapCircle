@@ -189,7 +189,7 @@ Foundation: **shadcn/ui + Tailwind CSS**, within the React/TypeScript applicatio
 
 ### Landing Page / Public Page
 
-- Header: logo, public navigation, search, and sign-in. Never render another member's messages or private account controls for signed-out visitors. Launch sign-in uses Google through Supabase Auth; do not add unsupported password flows.
+- Header: logo, public navigation, search, and sign-in. Never render another member's messages or private account controls for signed-out visitors. Sign-in supports Google through Supabase Auth and an accessible email/password form for provisioned accounts. Do not expose public signup or password reset without configured email delivery.
 - Hero: copy on the left, warm community/café photography on the right. Stack on small screens. Use live text, not text baked into a screenshot.
 - Exact headline: **“Less stuff. More connection.”** Emphasize the second sentence with `text-brand-ink`.
 - Exact description: **“SwapCircle helps you give, get and meet — for a more meaningful, less wasteful world.”**

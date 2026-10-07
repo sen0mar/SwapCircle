@@ -2,10 +2,10 @@ export function DemoDataNotice() {
   return (
     <div className="demo-data-notice">
       <p>
-        Google and Supabase handle sign-in. Supabase stores your identity and
-        email; your browser stores a session. Profile details and listings you
-        publish are public; the app limits messages and meeting plans to
-        participants.
+        Supabase handles sign-in, including the Google option. Supabase stores
+        your identity and email; your browser stores a session. Profile details
+        and listings you publish are public; the app limits messages and meeting
+        plans to participants.
       </p>
       <p>
         Use fictional details. Demo data may change or be removed; completed

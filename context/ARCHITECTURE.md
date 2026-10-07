@@ -22,7 +22,7 @@ One TypeScript monorepo, one modular Express service, one PostgreSQL database.
 | Frontend | React, TypeScript, Vite, React Router; Cloudflare Pages |
 | Client data and UI | TanStack Query; React state; React Hook Form + Zod; Tailwind CSS + shadcn/ui |
 | API | Node.js + Express + TypeScript; Render Free; native `fetch` client wrapper |
-| Identity | Supabase Auth + `@supabase/supabase-js`; Google OAuth initially |
+| Identity | Supabase Auth + `@supabase/supabase-js`; Google OAuth + provisioned-account password sign-in |
 | Persistence | Supabase PostgreSQL; Drizzle ORM + `pg`; Drizzle Kit migrations |
 | Files and live updates | Supabase Storage + Sharp; Supabase Realtime |
 | Security | Helmet, `cors`, `express-rate-limit`; database-backed action quotas |
@@ -167,7 +167,7 @@ Completion requires every participant to acknowledge receipt; mark listings exch
 
 ## 6. Authentication, authorization, and secrets
 
-Supabase manages credentials and session refresh. **Do not add a password column or application-side hashing**; Supabase handles password hashing when password login is enabled.[^passwords] Launch with Google OAuth; enable public email/password flows only after configuring custom SMTP.[^smtp]
+Supabase manages credentials and session refresh. **Do not add a password column or application-side hashing**; Supabase handles password hashing when password login is enabled.[^passwords] Support Google OAuth (PKCE) and email/password sign-in for provisioned, confirmed accounts through `signInWithPassword`. Supabase owns credentials, refresh, and IP-based auth endpoint rate limits; the UI disables duplicate submissions and displays generic credential failures. No public signup or password-reset flow is exposed. Enable email-delivery workflows only after configuring custom SMTP.[^smtp] Hosted password login requires the email provider enabled, confirmed accounts with passwords, and appropriate Supabase Auth rate limits. If hosted CAPTCHA is enabled, integrate its token into the form before using password login; the current form does not supply CAPTCHA tokens.
 
 Express verifies bearer tokens with `getClaims(token)` and validates the expected issuer, audience, and expiry; derive identity from verified `sub`, never client-supplied ownership fields.[^claims] Check current account restrictions and resource permissions on every protected operation; token validity does not grant resource access.
 
