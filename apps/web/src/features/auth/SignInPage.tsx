@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -13,6 +13,10 @@ import { DemoDataNotice } from '../../components/layout/DemoNotice';
 import { useAuth } from './AuthProvider';
 import { safeDestination } from './safe-destination';
 import { useGoogleSignIn } from './useGoogleSignIn';
+
+const DevelopmentGuest = import.meta.env.DEV
+  ? lazy(() => import('./DevelopmentGuest'))
+  : null;
 
 export function SignInPage() {
   const { client, session, loading, error: restorationError } = useAuth();
@@ -31,10 +35,11 @@ export function SignInPage() {
     resolver: zodResolver(passwordSignInSchema),
     defaultValues: { email: '', password: '' },
   });
-  const busy = pending || isSubmitting;
+  const [guestPending, setGuestPending] = useState(false);
+  const busy = pending || isSubmitting || guestPending;
 
   async function signInWithPassword(values: PasswordSignIn) {
-    if (!client || pending || passwordRequest.current) return;
+    if (!client || pending || guestPending || passwordRequest.current) return;
 
     passwordRequest.current = true;
     setPasswordError(null);
@@ -136,6 +141,14 @@ export function SignInPage() {
       >
         {pending ? 'Opening Google…' : 'Continue with Google'}
       </Button>
+      {DevelopmentGuest && (
+        <Suspense fallback={null}>
+          <DevelopmentGuest
+            disabled={!configured || busy}
+            onPending={setGuestPending}
+          />
+        </Suspense>
+      )}
       <Link to="/">Back to Home</Link>
     </section>
   );

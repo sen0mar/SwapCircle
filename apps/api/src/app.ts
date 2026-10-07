@@ -16,7 +16,7 @@ import type { SafetyService } from './features/safety/safety.service.js';
 import type { ListingsService } from './features/listings/listings.service.js';
 import type { VerifyToken } from './auth/verify.js';
 import express from 'express';
-import type { Express } from 'express';
+import type { Express, Router } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { createApiRouter } from './routes.js';
@@ -28,6 +28,7 @@ import type { PhotosService } from './features/photos/photos.service.js';
 
 export function createApp({
   allowedOrigins,
+  developmentRouter,
   logger,
   health,
   verifyToken = async () => null,
@@ -43,6 +44,7 @@ export function createApp({
   limits = developmentLimits,
 }: {
   allowedOrigins: readonly string[];
+  developmentRouter?: Router | undefined;
   logger?: Logger;
   health?: HealthService;
   verifyToken?: VerifyToken;
@@ -117,6 +119,8 @@ export function createApp({
       health,
     ),
   );
+  if (developmentRouter) app.use('/api/v1', developmentRouter);
+
   app.use(notFound);
   app.use(errorHandler);
 

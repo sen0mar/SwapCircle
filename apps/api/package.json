@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit && tsc --project tsconfig.test.json",
+    "typecheck": "pnpm build && tsc --project tsconfig.test.json && tsc --project tsconfig.tools.json",
     "build": "tsc",
-    "dev": "pnpm build && node --env-file-if-exists=.env --watch dist/server.js",
+    "dev": "pnpm build && NODE_ENV=development node --env-file-if-exists=.env --watch dist/server.js",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "test": "vitest run",
     "test:auth-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node test/local-auth.mjs",
@@ -28,7 +28,8 @@
     "test:meetings-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-meetings.mjs",
     "test:outcomes-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-outcomes.mjs",
     "test:lifecycle-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-lifecycle.mjs",
-    "cleanup:local": "node --env-file=../../packages/database/.env scripts/cleanup-local.mjs"
+    "cleanup:local": "node --env-file=../../packages/database/.env scripts/cleanup-local.mjs",
+    "demo:seed": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env scripts/demo/seed.ts"
   },
   "exports": {
     ".": {

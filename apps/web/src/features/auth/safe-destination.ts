@@ -17,11 +17,17 @@ export function safeDestination(value: string | null): string {
         '/',
         '/browse',
         '/inbox',
+        '/shelf',
+        '/swaps',
+        '/listings/new',
         '/account',
         '/account/profile',
         '/account/settings',
       ].includes(url.pathname) &&
-        !/^\/(members|inbox|notifications)\/[0-9a-f-]{36}$/i.test(url.pathname))
+        !/^\/(members|inbox|notifications|swaps)\/[0-9a-f-]{36}$/i.test(
+          url.pathname,
+        ) &&
+        !/^\/listings\/[0-9a-f-]{36}(?:\/edit)?$/i.test(url.pathname))
     )
       return '/account';
 

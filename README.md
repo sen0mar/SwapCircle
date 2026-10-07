@@ -111,6 +111,10 @@ TLS; URL query overrides are rejected. Migration connections use one connection.
 Database credentials and CLI output are never printed by the wrapper commands.
 CI runs a fresh isolated local rebuild and privilege checks without hosted secrets.
 
+## Development demo
+
+`pnpm demo:seed` populates the isolated local stack with fictional members, photographed listings, messages, swaps, meetings and notifications. After it finishes, the development sign-in form offers **Continue as guest**. See [the demo setup and tour](context/DEMO.md) for local account usage, resumable reruns and production exclusions. This command is separate from the migration-only `db:seed`.
+
 ## Authentication
 
 The browser uses Supabase Google OAuth with PKCE and email/password sign-in for
