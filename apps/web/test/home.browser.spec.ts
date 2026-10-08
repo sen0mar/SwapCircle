@@ -13,12 +13,29 @@ for (const theme of ['light', 'dark']) {
     await page.goto('/');
     await page.getByLabel('Theme').selectOption(theme);
     await expect(page.getByText('Jamie Demo')).toHaveCount(0);
-    await page.getByLabel('Development homepage preview').selectOption('ready');
-    await expect(page.locator('.listing-card')).toHaveCount(4);
+    await expect(
+      page.getByRole('heading', { name: 'Less stuff. More connection.' }),
+    ).toBeVisible();
+    await expect(page.getByLabel('Development homepage preview')).toHaveCount(
+      0,
+    );
+    await expect(
+      page.getByRole('complementary', { name: 'Portfolio demo' }),
+    ).toHaveCount(0);
+
+    await expect(page.locator('.right-rail')).toHaveCount(0);
+    await expect(
+      page.getByRole('navigation', { name: 'Member discovery pages' }),
+    ).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'First members' })).toHaveCount(
+      0,
+    );
+    await expect(page.getByRole('link', { name: 'More members' })).toHaveCount(
+      0,
+    );
 
     for (const width of [360, 768, 1280, 1600]) {
       await page.setViewportSize({ width, height: 1000 });
-      await page.locator('.listing-photo').last().waitFor();
 
       await expect
         .poll(
@@ -61,21 +78,6 @@ for (const theme of ['light', 'dark']) {
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    for (const state of ['empty', 'loading', 'unavailable']) {
-      await page.getByLabel('Development homepage preview').selectOption(state);
-      await expect(page.locator('.listing-card')).toHaveCount(0);
-
-      for (const width of [360, 1600]) {
-        await page.setViewportSize({ width, height: 1000 });
-
-        await page.screenshot({
-          path: `test-results/home-${state}-${theme}-${width}.png`,
-          fullPage: true,
-        });
-      }
-    }
-
-    await page.getByLabel('Development homepage preview').selectOption('ready');
     // A 1600px display at 200% browser zoom has an 800 CSS-pixel layout viewport.
     await page.setViewportSize({ width: 800, height: 500 });
 
@@ -99,14 +101,3 @@ for (const theme of ['light', 'dark']) {
     expect(errors).toEqual([]);
   });
 }
-
-test('unavailable photos retain useful layout and labels', async ({ page }) => {
-  await page.route('**/backpack.jpg', (route) => route.abort());
-  await page.goto('/');
-  await page.getByLabel('Development homepage preview').selectOption('ready');
-  await expect(page.getByText('Photo unavailable')).toBeVisible();
-
-  await expect(
-    page.getByRole('heading', { name: 'Everyday backpack' }),
-  ).toBeVisible();
-});

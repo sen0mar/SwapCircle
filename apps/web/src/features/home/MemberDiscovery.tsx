@@ -12,20 +12,12 @@ export function MemberDiscovery() {
   const parsed = memberQuerySchema.safeParse({
     limit: 4,
     interest: params.get('interest') ?? undefined,
-    cursor: params.get('memberCursor') ?? undefined,
   });
   const query = parsed.success
     ? parsed.data
     : memberQuerySchema.parse({ limit: 4 });
   const interests = useInterests();
   const { members, personalized } = useMemberDiscovery(query, parsed.success);
-
-  const pageLink = (cursor?: string) => {
-    const next = new URLSearchParams(params);
-    next.delete('memberCursor');
-    if (cursor) next.set('memberCursor', cursor);
-    return `/?${next}`;
-  };
 
   return (
     <>
@@ -42,7 +34,6 @@ export function MemberDiscovery() {
           disabled={!interests.data}
           onChange={(event) => {
             const next = new URLSearchParams(params);
-            next.delete('memberCursor');
             if (event.target.value) next.set('interest', event.target.value);
             else next.delete('interest');
             setParams(next);
@@ -120,15 +111,6 @@ export function MemberDiscovery() {
           ) : (
             <p>No members match these interests yet.</p>
           )}
-          <nav
-            className="catalog-pagination"
-            aria-label="Member discovery pages"
-          >
-            {query.cursor && <Link to={pageLink()}>First members</Link>}
-            {members.data.nextCursor && (
-              <Link to={pageLink(members.data.nextCursor)}>More members</Link>
-            )}
-          </nav>
         </>
       )}
     </>

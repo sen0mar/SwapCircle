@@ -76,16 +76,9 @@ test('sign-in and failed callback are usable in both themes and all target width
       await page.goto('/sign-in?next=https://evil.invalid');
       await page.getByLabel('Theme').selectOption(theme);
 
-      const notice = page.getByRole('complementary', {
-        name: 'Portfolio demo',
-      });
-      const disclosure = notice.locator('details');
-      const summary = notice.locator('summary');
-
-      await expect(notice).toBeVisible();
-      await summary.focus();
-      await summary.press('Enter');
-      await expect(disclosure).toHaveAttribute('open', '');
+      await expect(
+        page.getByRole('complementary', { name: 'Portfolio demo' }),
+      ).toHaveCount(0);
 
       expect(
         await page.evaluate(
@@ -96,13 +89,9 @@ test('sign-in and failed callback are usable in both themes and all target width
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
       await page.screenshot({
-        path: `test-results/auth-notice-open-${theme}-${width}.png`,
+        path: `test-results/auth-sign-in-${theme}-${width}.png`,
         fullPage: true,
       });
-
-      await summary.press('Enter');
-      await expect(disclosure).not.toHaveAttribute('open');
-      await expect(summary).toBeFocused();
 
       await page.screenshot({
         path: `test-results/auth-${theme}-${width}.png`,
