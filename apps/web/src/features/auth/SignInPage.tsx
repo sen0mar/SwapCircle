@@ -13,9 +13,7 @@ import { useAuth } from './AuthProvider';
 import { safeDestination } from './safe-destination';
 import { useGoogleSignIn } from './useGoogleSignIn';
 
-const DevelopmentGuest = import.meta.env.DEV
-  ? lazy(() => import('./DevelopmentGuest'))
-  : null;
+const GuestSignIn = lazy(() => import('./GuestSignIn'));
 
 export function SignInPage() {
   const { client, session, loading, error: restorationError } = useAuth();
@@ -136,14 +134,12 @@ export function SignInPage() {
       >
         {pending ? 'Opening Google…' : 'Continue with Google'}
       </Button>
-      {DevelopmentGuest && (
-        <Suspense fallback={null}>
-          <DevelopmentGuest
-            disabled={!configured || busy}
-            onPending={setGuestPending}
-          />
-        </Suspense>
-      )}
+      <Suspense fallback={null}>
+        <GuestSignIn
+          disabled={!configured || busy}
+          onPending={setGuestPending}
+        />
+      </Suspense>
       <Link to="/">Back to Home</Link>
     </section>
   );

@@ -22,6 +22,7 @@ const [alice, bob, carol, dan] = fixture.users;
 let preview;
 let browser;
 const marker = `local${randomUUID().replaceAll('-', '')}`;
+const fixtureInterestIds = [randomUUID(), randomUUID()];
 const title = `Camera ${marker}`;
 const output = new URL('../test-results/catalog-local/', import.meta.url);
 const api = async (path, user, body, method = 'GET') => {
@@ -37,7 +38,16 @@ const api = async (path, user, body, method = 'GET') => {
   return response.json();
 };
 try {
-  const interests = (await api('/interests')).slice(0, 2);
+  // Dedicated local fixture interests keep the four-member preview deterministic
+  // when the development database already contains a demo community.
+  for (const [index, id] of fixtureInterestIds.entries())
+    await fixture.migration.query(
+      'INSERT INTO public.interests (id, name) VALUES ($1, $2)',
+      [id, `Verification ${marker} ${index}`],
+    );
+  const interests = (await api('/interests')).filter((interest) =>
+    fixtureInterestIds.includes(interest.id),
+  );
   for (const [user, name, selected] of [
     [alice, 'Local Alice', interests],
     [bob, 'Local Bob', interests],
@@ -156,12 +166,9 @@ try {
   );
   await page.goto(`${origin}/listings/new`);
   await page.getByRole('button', { name: 'Continue with Google' }).click();
-  await expect(
-    page.getByText('Your session is verified.', { exact: false }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(`${origin}/listings/new`);
   // Publish through the real production form, then read it from a separate
   // signed-out browser context. The catalogue is not pre-seeded with this item.
-  await page.goto(`${origin}/listings/new`);
   await expect(
     page.getByRole('heading', { name: 'List an item', exact: true }),
   ).toBeVisible();
@@ -338,5 +345,13 @@ try {
   await browser?.close();
   if (preview?.pid) process.kill(-preview.pid, 'SIGTERM');
   if (server.listening) await new Promise((resolve) => server.close(resolve));
+  await fixture.migration.query(
+    'DELETE FROM public.profile_interests WHERE profile_id=ANY($1::uuid[]) AND interest_id=ANY($2::uuid[])',
+    [fixture.users.map((user) => user.id), fixtureInterestIds],
+  );
+  await fixture.migration.query(
+    'DELETE FROM public.interests i WHERE id=ANY($1::uuid[]) AND NOT EXISTS (SELECT 1 FROM public.profile_interests p WHERE p.interest_id=i.id)',
+    [fixtureInterestIds],
+  );
   await fixture.cleanup();
 }

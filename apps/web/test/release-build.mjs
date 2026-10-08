@@ -144,6 +144,20 @@ try {
   await expect(
     page.getByRole('heading', { name: 'Sign in to SwapCircle' }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Continue as guest' }),
+  ).toBeEnabled();
+  await expect(page.getByText(/shared demo account/)).toBeVisible();
+  await page.route(`${apiOrigin}/api/v1/auth/guest`, (route) =>
+    route.fulfill({
+      status: 503,
+      json: { error: { code: 'GUEST_UNAVAILABLE', message: 'Unavailable' } },
+    }),
+  );
+  await page.getByRole('button', { name: 'Continue as guest' }).click();
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Guest sign-in is unavailable' }),
+  ).toBeVisible();
   await visit(`${origin}/auth/callback?error=access_denied`);
   await reload();
   await expect(

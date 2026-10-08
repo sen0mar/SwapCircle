@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { assertDemoTarget } from './demo-guard.js';
+import { assertDemoTarget, assertHostedDemoTarget } from './demo-guard.js';
 
 const credentialsSchema = z.object({
   version: z.literal(1),
@@ -21,11 +21,20 @@ export const demoCredentialsPath = new URL(
   import.meta.url,
 );
 
+const hostedCredentialsSchema = z.object({
+  id: z.uuid(),
+  email: z
+    .email()
+    .refine((email) => email === 'swapcircle-demo-prod-guest@example.invalid'),
+  password: z.string().min(20),
+});
+
 export type GuestConfiguration = {
   environment: string | undefined;
   authUrl: string;
   databaseUrl: string;
   publishableKey: string;
+  hostedCredentials?: string | undefined;
 };
 
 export class GuestService {
@@ -33,24 +42,42 @@ export class GuestService {
     private readonly config: GuestConfiguration,
     private readonly credentialsPath = demoCredentialsPath,
   ) {
-    assertDemoTarget(config.environment, config.authUrl, config.databaseUrl);
+    if (config.hostedCredentials !== undefined) {
+      assertHostedDemoTarget(
+        config.environment,
+        config.authUrl,
+        config.databaseUrl,
+      );
+      hostedCredentialsSchema.parse(JSON.parse(config.hostedCredentials));
+    } else {
+      assertDemoTarget(config.environment, config.authUrl, config.databaseUrl);
+    }
   }
 
   async signIn(): Promise<{ access_token: string; refresh_token: string }> {
-    const ready = z
-      .object({ version: z.literal(1), guestId: z.uuid() })
-      .parse(
-        JSON.parse(
-          await readFile(new URL('ready.json', this.credentialsPath), 'utf8'),
-        ),
+    const hosted = this.config.hostedCredentials !== undefined;
+    let account: { id: string; email: string; password: string };
+    if (hosted) {
+      account = hostedCredentialsSchema.parse(
+        JSON.parse(this.config.hostedCredentials!),
       );
-    const credentials = credentialsSchema.parse(
-      JSON.parse(await readFile(this.credentialsPath, 'utf8')),
-    );
-    const account = credentials.accounts.find(
-      (account) => account.key === 'guest',
-    );
-    if (!account || ready.guestId !== account.id) throw new Error('No guest');
+    } else {
+      const ready = z
+        .object({ version: z.literal(1), guestId: z.uuid() })
+        .parse(
+          JSON.parse(
+            await readFile(new URL('ready.json', this.credentialsPath), 'utf8'),
+          ),
+        );
+      const credentials = credentialsSchema.parse(
+        JSON.parse(await readFile(this.credentialsPath, 'utf8')),
+      );
+      const guest = credentials.accounts.find(
+        (account) => account.key === 'guest',
+      );
+      if (!guest || ready.guestId !== guest.id) throw new Error('No guest');
+      account = guest;
+    }
 
     const client = createClient(
       this.config.authUrl,
@@ -67,7 +94,10 @@ export class GuestService {
       error ||
       !data.session ||
       data.user.id !== account.id ||
-      data.user.app_metadata.demo_seed !== 'swapcircle-v1'
+      data.user.app_metadata.demo_seed !== 'swapcircle-v1' ||
+      (hosted &&
+        (data.user.app_metadata.demo_target !== this.config.authUrl ||
+          data.user.app_metadata.demo_ready !== true))
     )
       throw new Error('Guest unavailable');
 

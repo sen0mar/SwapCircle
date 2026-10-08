@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { server } from './setup';
 import { http, HttpResponse } from 'msw';
 import { AuthProvider } from '../src/features/auth/AuthProvider';
-import DevelopmentGuest from '../src/features/auth/DevelopmentGuest';
+import GuestSignIn from '../src/features/auth/GuestSignIn';
 
 function setup(setSession = vi.fn().mockResolvedValue({ error: null })) {
   const pending = vi.fn();
@@ -25,7 +25,7 @@ function setup(setSession = vi.fn().mockResolvedValue({ error: null })) {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <AuthProvider client={client as unknown as SupabaseClient}>
-        <DevelopmentGuest disabled={false} onPending={pending} />
+        <GuestSignIn disabled={false} onPending={pending} />
       </AuthProvider>
     </QueryClientProvider>,
   );
@@ -53,7 +53,7 @@ test('guest adopts a server-issued session through the SDK and prevents repeat s
   await user.click(screen.getByRole('button', { name: 'Continue as guest' }));
   await waitFor(() => expect(requests).toBe(1));
   expect(screen.getByRole('button', { name: 'Opening demo…' })).toBeDisabled();
-  expect(screen.getByText(/shared local demo account/)).toBeVisible();
+  expect(screen.getByText(/shared demo account/)).toBeVisible();
   finish();
   await waitFor(() =>
     expect(setSession).toHaveBeenCalledWith({
@@ -83,9 +83,7 @@ test('missing seed and SDK failures are generic and allow retry without storing 
   const { setSession } = setup();
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: 'Continue as guest' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Run the local demo seed',
-  );
+  expect(await screen.findByRole('alert')).toHaveTextContent('Try again later');
   expect(screen.queryByText('private-provider-detail')).not.toBeInTheDocument();
   expect(setSession).not.toHaveBeenCalled();
   expect(

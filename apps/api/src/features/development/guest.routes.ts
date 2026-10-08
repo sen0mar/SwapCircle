@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { errorBody } from '../../http/error-response.js';
+import { hostedDemoFrontend } from './demo-guard.js';
 import {
   GuestService,
   demoCredentialsPath,
@@ -11,6 +12,12 @@ export function createGuestRouter(
   config: GuestConfiguration & { allowedOrigins: readonly string[] },
   credentialsPath = demoCredentialsPath,
 ): Router {
+  if (
+    config.hostedCredentials !== undefined &&
+    (config.allowedOrigins.length !== 1 ||
+      config.allowedOrigins[0] !== hostedDemoFrontend)
+  )
+    throw new Error('Hosted guest requires the production frontend origin.');
   const service = new GuestService(config, credentialsPath);
   const router = Router();
   const fail = (response: import('express').Response, status: number) =>
@@ -19,7 +26,7 @@ export function createGuestRouter(
       .json(
         errorBody(
           'GUEST_UNAVAILABLE',
-          'Guest sign-in is unavailable. Run the local demo seed or try again later.',
+          'Guest sign-in is unavailable. Try again later.',
           response.getHeader('X-Request-Id'),
         ),
       );

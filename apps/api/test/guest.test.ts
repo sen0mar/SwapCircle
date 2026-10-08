@@ -43,7 +43,7 @@ test('guest login requires seed readiness, allowed Origin and matching seeded id
   const path = pathToFileURL(join(directory, 'credentials.json'));
   const app = createApp({
     allowedOrigins: config.allowedOrigins,
-    developmentRouter: createGuestRouter(config, path),
+    guestRouter: createGuestRouter(config, path),
   });
   const login = () =>
     request(app)
@@ -122,7 +122,7 @@ test('guest login requires seed readiness, allowed Origin and matching seeded id
 test('guest session requests are rate limited without bypassing authentication', async () => {
   const app = createApp({
     allowedOrigins: config.allowedOrigins,
-    developmentRouter: createGuestRouter(
+    guestRouter: createGuestRouter(
       config,
       pathToFileURL('/nonexistent/credentials.json'),
     ),
@@ -143,4 +143,63 @@ test('guest session requests are rate limited without bypassing authentication',
     ).status,
   ).toBe(429);
   expect(signIn).not.toHaveBeenCalled();
+});
+
+test('hosted guest requires explicit server credentials, exact origin and completed synthetic identity', async () => {
+  const hostedConfig = {
+    environment: 'production',
+    authUrl: 'https://tpanyqfgmbpsiejqjocd.supabase.co',
+    databaseUrl:
+      'postgres://swapcircle_runtime.tpanyqfgmbpsiejqjocd:synthetic@aws-0-eu-west-1.pooler.supabase.com:5432/postgres',
+    publishableKey: 'synthetic-public-key',
+    allowedOrigins: ['https://swapcircle.pages.dev'],
+    hostedCredentials: JSON.stringify({
+      id,
+      email: 'swapcircle-demo-prod-guest@example.invalid',
+      password: 'a-strong-synthetic-password',
+    }),
+  };
+  expect(() =>
+    createGuestRouter({ ...hostedConfig, hostedCredentials: undefined }),
+  ).toThrow();
+  expect(() =>
+    createGuestRouter({
+      ...hostedConfig,
+      allowedOrigins: ['https://unapproved.invalid'],
+    }),
+  ).toThrow();
+  const app = createApp({
+    allowedOrigins: hostedConfig.allowedOrigins,
+    guestRouter: createGuestRouter(hostedConfig),
+  });
+  const login = () =>
+    request(app)
+      .post('/api/v1/auth/guest')
+      .set('Origin', hostedConfig.allowedOrigins[0]!);
+  const user = {
+    id,
+    app_metadata: {
+      demo_seed: 'swapcircle-v1',
+      demo_target: hostedConfig.authUrl,
+      demo_ready: false,
+    },
+  };
+  signIn.mockResolvedValue({
+    error: null,
+    data: {
+      user,
+      session: {
+        access_token: 'synthetic-access',
+        refresh_token: 'synthetic-refresh',
+      },
+    },
+  });
+  expect((await login()).status).toBe(503);
+  user.app_metadata.demo_ready = true;
+  const result = await login();
+  expect(result.status).toBe(200);
+  expect(result.headers['cache-control']).toBe('no-store');
+  expect(JSON.stringify(result.body)).not.toContain('password');
+  user.app_metadata.demo_target = 'http://127.0.0.1:55431';
+  expect((await login()).status).toBe(503);
 });
