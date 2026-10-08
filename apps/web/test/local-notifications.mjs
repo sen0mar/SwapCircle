@@ -267,7 +267,7 @@ try {
   await page.unroute('**/rest/v1/notifications?*');
   await expect(page.getByRole('link', { name: 'View swap' })).toBeVisible();
   await signIn(device, alice);
-  await page.goto(`${origin}/`);
+  await page.goto(`${origin}/inbox`);
   const bell = (current, count) =>
     current.getByRole('button', {
       name: `Open notifications, ${count} unread`,
@@ -673,7 +673,7 @@ try {
     }
   }
   await page.getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await page.goto(`${origin}/inbox`);
   await expect(page.getByText('1 unread', { exact: true })).toBeVisible();
   await expect(bell(page, 2)).toBeVisible();
   for (const theme of ['light', 'dark']) {
@@ -685,7 +685,7 @@ try {
         [],
       );
       await page.screenshot({
-        path: new URL(`${theme}-home-${width}.png`, output).pathname,
+        path: new URL(`${theme}-inbox-${width}.png`, output).pathname,
         fullPage: true,
       });
     }
