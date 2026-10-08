@@ -10,7 +10,7 @@ const guestSessionSchema = z.object({
   refresh_token: z.string().min(1),
 });
 
-export default function DevelopmentGuest({
+export default function GuestSignIn({
   disabled,
   onPending,
 }: {
@@ -38,9 +38,7 @@ export default function DevelopmentGuest({
       const result = await client.auth.setSession(session);
       if (result.error) throw result.error;
     } catch {
-      setError(
-        'Guest sign-in is unavailable. Run the local demo seed or try again later.',
-      );
+      setError('Guest sign-in is unavailable. Try again later.');
     } finally {
       active.current = false;
       setPending(false);
@@ -58,8 +56,8 @@ export default function DevelopmentGuest({
         {pending ? 'Opening demo…' : 'Continue as guest'}
       </Button>
       <p>
-        This is a shared local demo account. Everyone using it can see its
-        activity. Use fictional details only.
+        This is a shared demo account. Everyone using it can see its activity.
+        Use fictional details only.
       </p>
       {error && (
         <FormFeedback id="guest-sign-in-error" tone="error">

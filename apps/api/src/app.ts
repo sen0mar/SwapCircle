@@ -28,7 +28,7 @@ import type { PhotosService } from './features/photos/photos.service.js';
 
 export function createApp({
   allowedOrigins,
-  developmentRouter,
+  guestRouter,
   logger,
   health,
   verifyToken = async () => null,
@@ -44,7 +44,7 @@ export function createApp({
   limits = developmentLimits,
 }: {
   allowedOrigins: readonly string[];
-  developmentRouter?: Router | undefined;
+  guestRouter?: Router | undefined;
   logger?: Logger;
   health?: HealthService;
   verifyToken?: VerifyToken;
@@ -119,7 +119,7 @@ export function createApp({
       health,
     ),
   );
-  if (developmentRouter) app.use('/api/v1', developmentRouter);
+  if (guestRouter) app.use('/api/v1', guestRouter);
 
   app.use(notFound);
   app.use(errorHandler);

@@ -44,9 +44,21 @@ import { ConversationsService } from '../../dist/features/conversations/conversa
 import { assertDemoTarget } from '../../dist/features/development/demo-guard.js';
 import { members, listings, swaps, type MemberKey } from './manifest.ts';
 import { openJournal, writePrivate } from './journal.ts';
+import {
+  hostedSeedConfiguration,
+  hostedReadiness,
+  hostedInventory,
+} from './hosted.ts';
+import { hostedDemoApi } from '../../dist/features/development/demo-guard.js';
 
 const root = new URL('../../../../', import.meta.url);
-const directory = new URL('packages/database/.demo.local/', root);
+const hosted = process.argv[2] === '--production';
+const directory = new URL(
+  hosted
+    ? 'packages/database/.demo.hosted.local/'
+    : 'packages/database/.demo.local/',
+  root,
+);
 const credentialsPath = new URL('credentials.json', directory);
 const assetRoot = new URL('packages/database/demo/assets/', root);
 const accountSchema = z.object({
@@ -57,7 +69,11 @@ const accountSchema = z.object({
 });
 const credentialsSchema = z.object({
   version: z.literal(1),
-  authUrl: z.literal('http://127.0.0.1:55431'),
+  authUrl: z.literal(
+    hosted
+      ? 'https://tpanyqfgmbpsiejqjocd.supabase.co'
+      : 'http://127.0.0.1:55431',
+  ),
   accounts: z.array(accountSchema),
 });
 const authOptions = {
@@ -66,11 +82,9 @@ const authOptions = {
 
 class DemoError extends Error {}
 
-async function main() {
-  if (process.argv.length !== 2)
-    throw new DemoError('Extra seed arguments refused.');
+async function localConfiguration() {
   assertLocalRuntimeTarget(process.env.DATABASE_URL, process.env.NODE_ENV);
-  const status = z
+  const localStatus = z
     .object({
       API_URL: z.literal('http://127.0.0.1:55431'),
       DB_URL: z.string(),
@@ -88,10 +102,10 @@ async function main() {
     );
   assertDemoTarget(
     process.env.NODE_ENV,
-    status.API_URL,
+    localStatus.API_URL,
     process.env.DATABASE_URL,
   );
-  const dbTarget = new URL(status.DB_URL);
+  const dbTarget = new URL(localStatus.DB_URL);
   if (
     dbTarget.hostname !== '127.0.0.1' ||
     dbTarget.port !== '55432' ||
@@ -103,6 +117,17 @@ async function main() {
   const project = await readFile(new URL('supabase/config.toml', root), 'utf8');
   if (!project.includes('project_id = "swapcircle-local"'))
     throw new DemoError('Unexpected project.');
+
+  return localStatus;
+}
+
+async function main() {
+  if (process.argv.length !== (hosted ? 3 : 2))
+    throw new DemoError('Extra seed arguments refused.');
+  const status = hosted
+    ? hostedSeedConfiguration(process.env)
+    : await localConfiguration();
+  if (hosted) await hostedReadiness(process.env);
 
   // Every asset is present before creating any identity or app record.
   for (const name of new Set([
@@ -117,10 +142,14 @@ async function main() {
       'A seed lock exists. Confirm no seed is running before removing the local lock.',
     );
   });
-  const pool = new Pool(databaseConfig(process.env.DATABASE_URL));
+  const pool = hosted
+    ? undefined
+    : new Pool(databaseConfig(process.env.DATABASE_URL));
   let server: import('node:http').Server | undefined;
 
   try {
+    if (hosted)
+      await hostedInventory(process.env, new URL('baseline.json', directory));
     const journal = await openJournal(new URL('state.json', directory));
     let credentials: z.infer<typeof credentialsSchema>;
     try {
@@ -141,7 +170,7 @@ async function main() {
         authUrl: status.API_URL,
         accounts: members.map((member) => ({
           key: member.key,
-          email: `swapcircle-demo-${member.key}@example.invalid`,
+          email: `swapcircle-demo-${hosted ? 'prod-' : ''}${member.key}@example.invalid`,
           password: randomBytes(32).toString('base64url'),
         })),
       };
@@ -152,34 +181,40 @@ async function main() {
       status.SERVICE_ROLE_KEY,
       authOptions,
     );
-    const storage = createPhotoStorage(status.API_URL, status.SERVICE_ROLE_KEY);
-    const app = createApp({
-      logger: pino({ level: 'silent' }),
-      allowedOrigins: ['http://127.0.0.1:5173'],
-      verifyToken: createTokenVerifier(status.API_URL, status.ANON_KEY),
-      profiles: new ProfilesService(new ProfilesRepository(pool), storage),
-      listings: new ListingsService(new ListingsRepository(pool)),
-      photos: new PhotosService(new PhotosRepository(pool), storage),
-      trades: new TradesService(new TradesRepository(pool)),
-      meetings: new MeetingsService(new MeetingsRepository(pool)),
-      coffee: new CoffeeService(new CoffeeRepository(pool)),
-      conversations: new ConversationsService(
-        new ConversationsRepository(pool),
-      ),
-      notifications: new NotificationsService(
-        new NotificationsRepository(pool),
-      ),
-    });
-    // Fixed loopback listener, not a caller-supplied API URL. No live server needed.
-    server = app.listen(0, '127.0.0.1');
-    await new Promise<void>((resolve, reject) => {
-      server!.once('listening', resolve);
-      server!.once('error', reject);
-    });
-    const address = server.address();
-    if (!address || typeof address === 'string')
-      throw new DemoError('No local listener.');
-    const origin = `http://127.0.0.1:${address.port}`;
+    let origin = hostedDemoApi;
+    if (pool) {
+      const storage = createPhotoStorage(
+        status.API_URL,
+        status.SERVICE_ROLE_KEY,
+      );
+      const app = createApp({
+        logger: pino({ level: 'silent' }),
+        allowedOrigins: ['http://127.0.0.1:5173'],
+        verifyToken: createTokenVerifier(status.API_URL, status.ANON_KEY),
+        profiles: new ProfilesService(new ProfilesRepository(pool), storage),
+        listings: new ListingsService(new ListingsRepository(pool)),
+        photos: new PhotosService(new PhotosRepository(pool), storage),
+        trades: new TradesService(new TradesRepository(pool)),
+        meetings: new MeetingsService(new MeetingsRepository(pool)),
+        coffee: new CoffeeService(new CoffeeRepository(pool)),
+        conversations: new ConversationsService(
+          new ConversationsRepository(pool),
+        ),
+        notifications: new NotificationsService(
+          new NotificationsRepository(pool),
+        ),
+      });
+      // Fixed loopback listener, not a caller-supplied API URL. No live server needed.
+      server = app.listen(0, '127.0.0.1');
+      await new Promise<void>((resolve, reject) => {
+        server!.once('listening', resolve);
+        server!.once('error', reject);
+      });
+      const address = server.address();
+      if (!address || typeof address === 'string')
+        throw new DemoError('No local listener.');
+      origin = `http://127.0.0.1:${address.port}`;
+    }
     const actors = new Map<
       MemberKey,
       { id: string; token: string; client: SupabaseClient }
@@ -198,8 +233,10 @@ async function main() {
         await new Promise((resolve) => setTimeout(resolve, 1100));
       const response = await fetch(`${origin}/api/v1${path}`, {
         method,
+        redirect: 'error',
         signal: AbortSignal.timeout(30_000),
         headers: {
+          ...(hosted ? { Origin: 'https://swapcircle.pages.dev' } : {}),
           ...(key ? { Authorization: `Bearer ${actors.get(key)!.token}` } : {}),
           ...(image
             ? { 'Content-Type': 'image/jpeg' }
@@ -239,13 +276,17 @@ async function main() {
             perPage: 100,
           });
           if (result.error)
-            throw new DemoError('Local Auth inventory unavailable.');
+            throw new DemoError('Demo Auth inventory unavailable.');
           found = result.data.users.find(
             (user) => user.email === account.email,
           );
           if (found || result.data.users.length < 100) break;
         }
-        if (found && found.app_metadata.demo_seed !== 'swapcircle-v1')
+        if (
+          found &&
+          (found.app_metadata.demo_seed !== 'swapcircle-v1' ||
+            (hosted && found.app_metadata.demo_target !== status.API_URL))
+        )
           throw new DemoError(
             'Demo identity collision; refusing to adopt an existing account.',
           );
@@ -254,10 +295,15 @@ async function main() {
             email: account.email,
             password: account.password,
             email_confirm: true,
-            app_metadata: { demo_seed: 'swapcircle-v1' },
+            app_metadata: {
+              demo_seed: 'swapcircle-v1',
+              ...(hosted
+                ? { demo_target: status.API_URL, demo_ready: false }
+                : {}),
+            },
           });
           if (result.error || !result.data.user)
-            throw new DemoError('Local demo account creation failed.');
+            throw new DemoError('Demo account creation failed.');
           found = result.data.user;
         }
         account.id = found.id;
@@ -272,7 +318,8 @@ async function main() {
         login.error ||
         !login.data.session ||
         login.data.user.id !== account.id ||
-        login.data.user.app_metadata.demo_seed !== 'swapcircle-v1'
+        login.data.user.app_metadata.demo_seed !== 'swapcircle-v1' ||
+        (hosted && login.data.user.app_metadata.demo_target !== status.API_URL)
       )
         throw new DemoError('Demo identity changed; refusing to replace it.');
       actors.set(member.key, {
@@ -835,20 +882,45 @@ async function main() {
           throw new DemoError('Demo image unavailable.');
       }
     }
+    if (hosted) {
+      await hostedReadiness(process.env);
+      await hostedInventory(
+        process.env,
+        new URL('baseline.json', directory),
+        true,
+      );
+      const guest = credentials.accounts.find(
+        (account) => account.key === 'guest',
+      )!;
+      const result = await admin.auth.admin.updateUserById(guest.id!, {
+        app_metadata: {
+          demo_seed: 'swapcircle-v1',
+          demo_target: status.API_URL,
+          demo_ready: true,
+        },
+      });
+      if (result.error)
+        throw new DemoError('Hosted guest readiness could not be published.');
+      await writePrivate(new URL('guest.json', directory), {
+        id: guest.id,
+        email: guest.email,
+        password: guest.password,
+      });
+    }
     await writePrivate(new URL('ready.json', directory), {
       version: 1,
       guestId: actors.get('guest')!.id,
     });
     console.info(
-      `Development demo ready: ${members.length} members, ${listings.length} illustrated listings, ${swaps.length} swaps, 5 direct chats and 2 populated group chats. ${changed} edited listings preserved.`,
+      `${hosted ? 'Production' : 'Development'} demo ready: ${members.length} members, ${listings.length} illustrated listings, ${swaps.length} swaps, 5 direct chats and 2 populated group chats. ${changed} edited listings preserved.`,
     );
     console.info(
-      'Private form-login credentials: packages/database/.demo.local/credentials.json. No credentials were printed.',
+      `Private form-login credentials: packages/database/${hosted ? '.demo.hosted.local' : '.demo.local'}/credentials.json. No credentials were printed.`,
     );
   } finally {
     if (server)
       await new Promise<void>((resolve) => server!.close(() => resolve()));
-    await pool.end();
+    await pool?.end();
     await lock.close();
     await unlink(lockPath);
   }
@@ -858,7 +930,7 @@ main().catch((error: unknown) => {
   console.error(
     error instanceof DemoError
       ? error.message
-      : 'Development demo stopped safely. Check the local stack and ignored demo journal; no credentials were logged.',
+      : 'Demo stopped safely. Check the approved target and ignored demo journal; no credentials were logged.',
   );
   process.exitCode = 1;
 });

@@ -51,8 +51,9 @@ pool.on('error', (error) => {
 
 const permissions = new SafetyPermissions(config.limits);
 
-const developmentRouter =
-  process.env.NODE_ENV === 'development'
+const guestRouter =
+  process.env.NODE_ENV === 'development' ||
+  process.env.DEMO_GUEST_CREDENTIALS !== undefined
     ? (
         await import('./features/development/guest.routes.js')
       ).createGuestRouter({
@@ -60,12 +61,13 @@ const developmentRouter =
         authUrl: config.supabaseUrl,
         databaseUrl: config.databaseUrl,
         publishableKey: config.supabasePublishableKey,
+        hostedCredentials: process.env.DEMO_GUEST_CREDENTIALS,
         allowedOrigins: config.allowedOrigins,
       })
     : undefined;
 
 createApp({
-  developmentRouter,
+  guestRouter,
   logger,
   health: new HealthService(new HealthRepository(pool), config.revision),
   meetings: new MeetingsService(new MeetingsRepository(pool), permissions),

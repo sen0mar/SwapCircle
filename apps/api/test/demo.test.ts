@@ -144,3 +144,70 @@ test('demo manifest covers coherent ownership, real available interests and bund
   }
   expect(listings.length - reserved.size).toBeGreaterThan(20);
 });
+
+test('hosted demo guards reject other projects, elevated roles, transport overrides and local mode', async () => {
+  const { assertHostedDemoTarget, hostedDemoAuth } =
+    await import('../src/features/development/demo-guard.js');
+  const database =
+    'postgres://swapcircle_runtime.tpanyqfgmbpsiejqjocd:synthetic@aws-0-eu-west-1.pooler.supabase.com:5432/postgres';
+  expect(() =>
+    assertHostedDemoTarget('production', hostedDemoAuth, database),
+  ).not.toThrow();
+  for (const target of [
+    database.replace('swapcircle_runtime', 'postgres'),
+    database.replace('5432', '6543'),
+    `${database}?sslmode=disable`,
+    database.replace('eu-west-1', 'eu-west-2'),
+    localDatabase,
+  ])
+    expect(() =>
+      assertHostedDemoTarget('production', hostedDemoAuth, target),
+    ).toThrow();
+  expect(() =>
+    assertHostedDemoTarget('development', hostedDemoAuth, database),
+  ).toThrow();
+  expect(() =>
+    assertHostedDemoTarget('production', 'https://other.supabase.co', database),
+  ).toThrow();
+});
+
+test('production seed requires explicit authorization and fingerprints refuse edits or deletions', async () => {
+  const { hostedSeedConfiguration, assertInventoryPreserved } =
+    await import('../scripts/demo/hosted.js');
+  const environment = {
+    NODE_ENV: 'production',
+    SUPABASE_URL: 'https://tpanyqfgmbpsiejqjocd.supabase.co',
+    DATABASE_URL:
+      'postgres://swapcircle_runtime.tpanyqfgmbpsiejqjocd:synthetic@aws-0-eu-west-1.pooler.supabase.com:5432/postgres',
+    RENDER_API_URL: 'https://swapcircle-wqu8.onrender.com',
+    FRONTEND_URL: 'https://swapcircle.pages.dev',
+    DATABASE_CA_CERT_PATH: '/synthetic/verified-ca.crt',
+    SUPABASE_SERVICE_ROLE_KEY: 'synthetic-server-key',
+    SUPABASE_PUBLISHABLE_KEY: 'synthetic-public-key',
+    DEMO_API_REVISION: 'a'.repeat(40),
+    DEMO_SEED_AUTHORIZATION: 'approved-production-demo',
+  };
+  expect(() => hostedSeedConfiguration(environment)).not.toThrow();
+  for (const override of [
+    { DEMO_SEED_AUTHORIZATION: '' },
+    { DEMO_API_REVISION: 'main' },
+    { RENDER_API_URL: 'https://unapproved.invalid' },
+    { FRONTEND_URL: 'http://localhost:5173' },
+    { DATABASE_CA_CERT_PATH: '' },
+  ])
+    expect(() =>
+      hostedSeedConfiguration({ ...environment, ...override }),
+    ).toThrow();
+  const saved = [{ table: 'messages', hashes: ['existing', 'existing'] }];
+  expect(() =>
+    assertInventoryPreserved(saved, [
+      { table: 'messages', hashes: ['existing', 'existing', 'new'] },
+    ]),
+  ).not.toThrow();
+  expect(() =>
+    assertInventoryPreserved(saved, [
+      { table: 'messages', hashes: ['existing', 'edited'] },
+    ]),
+  ).toThrow();
+  expect(() => assertInventoryPreserved(saved, [])).toThrow();
+});

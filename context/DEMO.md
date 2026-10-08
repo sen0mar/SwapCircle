@@ -1,4 +1,4 @@
-# Development demo
+# Demo community
 
 The app uses real persisted records and ordinary Supabase sessions for the demo. The seed is an explicit operation, separate from migration-only `db:seed` and CI fixtures.
 
@@ -16,7 +16,7 @@ Both web and API `.env` files must point to the local stack (`127.0.0.1:55431`);
 
 On `/sign-in`, choose **Continue as guest**. It opens the shared **Camille Demo** account through a normal Supabase session. All visitors to this local demo account share its shelf, conversations, swaps and edits. Use fictional details only. Google and password sign-in remain available. Other synthetic users can sign in through the form using the owner-readable credentials in `packages/database/.demo.local/credentials.json`; do not publish that file or paste it into logs/issues.
 
-Guest access is lazy-loaded in the development browser only. The production browser build has no guest button, and a normal production API has no guest route. The local route refuses non-local targets and unapproved origins, limits session requests, returns `Cache-Control: no-store`, checks the seeded identity, and keeps passwords server-side. It remains unavailable until seeding and image verification finish.
+Guest access uses the same form and Supabase SDK lifecycle in development and production. The API requires either the isolated development stack or explicit server-only production guest credentials on the exact approved project. It refuses unapproved origins, limits session requests, returns `Cache-Control: no-store`, checks the seeded identity, and keeps passwords server-side. Production additionally requires a server-owned completed-seed marker; an ordinary production API without guest configuration has no guest route.
 
 ## Demo tour
 
@@ -47,4 +47,16 @@ With the seed and both development servers running, `pnpm --filter @swapcircle/w
 
 ## Production
 
-This implementation intentionally refuses hosted targets and production mode. A later one-time hosted seed requires explicit user authorization and a separately reviewed runner/preflight. Do not remove the local guards or copy local credentials to production. No deployment or production seed has been performed as part of this work.
+The owner authorized an additive production demo on 2026-10-08. Production uses the existing Supabase project `tpanyqfgmbpsiejqjocd`, API `https://swapcircle-wqu8.onrender.com` and frontend `https://swapcircle.pages.dev`. Local commands still refuse hosted targets. There are no resets, deletions, schema changes or direct application database writes.
+
+The separately guarded hosted command requires the ignored root `.env.hosted` server credentials, verified database CA, exact least-privilege runtime role, explicit authorization and the actual deployed API revision:
+
+```sh
+NODE_ENV=production DEMO_SEED_AUTHORIZATION=approved-production-demo DEMO_API_REVISION=<verified-live-api-sha> pnpm demo:seed:production
+```
+
+Run only after verifying `/api/v1/ready` and hosted password-provider configuration. It uses the deployed Express API for all domain writes and a read-only TLS database connection for pre-existing row fingerprints. Production accounts use a separate synthetic namespace and fresh passwords. Credentials, journal, lock, baseline and the guest secret are isolated in ignored `packages/database/.demo.hosted.local/`; never copy local credentials to production. Completed reruns preserve interactions. Changed pre-existing rows stop verification for inspection rather than triggering repair or rollback.
+
+After all app records and images are verified, the runner marks only its synthetic guest identity ready and writes `guest.json`. Set its JSON contents as the Render server-only `DEMO_GUEST_CREDENTIALS` secret on the existing service. Do not print it, commit it, or use a `VITE_*` variable. Removing the server secret disables the route. The shared guest account is intentionally editable and visible to other visitors; use fictional details only.
+
+Release code through the existing exact-revision GitHub checks and controlled migration/API/Pages workflow. A populated database does not deploy the UI or API. CI billing failures are not successful checks and must be resolved before releasing. Verify both deployed revisions, photos, password login, guest reload and private pages after release.
