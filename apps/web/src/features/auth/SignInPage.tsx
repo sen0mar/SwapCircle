@@ -9,7 +9,6 @@ import { Input } from '../../components/ui/input';
 import { FormFeedback } from '../../components/ui/form-feedback';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
-import { DemoDataNotice } from '../../components/layout/DemoNotice';
 import { useAuth } from './AuthProvider';
 import { safeDestination } from './safe-destination';
 import { useGoogleSignIn } from './useGoogleSignIn';
@@ -69,11 +68,7 @@ export function SignInPage() {
       aria-labelledby="sign-in-title"
     >
       <h1 id="sign-in-title">Sign in to SwapCircle</h1>
-      <p>
-        Use your Google account or a provisioned email and password to try the
-        demo.
-      </p>
-      <DemoDataNotice />
+      <p>Use your Google account or your email and password to sign in.</p>
       {(error || restorationError) && (
         <p role="alert">{error || restorationError}</p>
       )}

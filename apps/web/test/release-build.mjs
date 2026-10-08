@@ -161,12 +161,6 @@ try {
     }),
   );
   await visit(`${origin}/listings/${missingItem}`);
-  await expect(
-    page
-      .getByRole('complementary', { name: 'Portfolio demo' })
-      .locator('details'),
-  ).not.toHaveAttribute('open');
-  // Exercise the deployed smoke's assertion while unrelated notice text is hidden.
   await requireUnavailableItem(page);
   await expect(
     page.getByText('This item cannot be found or has been withdrawn.', {

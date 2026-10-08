@@ -343,12 +343,6 @@
   .page-container {
     padding-block: 24px 32px;
   }
-  .page-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 24px;
-    align-items: start;
-  }
   .hero,
   .panel {
     background: var(--bg-surface);
@@ -406,11 +400,6 @@
     color: var(--text-muted);
     margin-top: 16px;
   }
-  .right-rail {
-    display: grid;
-    gap: 16px;
-    min-width: 0;
-  }
   .panel {
     padding: 24px;
     border-radius: var(--radius-xl);
@@ -440,12 +429,6 @@
     transform: translateY(0);
   }
   @media (max-width: 1279px) {
-    .page-grid {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .right-rail {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
     .header-inner,
     .page-container {
       padding-inline: 24px;
@@ -523,9 +506,6 @@
     }
     .hero-actions {
       flex-direction: column;
-    }
-    .right-rail {
-      grid-template-columns: minmax(0, 1fr);
     }
   }
 }
@@ -850,98 +830,12 @@
   .member-preview {
     padding: 16px;
   }
-  .member-identity {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .member-avatar {
-    display: grid;
-    place-items: center;
-    flex: 0 0 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--bg-subtle);
-    color: var(--text-muted);
-  }
-  .member-name {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-  .member-location {
-    font-size: 0.75rem;
-  }
   .message-action {
     margin-top: 16px;
   }
   .message-action p {
     font-size: 0.75rem;
     margin-top: 8px;
-  }
-  .member-preview .message-action button {
-    width: 100%;
-  }
-  .community-panel h2 {
-    margin-top: 12px;
-  }
-  .community-panel > p {
-    margin-top: 12px;
-  }
-  .conversation-preview {
-    padding-block: 16px;
-    border-bottom: 1px solid var(--border-subtle);
-  }
-  .conversation-preview > p {
-    margin-top: 8px;
-    font-size: 0.875rem;
-  }
-  .preview-caption {
-    font-size: 0.75rem;
-  }
-  .collection-notice {
-    min-height: 140px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  .quiet-skeleton {
-    display: grid;
-    gap: 8px;
-    margin-top: 16px;
-  }
-  .quiet-skeleton span {
-    height: 12px;
-    width: 75%;
-    border-radius: 6px;
-    background: var(--bg-subtle);
-  }
-  .quiet-skeleton span:last-child {
-    width: 45%;
-  }
-  .development-preview {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 12px 16px;
-    margin-bottom: 24px;
-    background: var(--bg-subtle);
-    border: 1px dashed var(--border-strong);
-    border-radius: 8px;
-    font-size: 0.875rem;
-  }
-  .development-preview select {
-    min-height: 44px;
-    max-width: 100%;
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
-    padding: 8px;
-  }
-  .development-preview p {
-    font-size: 0.75rem;
   }
   @media (min-width: 1280px) and (max-width: 1439px) {
     .listing-grid,
@@ -977,28 +871,6 @@
 }
 
 @layer components {
-  .demo-notice {
-    display: grid;
-    gap: 8px;
-    margin-bottom: 24px;
-    padding: 16px 20px;
-    font-size: 0.875rem;
-  }
-  .demo-notice p,
-  .demo-data-notice p {
-    margin: 0;
-  }
-  .demo-notice summary {
-    min-height: 44px;
-    padding-block: 12px;
-    cursor: pointer;
-  }
-  .demo-data-notice {
-    display: grid;
-    gap: 8px;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-  }
   .auth-panel {
     display: flex;
     flex-direction: column;
