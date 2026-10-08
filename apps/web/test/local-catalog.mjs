@@ -189,7 +189,7 @@ try {
   assert.equal(item.ownerId, alice.id);
   assert.equal(item.title, title);
   assert.equal(item.availability, 'available');
-  const visitor = await browser.newContext();
+  const visitor = await browser.newContext({ reducedMotion: 'reduce' });
   const publicPage = await visitor.newPage();
   await publicPage.goto(`${origin}/listings/${item.id}`);
   await expect(
@@ -316,7 +316,9 @@ try {
       `${origin}/browse?q=${marker}&condition=good&availability=available&sort=oldest`,
     );
   }
-  const anonymousContext = await browser.newContext();
+  const anonymousContext = await browser.newContext({
+    reducedMotion: 'reduce',
+  });
   const anonymous = await anonymousContext.newPage();
   await anonymous.goto(origin);
   await expect(anonymous.getByRole('link', { name: title })).toBeVisible();

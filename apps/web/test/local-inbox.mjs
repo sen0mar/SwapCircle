@@ -18,6 +18,7 @@ const fixture = await createDiscoveryFixture(origin);
 const server = fixture.app.listen(4320, '127.0.0.1');
 await new Promise((resolve) => server.once('listening', resolve));
 const [alice, bob, stranger] = fixture.users;
+const discoveryInterestId = randomUUID();
 const output = new URL('../test-results/inbox-local/', import.meta.url);
 let preview;
 let browser;
@@ -182,7 +183,9 @@ try {
   await mkdir(output, { recursive: true });
   browser = await chromium.launch();
   const contexts = await Promise.all(
-    [alice, bob, stranger].map(() => browser.newContext()),
+    [alice, bob, stranger].map(() =>
+      browser.newContext({ reducedMotion: 'reduce' }),
+    ),
   );
   const [page, otherPage, outsider] = await Promise.all(
     contexts.map((context) => context.newPage()),
@@ -331,11 +334,28 @@ try {
   );
   await page.reload();
   await expect(page.getByLabel('Message draft')).toHaveValue('');
-  // Listing and discovery actions start/open the same canonical DM without interests/trades.
+  // Listing and discovery actions open the same DM without shared interests/trades.
   await page.goto(`${origin}/listings/${item.id}`);
   await page.getByRole('button', { name: 'Message', exact: true }).click();
   await expect(page).toHaveURL(`${origin}/inbox/${direct.id}`);
-  await page.goto(origin);
+  // A unique filter keeps Bob discoverable when the local stack has demo members.
+  // Alice retains no interests, so this still tests messaging without a shared one.
+  await fixture.migration.query(
+    'INSERT INTO public.interests (id, name) VALUES ($1, $2)',
+    [discoveryInterestId, `Inbox verification ${discoveryInterestId}`],
+  );
+  await api(
+    '/profiles/me',
+    bob,
+    {
+      displayName: 'Local Bob',
+      biography: 'Synthetic public profile.',
+      approximateLocation: 'Paris area',
+      interestIds: [discoveryInterestId],
+    },
+    'PUT',
+  );
+  await page.goto(`${origin}/?interest=${discoveryInterestId}`);
   const card = page.locator('.member-preview').filter({
     has: page.getByRole('link', { name: 'Local Bob', exact: true }),
   });
@@ -480,5 +500,12 @@ try {
     }
   }
   await new Promise((resolve) => server.close(resolve));
+  await fixture.migration.query(
+    'DELETE FROM public.profile_interests WHERE profile_id=$1 AND interest_id=$2',
+    [bob.id, discoveryInterestId],
+  );
+  await fixture.migration.query('DELETE FROM public.interests WHERE id=$1', [
+    discoveryInterestId,
+  ]);
   await fixture.cleanup();
 }

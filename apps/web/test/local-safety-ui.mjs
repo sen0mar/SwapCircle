@@ -122,8 +122,8 @@ try {
   assert.ok(ready);
   await mkdir(output, { recursive: true });
   browser = await chromium.launch();
-  const aliceContext = await browser.newContext();
-  const bobContext = await browser.newContext();
+  const aliceContext = await browser.newContext({ reducedMotion: 'reduce' });
+  const bobContext = await browser.newContext({ reducedMotion: 'reduce' });
   const page = await aliceContext.newPage();
   const otherPage = await bobContext.newPage();
   await signIn(page, alice);

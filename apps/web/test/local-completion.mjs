@@ -192,12 +192,20 @@ try {
   await mkdir(output, { recursive: true });
   browser = await chromium.launch();
   const alicePage = await (
-    await browser.newContext({ timezoneId: 'Europe/Paris' })
+    await browser.newContext({
+      reducedMotion: 'reduce',
+      timezoneId: 'Europe/Paris',
+    })
   ).newPage();
   const bobPage = await (
-    await browser.newContext({ timezoneId: 'America/New_York' })
+    await browser.newContext({
+      reducedMotion: 'reduce',
+      timezoneId: 'America/New_York',
+    })
   ).newPage();
-  const outsider = await (await browser.newContext()).newPage();
+  const outsider = await (
+    await browser.newContext({ reducedMotion: 'reduce' })
+  ).newPage();
   const errors = [];
   for (const page of [alicePage, bobPage, outsider])
     page.on('pageerror', (e) => errors.push(e.message));

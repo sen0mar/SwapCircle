@@ -207,8 +207,8 @@ try {
   assert.ok(ready);
   await mkdir(output, { recursive: true });
   browser = await chromium.launch();
-  const context = await browser.newContext();
-  const deviceContext = await browser.newContext();
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  const deviceContext = await browser.newContext({ reducedMotion: 'reduce' });
   const page = await context.newPage();
   const device = await deviceContext.newPage();
   const errors = [];

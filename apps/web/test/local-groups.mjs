@@ -138,7 +138,9 @@ try {
   browser = await chromium.launch();
 
   const pages = await Promise.all(
-    fixture.users.map(async () => (await browser.newContext()).newPage()),
+    fixture.users.map(async () =>
+      (await browser.newContext({ reducedMotion: 'reduce' })).newPage(),
+    ),
   );
   const [a, b, c, d] = pages;
   const errors = [];
@@ -285,7 +287,9 @@ try {
   ).toBeVisible();
   await b.goto(`${origin}/inbox/${group}`);
   // A second device keeps the open thread and a draft until revocation is discovered.
-  const second = await (await browser.newContext()).newPage();
+  const second = await (
+    await browser.newContext({ reducedMotion: 'reduce' })
+  ).newPage();
   await signIn(second, bob, `/inbox/${group}`);
   await second
     .getByRole('textbox', { name: 'Message draft' })

@@ -136,8 +136,8 @@ try {
   await mkdir(output, { recursive: true });
   browser = await chromium.launch();
   const [context, otherContext] = await Promise.all([
-    browser.newContext(),
-    browser.newContext(),
+    browser.newContext({ reducedMotion: 'reduce' }),
+    browser.newContext({ reducedMotion: 'reduce' }),
   ]);
   const [page, peer] = await Promise.all([
     context.newPage(),

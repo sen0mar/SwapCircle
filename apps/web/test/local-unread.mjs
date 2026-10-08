@@ -121,8 +121,8 @@ try {
   await mkdir(output, { recursive: true });
   browser = await chromium.launch();
   const [context, otherContext] = await Promise.all([
-    browser.newContext(),
-    browser.newContext(),
+    browser.newContext({ reducedMotion: 'reduce' }),
+    browser.newContext({ reducedMotion: 'reduce' }),
   ]);
   const [page, peer] = await Promise.all([
     context.newPage(),
@@ -134,7 +134,7 @@ try {
   await signIn(page, alice);
   await signIn(peer, bob);
 
-  const thirdContext = await browser.newContext();
+  const thirdContext = await browser.newContext({ reducedMotion: 'reduce' });
   const device = await thirdContext.newPage();
   await signIn(device, alice);
   const tab = await context.newPage();

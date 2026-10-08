@@ -160,9 +160,15 @@ try {
   assert.ok(ready);
   await mkdir(output, { recursive: true });
   browser = await chromium.launch();
-  const alicePage = await (await browser.newContext()).newPage();
-  const bobPage = await (await browser.newContext()).newPage();
-  const carolPage = await (await browser.newContext()).newPage();
+  const alicePage = await (
+    await browser.newContext({ reducedMotion: 'reduce' })
+  ).newPage();
+  const bobPage = await (
+    await browser.newContext({ reducedMotion: 'reduce' })
+  ).newPage();
+  const carolPage = await (
+    await browser.newContext({ reducedMotion: 'reduce' })
+  ).newPage();
   const errors = [];
   for (const page of [alicePage, bobPage, carolPage])
     page.on('pageerror', (error) => errors.push(error.message));
