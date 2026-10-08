@@ -276,14 +276,19 @@ try {
     alicePage.getByText('Currently unavailable for a trade', { exact: true }),
   ).toBeVisible();
   await alicePage.getByRole('link', { name: 'My Shelf', exact: true }).click();
-  await expect(
-    alicePage.locator('.shelf-item').filter({
-      has: alicePage.getByRole('heading', {
-        name: items[0].title,
-        exact: true,
-      }),
+  const reservedCard = alicePage.locator('.shelf-item').filter({
+    has: alicePage.getByRole('heading', {
+      name: items[0].title,
+      exact: true,
     }),
-  ).toContainText('Reserved');
+  });
+  await expect(reservedCard).toBeVisible();
+  await expect(
+    reservedCard.getByRole('link', { name: 'Edit', exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    reservedCard.getByRole('button', { name: 'Withdraw', exact: true }),
+  ).toHaveCount(0);
   // Another proposal cannot reserve the same item and keeps the reviewed outgoing/incoming summary.
   await carolPage.getByRole('button', { name: 'Accept version 1' }).click();
   await expect(agreement(carolPage)).toContainText(
