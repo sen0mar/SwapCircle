@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, open, readFile, unlink } from 'node:fs/promises';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Pool } from 'pg';
@@ -129,12 +129,34 @@ async function main() {
     : await localConfiguration();
   if (hosted) await hostedReadiness(process.env);
 
-  // Every asset is present before creating any identity or app record.
+  // Verify generated provenance before creating any identity or app record.
+  const sources = z
+    .record(
+      z.string(),
+      z.object({
+        generator: z.literal('OpenAI built-in image_gen'),
+        sha256: z.string().regex(/^[a-f0-9]{64}$/),
+        prompt: z.string().min(1),
+      }),
+    )
+    .parse(
+      JSON.parse(
+        await readFile(
+          new URL('packages/database/demo/sources.json', root),
+          'utf8',
+        ),
+      ),
+    );
   for (const name of new Set([
     ...listings.flatMap((item) => item.images),
     ...members.map((_, index) => `avatar-${index}`),
-  ]))
-    await readFile(new URL(`${name}.jpg`, assetRoot));
+  ])) {
+    const body = await readFile(new URL(`${name}.jpg`, assetRoot));
+    if (
+      createHash('sha256').update(body).digest('hex') !== sources[name]?.sha256
+    )
+      throw new DemoError('Generated demo asset fingerprint mismatch.');
+  }
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const lockPath = new URL('seed.lock', directory);
   const lock = await open(lockPath, 'wx', 0o600).catch(() => {
