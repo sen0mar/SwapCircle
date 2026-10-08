@@ -1,11 +1,5 @@
-# Homepage photography
+# AI-generated homepage photography
 
-Downloaded from Unsplash on 2026-09-20 under the [Unsplash license](https://unsplash.com/license), which permits downloading and using images, including commercially. Local assets avoid runtime third-party requests. These are illustrative stock photographs, not actual listings or member identities. Product photos are imported only by the development fixture module. No theme filters or overlays modify their colors.
+The café hero and all four bundled item images were replaced on 2026-10-08 with images generated using OpenAI's built-in image generation tool. They are illustrative fictional scenes and objects, with no external image requests. No stock photographs remain in this directory.
 
-| Asset        | Original source                                              |
-| ------------ | ------------------------------------------------------------ |
-| cafe.jpg     | https://images.unsplash.com/photo-1521017432531-fbd92d768814 |
-| backpack.jpg | https://images.unsplash.com/photo-1553062407-98eeb64c6a62    |
-| camera.jpg   | https://images.unsplash.com/photo-1516035069371-29a1b244cc32 |
-| books.jpg    | https://images.unsplash.com/photo-1495446815901-a7297e633e8d |
-| plant.jpg    | https://images.unsplash.com/photo-1459411552884-841db9b3cc2a |
+Prompts, generator provenance, generation date and SHA-256 fingerprints are recorded in `packages/database/demo/sources.json`. The backpack, camera and books files mirror the same-named demo assets; `plant.jpg` mirrors `cactus.jpg`. The café is a separate generated image. The original UI reference screenshots in `context/images/` remain design references and are not app photographs.

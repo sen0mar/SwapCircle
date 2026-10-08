@@ -197,15 +197,19 @@
   }
   a {
     color: var(--accent-primary-text);
-    text-underline-offset: 5px;
+    text-decoration: none;
   }
   a:hover {
-    text-decoration: underline;
+    text-decoration: none;
   }
   :focus-visible {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
     box-shadow: 0 0 0 2px var(--bg-surface);
+  }
+  :is(h1, h2, h3, h4, h5, h6)[tabindex='-1']:focus {
+    outline: none;
+    box-shadow: none;
   }
   h1,
   h2,
@@ -285,13 +289,12 @@
     align-items: center;
     min-height: 44px;
     white-space: nowrap;
-    border-bottom: 2px solid transparent;
     color: var(--text-secondary);
     text-decoration: none;
   }
   nav a[aria-current='page'] {
     color: var(--accent-primary-text);
-    border-bottom-color: var(--accent-primary-text);
+    font-weight: 600;
   }
   .future-nav {
     color: var(--text-faint);
@@ -985,7 +988,7 @@
   align-items: center;
   min-height: 44px;
   color: var(--accent-primary-text);
-  text-decoration: underline;
+  text-decoration: none;
 }
 .listing-detail-grid {
   display: grid;
@@ -1167,7 +1170,7 @@
   align-items: center;
   min-height: 44px;
   color: var(--accent-primary-text);
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .catalog-filters {
@@ -1529,7 +1532,7 @@
   align-items: center;
   min-height: 44px;
   color: var(--accent-primary-text);
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .group-thread-membership {

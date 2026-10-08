@@ -20,8 +20,8 @@ Guest access uses the same form and Supabase SDK lifecycle in development and pr
 
 ## Demo tour
 
-- **Home and Browse:** ten fictional Paris neighbours, 32 listings, photographed covers and four multi-image bundles. Most items remain available. Search for books, plants or a camera; try a condition or availability filter.
-- **Member and listing pages:** complete biographies, approximate locations, avatars, interests and other items from the owner. Photos are illustrative stock images, and every listing identifies itself as fictional.
+- **Home and Browse:** ten fictional Paris neighbours, 32 listings, AI-generated covers and four multi-image bundles. Most items remain available. Search for books, plants or a camera; try a condition or availability filter.
+- **Member and listing pages:** complete biographies, approximate locations, avatars, interests and other items from the owner. Photos are illustrative AI-generated images, and every listing identifies itself as fictional.
 - **My Shelf:** ten items owned by Camille, with available, reserved and exchanged examples. Open an available item in the editor to explore the normal form and gallery.
 - **My Swaps:** nine scenarios, including an incoming camera proposal, an outgoing music proposal, confirmed plants, completed books, a cancelled guitar exchange, a disputed bicycle exchange and three group proposals. Separate items keep reservations consistent.
 - **Swap details:** real transition histories, accepted terms, receipt acknowledgements, pairwise coffee consent, private fictional meetings and a three-person transfer cycle. Coffee eligibility uses the existing interest catalogue. No invented statistics or environmental impact are inserted.
@@ -39,7 +39,7 @@ An ignored, private journal saves intent before writes and records completed ope
 
 Run `pnpm demo:seed` again after a failure to resume. Preserve `.demo.local/`: losing it loses the operation keys and account passwords, so the runner refuses to adopt unrelated records. A lock prevents concurrent runs. If a process was forcibly killed, confirm that no seed is running before removing only `.demo.local/seed.lock`. Never delete trade history or disable append-only triggers to clean up a demo.
 
-The bundled image sources and license are recorded in `packages/database/demo/`. Runtime seeding reads those local files, processes them through Sharp, uploads to local Storage and verifies image responses before enabling guest access.
+The bundled image prompts and provenance are recorded in `packages/database/demo/`. Runtime seeding reads those local files, processes them through Sharp, uploads to local Storage and verifies image responses before enabling guest access.
 
 ## Verification
 
@@ -60,3 +60,27 @@ Run only after verifying `/api/v1/ready` and hosted password-provider configurat
 After all app records and images are verified, the runner marks only its synthetic guest identity ready and writes `guest.json`. Set its JSON contents as the Render server-only `DEMO_GUEST_CREDENTIALS` secret on the existing service. Do not print it, commit it, or use a `VITE_*` variable. Removing the server secret disables the route. The shared guest account is intentionally editable and visible to other visitors; use fictional details only.
 
 Release code through the existing exact-revision GitHub checks and controlled migration/API/Pages workflow. A populated database does not deploy the UI or API. CI billing failures are not successful checks and must be resolved before releasing. Verify both deployed revisions, photos, password login, guest reload and private pages after release.
+
+## Refreshing existing demo images
+
+On 2026-10-08 the owner authorized replacing every existing development and production demo photo with newly generated imagery. This explicit maintenance operation also covers illustrative photos retained with historical demo trades. It does not change their terms, status, history, participants, IDs, gallery positions or storage keys.
+
+Build the API first, then check the complete development plan without writing:
+
+```sh
+NODE_ENV=development pnpm demo:media:check
+NODE_ENV=development pnpm demo:media:refresh
+```
+
+Production uses the same existing approved target and server-only configuration as the seed:
+
+```sh
+NODE_ENV=production DEMO_SEED_AUTHORIZATION=approved-production-demo DEMO_API_REVISION=<verified-live-api-sha> pnpm demo:media:check:production
+NODE_ENV=production DEMO_SEED_AUTHORIZATION=approved-production-demo DEMO_API_REVISION=<verified-live-api-sha> pnpm demo:media:refresh:production
+```
+
+The runner verifies seeded Auth metadata, signs in each journal-owned account, checks original media fingerprints and completes the entire preflight before writes. A temporary Express listener bound only to loopback authenticates every replacement and derives ownership from the verified token. Server-owned plans allow only exact journal-owned storage keys. Repository access uses the normal runtime role and preserves RLS and account restrictions. It refuses changed avatars, galleries, media or unknown identities.
+
+Refresh overwrites only the approved image objects and updates the recorded byte counts of those exact photo IDs. It preserves recorded gallery dimensions. All other public database fields are fingerprinted before and after and must remain unchanged. Original bytes and resumable verification receipts are saved privately before replacement. Reruns verify already-replaced bytes and recover interrupted metadata updates. It never creates users, listings or trades, deletes historical photos, resets data, changes schema, or exposes a maintenance endpoint on the deployed API.
+
+Storage images retain their existing URLs; browser/CDN caches from before replacement may display the previous image for their existing one-hour cache lifetime. Refresh sets zero cache lifetime on replacements and verifies stored bytes. The bundled café hero requires the normal controlled frontend release after successful checks.

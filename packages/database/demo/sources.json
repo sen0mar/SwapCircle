@@ -1,44 +1,260 @@
 {
-  "backpack": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62",
-  "camera": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32",
-  "books": "https://images.unsplash.com/photo-1495446815901-a7297e633e8d",
-  "cactus": "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a",
-  "bicycle": "https://images.unsplash.com/photo-1485965120184-e220f721d03e",
-  "guitar": "https://images.unsplash.com/photo-1510915361894-db8b60106cb1",
-  "headphones": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e",
-  "chair": "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91",
-  "lamp": "https://images.unsplash.com/photo-1507473885765-e6ed057f782c",
-  "ceramics": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61",
-  "plants": "https://images.unsplash.com/photo-1485955900006-10f4d324d411",
-  "chess": "https://images.unsplash.com/photo-1586165368502-1bad197a6461",
-  "skateboard": "https://images.unsplash.com/photo-1520045892732-304bc3ac5d8e",
-  "sneakers": "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
-  "watch": "https://images.unsplash.com/photo-1524805444758-089113d48a6d",
-  "notebook": "https://images.unsplash.com/photo-1531346878377-a5be20888e57",
-  "polaroid": "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f",
-  "lens": "https://images.unsplash.com/photo-1617005082133-548c4dd27f35",
-  "vinyl": "https://images.unsplash.com/photo-1603048588665-791ca8aea617",
-  "keyboard": "https://images.unsplash.com/photo-1587829741301-dc798b83add3",
-  "kettle": "https://images.unsplash.com/photo-1594213114663-d94db9b17125",
-  "boardgame": "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09",
-  "rucksack": "https://images.unsplash.com/photo-1622260614153-03223fb72052",
-  "avatar-0": "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
-  "avatar-1": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
-  "avatar-2": "https://images.unsplash.com/photo-1524504388940-b1c1722653e1",
-  "avatar-3": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d",
-  "avatar-4": "https://images.unsplash.com/photo-1527980965255-d3b416303d12",
-  "avatar-5": "https://images.unsplash.com/photo-1517841905240-472988babdf9",
-  "avatar-6": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7",
-  "avatar-7": "https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43",
-  "avatar-9": "https://images.unsplash.com/photo-1531123897727-8f129e1688ce",
-  "vintagebooks": "https://images.unsplash.com/photo-1461360370896-922624d12aa1",
-  "poetrybook": "https://images.unsplash.com/photo-1544947950-fa07a98d237f",
-  "fountainpen": "https://images.unsplash.com/photo-1455390582262-044cdead277a",
-  "woodenchair": "https://images.unsplash.com/photo-1594224457860-23bdb45f8e3d",
-  "mug": "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d",
-  "shoes": "https://images.unsplash.com/photo-1491553895911-0055eca6402d",
-  "jacket": "https://images.unsplash.com/photo-1591047139829-d91aecb6caea",
-  "bag": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa",
-  "perfume": "https://images.unsplash.com/photo-1541643600914-78b084683601",
-  "avatar-8": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde"
+  "camera": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "7e3037bff0328e0aa14459f58b46ac58782c9f84f0f03fb698674412f51f5b9b",
+    "prompt": "Use case: product-mockup. Asset: camera for SwapCircle fictional demo. Subject: Black mirrorless camera with zoom lens on a dark matte tabletop, three-quarter view, soft side light. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "books": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "3a8a1be2674a919fe5b3d73fb8b89fa216206bfde9e296f2ba462ea4e4d0c4ee",
+    "prompt": "Use case: product-mockup. Asset: books for SwapCircle fictional demo. Subject: A row of well-loved mixed hardcover books with plain colorful cloth spines, no readable titles, on a wood shelf. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "cactus": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "8ac85ef1a67c40b05658736fc09f32db42934fa6171ab43e5359e107a97e4ad1",
+    "prompt": "Use case: product-mockup. Asset: cactus for SwapCircle fictional demo. Subject: A small upright green cactus in a terracotta pot on a pale blush shelf. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "bicycle": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "07a0534cf32b92b0d15130800227af16519422a181e79b30794713cf9d61215a",
+    "prompt": "Use case: product-mockup. Asset: bicycle for SwapCircle fictional demo. Subject: A complete simple silver city bicycle with thin wheels against a charcoal wall, side view. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "guitar": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "77beaba5ced79ba162d3c794ff3b28b0715bd908a85ceb72e121c1800b70695f",
+    "prompt": "Use case: product-mockup. Asset: guitar for SwapCircle fictional demo. Subject: A full acoustic guitar with warm natural wooden finish resting beside a chair, warm apartment light. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "headphones": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "7d620430360d62869c18a5af447732ff323be3ddffb4dfcff9adf4165e1b6599",
+    "prompt": "Use case: product-mockup. Asset: headphones for SwapCircle fictional demo. Subject: Black over-ear headphones with padded cushions on a mustard yellow tabletop, overhead view. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "chair": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "511e1fd3a8ed9fea0202ad1d576f18b082570df6d705b08ac29b934b17f94b8c",
+    "prompt": "Use case: product-mockup. Asset: chair for SwapCircle fictional demo. Subject: Soft grey upholstered accent chair with natural wooden legs, entire chair visible against pale wall. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "lamp": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "1763b089be497435d63f897f8325a8cd33e1216957d888f95d07ed3797e10c39",
+    "prompt": "Use case: product-mockup. Asset: lamp for SwapCircle fictional demo. Subject: Dark metal adjustable reading desk lamp on a white desk beside a pale wall, entire lamp visible. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "ceramics": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "680fde2fc45639df9cfda3e7889dffd49241b63e8fba9b4dbc4a4ea45632e14a",
+    "prompt": "Use case: product-mockup. Asset: ceramics for SwapCircle fictional demo. Subject: A small mixed set of soft blue glazed ceramic plates and bowls on a rustic wooden table. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "plants": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "bad81efdd8e90872a274f230d339ac10b1b19dbf87d0b4342986a9e8722aee8c",
+    "prompt": "Use case: product-mockup. Asset: plants for SwapCircle fictional demo. Subject: Small green succulent in a pale mint ceramic pot on a white shelf. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "chess": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "1ee90aaab1f5de5405493419736bda9fc723ff4e62d841c20bf58f187ef0c7d8",
+    "prompt": "Use case: product-mockup. Asset: chess for SwapCircle fictional demo. Subject: A complete unbranded wooden chess set arranged on its chessboard, close view with black and white pieces. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "skateboard": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "05029d25a1ad00fd821d013a734ddbad0f38bdc0f2c62ca1fdf78eb3326fa788",
+    "prompt": "Use case: product-mockup. Asset: skateboard for SwapCircle fictional demo. Subject: One used skateboard with scratched dark deck and orange wheels on pavement in warm evening light. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "sneakers": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "c03d06d965893fa24eca10978e73b8b33537ee03e1144a70ae1cb46847b046df",
+    "prompt": "Use case: product-mockup. Asset: sneakers for SwapCircle fictional demo. Subject: A pair of bright red fabric running trainers with white soles on a red studio background, no logos. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "watch": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "4f67cbe72f3498b677a8130afaaab9b025392131c838cb5fb3282dc263b3117f",
+    "prompt": "Use case: product-mockup. Asset: watch for SwapCircle fictional demo. Subject: Classic analogue wristwatch with cream dial and brown leather strap on a dark tabletop, no brand or readable words. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "notebook": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "a9ee6d8dbf74f1bb3451f1eba09a389325424be9c15c8eaec5ad1f38dc031366",
+    "prompt": "Use case: product-mockup. Asset: notebook for SwapCircle fictional demo. Subject: A plain cream notebook open beside a black fountain pen on a light grey writing desk. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "polaroid": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "37a8287dc5c765ce44fc1a63eff9be1c27863a0fdd10ade32cb3339a2fd33448",
+    "prompt": "Use case: product-mockup. Asset: polaroid for SwapCircle fictional demo. Subject: A cheerful cream and lavender instant camera on a neutral shelf, original unbranded design. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "lens": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "a8b9ada83cac1b55470c32dd01213506beca6e1a11bf7c4ebe0c255d4aa68ceb",
+    "prompt": "Use case: product-mockup. Asset: lens for SwapCircle fictional demo. Subject: A black camera zoom lens standing upright on a warm wooden table, background softly blurred, no labels. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "vinyl": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "e80f5b9bb17269a503a0a99c8a0265435274096c4a99f12d3c8149c68de20ce9",
+    "prompt": "Use case: product-mockup. Asset: vinyl for SwapCircle fictional demo. Subject: Black vinyl record partly pulled from a plain paper sleeve on a dark tabletop, soft natural light, no artist text. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "keyboard": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "0c7c504c328bad0b92d0f14b50c55ca49c5c68c31007e9f7e7530e293401e274",
+    "prompt": "Use case: product-mockup. Asset: keyboard for SwapCircle fictional demo. Subject: A compact slim pale grey desktop keyboard on a light wood desk, overhead composition, no logos. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "kettle": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "fcc7a9eddf63dc6952177b5663cb5d6d94bf3a60de9f973b01570e836060c2ed",
+    "prompt": "Use case: product-mockup. Asset: kettle for SwapCircle fictional demo. Subject: A traditional stainless steel stovetop kettle with black arched handle on a rustic kitchen counter. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "boardgame": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "5a0848de5065741dc43403bbfb709c647eb444557ff728886f4c2459aeb13b2b",
+    "prompt": "Use case: product-mockup. Asset: boardgame for SwapCircle fictional demo. Subject: A fictional unbranded strategy board game with hexagonal landscape tiles, wooden tokens and dice on a dining table, no text. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "rucksack": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "dba78c5faa7bd499ec80f6c371c9206b12a5e89fd2b5b09c362193dc667a9266",
+    "prompt": "Use case: product-mockup. Asset: rucksack for SwapCircle fictional demo. Subject: A green hiking rucksack with multiple straps and pockets leaning against a fallen log in a peaceful forest. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "vintagebooks": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "56118b2c53c0bcf6cf99040972222fd55b9564c3d417d8ce5028c43c2ac9e8c3",
+    "prompt": "Use case: product-mockup. Asset: vintagebooks for SwapCircle fictional demo. Subject: A characterful bundle of old clothbound books, worn covers and yellowed pages on a wooden bookshelf, no readable titles. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "poetrybook": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "bfaeb263b1ad69440f31031340ffc59454979c9ef40c93ae3aee6b756762514a",
+    "prompt": "Use case: product-mockup. Asset: poetrybook for SwapCircle fictional demo. Subject: A slim plain dark poetry book with no readable lettering on a small oak side table beside a sofa. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "fountainpen": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "780c87f57d1d5776b6ecf9c1b0f6fe6e39876789b473ed1e6dce9456a062abd6",
+    "prompt": "Use case: product-mockup. Asset: fountainpen for SwapCircle fictional demo. Subject: A black fountain pen with silver nib resting on cream paper, close detail, no readable writing. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "woodenchair": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "3d87a162a8106dddd4e6424c30ff8d9769bfc1f873f6bb33968fe90b7b1a1257",
+    "prompt": "Use case: product-mockup. Asset: woodenchair for SwapCircle fictional demo. Subject: One simple worn wooden dining chair with spindle back against a dark grey wall, entire chair visible. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "mug": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "fe80b83870dfb9d46cf5c1ad6c15fa938a48b35c09a5b1f21b1731640cbcaddb",
+    "prompt": "Use case: product-mockup. Asset: mug for SwapCircle fictional demo. Subject: A simple white ceramic morning mug on a pale grey kitchen counter, clean soft side lighting. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "shoes": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "cda8309364592507b72374a13436cb4076fb13cc0c62d2c846ee1b3877b704aa",
+    "prompt": "Use case: product-mockup. Asset: shoes for SwapCircle fictional demo. Subject: A pair of dark charcoal everyday walking shoes with light sole wear on a pale background, no logos. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "jacket": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "328dbbacedad70e490cb1d7fc6c18796271e206901215e5ebc0d0b1aee24dd03",
+    "prompt": "Use case: product-mockup. Asset: jacket for SwapCircle fictional demo. Subject: A casual warm brown weekend jacket on a wooden hanger against a pale apartment wall, no logos. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "bag": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "26aba7c1d2a69e72426602f2bb07b6c27962fe42e1bb55c8c652fb75ab9b51d6",
+    "prompt": "Use case: product-mockup. Asset: bag for SwapCircle fictional demo. Subject: A structured black everyday shoulder handbag with subtle quilted texture and plain metal hardware, no logo, on a dark table. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "perfume": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "2ee75b3fdaba9e1c5b04852c83029b2086f80ab527229d9965201d1a4f5b13f7",
+    "prompt": "Use case: product-mockup. Asset: perfume for SwapCircle fictional demo. Subject: An empty decorative glass fragrance bottle with pale amber tint and a simple unmarked stopper on a light blue shelf, no label. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "avatar-0": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "7ad49410e28006e147718374fa4f88e50d098386dcc2b9d572580d9ed0c41395",
+    "prompt": "Use case: photorealistic-natural. Asset: avatar-0 for SwapCircle fictional demo. Subject: Head-and-shoulders portrait of a fictional friendly adult woman with light olive skin, dark hair tied back, navy sweater, pale neutral background. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Invent a completely new person, not a celebrity or a likeness of an existing individual. Center the face with generous margins suitable for round avatar cropping. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "avatar-1": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "44f76f70f6376b3a6aca0d4aacb76721f6fd2b6d338df1c50367ef6cf34398f7",
+    "prompt": "Use case: photorealistic-natural. Asset: avatar-1 for SwapCircle fictional demo. Subject: Head-and-shoulders portrait of a fictional adult man with medium-light skin, short dark wavy hair, subtle stubble, grey shirt, soft blue-grey background. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Invent a completely new person, not a celebrity or a likeness of an existing individual. Center the face with generous margins suitable for round avatar cropping. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "avatar-2": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "e61cc5ca71e57505b4e04509a5851b3605d144e9ed5d38ab61ab35e029fb86e9",
+    "prompt": "Use case: photorealistic-natural. Asset: avatar-2 for SwapCircle fictional demo. Subject: Head-and-shoulders portrait of a fictional adult woman with light skin and long chestnut hair, dark casual top, warm apartment background. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Invent a completely new person, not a celebrity or a likeness of an existing individual. Center the face with generous margins suitable for round avatar cropping. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "avatar-3": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "7668a8a1cb732a429e3eb845b8f0f2c9cf24d8d30dc68f91ca08bcc4c95301a5",
+    "prompt": "Use case: photorealistic-natural. Asset: avatar-3 for SwapCircle fictional demo. Subject: Head-and-shoulders portrait of a fictional adult man with light skin, short textured brown hair and neat beard, dark olive shirt, charcoal background. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Invent a completely new person, not a celebrity or a likeness of an existing individual. Center the face with generous margins suitable for round avatar cropping. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "avatar-4": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "f05508c84b6a9ddaeedf549cbf46104939ea31d31983120eecef24076f813b00",
+    "prompt": "Use case: photorealistic-natural. Asset: avatar-4 for SwapCircle fictional demo. Subject: Head-and-shoulders portrait of a fictional smiling adult man with medium tan skin and short black hair, navy sweater, softly blurred greenery. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Invent a completely new person, not a celebrity or a likeness of an existing individual. Center the face with generous margins suitable for round avatar cropping. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "avatar-5": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "add4d8b7df247506395d73d5054958ba20d161a5c22ab83fb101b37ae60cb333",
+    "prompt": "Use case: photorealistic-natural. Asset: avatar-5 for SwapCircle fictional demo. Subject: Head-and-shoulders portrait of a fictional adult woman with medium-light skin and long dark blonde hair, blue denim shirt, teal wall background. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Invent a completely new person, not a celebrity or a likeness of an existing individual. Center the face with generous margins suitable for round avatar cropping. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "avatar-6": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "cbeb539a452021f07bc0b2cac64507860c020ce1745f4fb8b573d1fa6312e9bd",
+    "prompt": "Use case: photorealistic-natural. Asset: avatar-6 for SwapCircle fictional demo. Subject: Head-and-shoulders portrait of a fictional adult man with medium skin and short brown hair, dark casual jacket, softly blurred city trees. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Invent a completely new person, not a celebrity or a likeness of an existing individual. Center the face with generous margins suitable for round avatar cropping. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "avatar-7": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "db6ce8012f34f8f2645b9aff0de664b24482806bed65ca18726ce77a18f992ea",
+    "prompt": "Use case: photorealistic-natural. Asset: avatar-7 for SwapCircle fictional demo. Subject: Head-and-shoulders portrait of a fictional adult woman with light skin and shoulder-length blonde curls, mustard sweater, softly blurred garden. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Invent a completely new person, not a celebrity or a likeness of an existing individual. Center the face with generous margins suitable for round avatar cropping. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "avatar-8": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "5bc5e513e9ce0b19d688a473c07953764559b50370c09dc86e06e481908a103f",
+    "prompt": "Use case: photorealistic-natural. Asset: avatar-8 for SwapCircle fictional demo. Subject: Head-and-shoulders portrait of a fictional adult man with medium skin and short dark curly hair, charcoal shirt, pale studio background. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Invent a completely new person, not a celebrity or a likeness of an existing individual. Center the face with generous margins suitable for round avatar cropping. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "avatar-9": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "34dc88630c6823c9c4192bb0bf2ed115b55c8b121404e9ef347fedbd950b9bbc",
+    "prompt": "Use case: photorealistic-natural. Asset: avatar-9 for SwapCircle fictional demo. Subject: Head-and-shoulders portrait of a fictional adult Black woman with short natural hair, blue patterned blouse, warm muted terracotta background. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Invent a completely new person, not a celebrity or a likeness of an existing individual. Center the face with generous margins suitable for round avatar cropping. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "cafe": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "8bc5d53ee6a9971b9ab3ac9ed397c37ac7e93fc152bfa12672d10d5ca224169e",
+    "prompt": "Use case: photorealistic-natural. Asset: cafe for SwapCircle fictional demo. Subject: A warm welcoming empty neighborhood café interior with wooden communal tables, chairs, indoor plants, large windows and soft morning sunlight, wide landscape composition, no people or signage. Style: photorealistic natural stock-style photography, realistic materials and proportions, restrained color, gentle daylight. Center the complete main subject with generous crop margins suitable for landscape cards. No logos, brands, readable lettering, watermarks, captions or borders. Generate exactly one separate image."
+  },
+  "backpack": {
+    "generator": "OpenAI built-in image_gen",
+    "generatedAt": "2026-10-08",
+    "sha256": "fd526b3ee613f84e5018ac5b2bd3173cea07f1608fd2a7993266e194f5956785",
+    "prompt": "Photorealistic navy blue daypack with front zipped pocket and comfortable straps, slight wear, on a pale wooden chair beside an apartment window. Natural daylight, woven fabric, neutral background, generous crop margins. No people, logos, watermarks or text."
+  }
 }
