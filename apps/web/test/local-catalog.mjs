@@ -140,7 +140,8 @@ try {
   assert.ok(ready, 'Local production preview started');
   await mkdir(output, { recursive: true });
   browser = await chromium.launch();
-  const context = await browser.newContext();
+  // Theme contrast audits must inspect settled colors, not transition frames.
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', () => errors.push('Browser error'));
