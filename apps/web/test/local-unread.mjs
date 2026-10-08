@@ -147,7 +147,7 @@ try {
     );
   const unread = async (id) =>
     (await api(`/conversations/${id}/unread`, alice)).unreadCount;
-  await page.goto(`${origin}/`);
+  await page.goto(`${origin}/inbox`);
   await send(bob, direct.id, 'Unopened incoming one');
   await send(bob, direct.id, 'Unopened incoming two');
   await send(alice, direct.id, 'Outgoing does not count');
@@ -155,7 +155,7 @@ try {
   await expect(page.getByText('2 unread', { exact: true })).toBeVisible();
   await expect(page.getByText('1 unread', { exact: true })).toBeVisible();
   assert.equal(await unread(direct.id), 2);
-  // A homepage card/list mount never acknowledges messages.
+  // An Inbox list mount never acknowledges messages.
   await page.reload();
   await expect(page.getByText('2 unread', { exact: true })).toBeVisible();
   await tab.goto(`${origin}/inbox`);
@@ -180,7 +180,7 @@ try {
       );
       if (width === 360 || width === 1280)
         await page.screenshot({
-          path: new URL(`${theme}-home-${width}.png`, output).pathname,
+          path: new URL(`${theme}-inbox-${width}.png`, output).pathname,
           fullPage: true,
         });
     }
@@ -285,7 +285,7 @@ try {
   await bob.client.removeChannel(malicious);
   assert.deepEqual(errors, []);
   console.log(
-    'Local unread production: incoming-only unopened homepage/list counts; preview reload does not acknowledge; visible thread clears only its own count; owner progress reaches same-browser tab and isolated device via actual Realtime; reload persists; offscreen incoming stays unread until scroll; disconnected list recovers four messages/count then visible thread clears; account isolation; Light/Dark Home/thread 360/768/800/1280/1600px overflow/axe passed.',
+    'Local unread production: incoming-only unopened Inbox counts; list reload does not acknowledge; visible thread clears only its own count; owner progress reaches same-browser tab and isolated device via actual Realtime; reload persists; offscreen incoming stays unread until scroll; disconnected list recovers four messages/count then visible thread clears; account isolation; Light/Dark Inbox/thread 360/768/800/1280/1600px overflow/axe passed.',
   );
 } finally {
   if (browser) await browser.close();
