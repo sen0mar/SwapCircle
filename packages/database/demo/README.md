@@ -1,7 +1,9 @@
-# Demo photography
+# AI-generated demo photography
 
-Bundled on 2026-10-07 from the individual Unsplash image URLs in `sources.json`, under the [Unsplash license](https://unsplash.com/license). Photography is used as illustrative content for fictional profiles and listings, not as a claim about real people, ownership, endorsements or available inventory. No image network request is required when seeding.
+All 42 item and portrait assets were generated with OpenAI's built-in image generation tool on 2026-10-08. They replace the former stock photographs. `sources.json` records each prompt and the SHA-256 fingerprint of its final JPEG; it also records the generated café hero in `apps/web/src/assets/cafe.jpg`. No external image download is needed when seeding.
 
-Each listing has a matching cover. Selected bundles also show their included objects: camera and lens, book collection, plant pair, and stationery set. Images are uploaded through the existing Express/Sharp pipeline, re-encoded as WebP, and stored in the local `item-media` bucket. Portraits illustrate synthetic identities; the named members are fictional.
+Objects are unbranded and portraits depict invented adults. These images illustrate fictional profiles and listings, not real people, ownership, endorsements or available inventory. Selected bundles show their included objects: camera and lens, book collection, plant pair, and stationery set. The ordinary seed uploads through Express/Sharp, re-encodes as WebP, and uses the same bundled files in development and production.
 
-The seed runner and typed content manifest live in `apps/api/scripts/demo/`. Its private credentials, progress journal, readiness marker and lock live in the Git-ignored `packages/database/.demo.local/` directory. Never publish that directory, include it in browser assets, or upload it to a hosted environment.
+Existing seeds skip completed uploads. Use the explicit media refresh in `context/DEMO.md` to replace their images. `previous-media.json` contains fingerprints of the previous seed's processed image bytes, allowing the refresh to reject subsequently edited media. It contains no credentials or personal data.
+
+Private credentials, journals, backups and refresh receipts remain in the ignored `.demo.local/` and `.demo.hosted.local/` directories. Never publish them or include them in browser assets.

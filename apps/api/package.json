@@ -30,7 +30,11 @@
     "test:lifecycle-local": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env test/local-lifecycle.mjs",
     "cleanup:local": "node --env-file=../../packages/database/.env scripts/cleanup-local.mjs",
     "demo:seed": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../packages/database/.env scripts/demo/seed.ts",
-    "demo:seed:production": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../.env.hosted scripts/demo/seed.ts --production"
+    "demo:seed:production": "pnpm --filter @swapcircle/contracts build && pnpm --filter @swapcircle/database build && pnpm build && node --env-file=../../.env.hosted scripts/demo/seed.ts --production",
+    "demo:media:check": "node --env-file=../../packages/database/.env scripts/demo/refresh-media.ts",
+    "demo:media:refresh": "node --env-file=../../packages/database/.env scripts/demo/refresh-media.ts --apply",
+    "demo:media:check:production": "node --env-file=../../.env.hosted scripts/demo/refresh-media.ts --production",
+    "demo:media:refresh:production": "node --env-file=../../.env.hosted scripts/demo/refresh-media.ts --production --apply"
   },
   "exports": {
     ".": {

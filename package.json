@@ -27,7 +27,11 @@
     "verify:release-public": "node scripts/release-verification.mjs",
     "backup:local": "pnpm --filter @swapcircle/database backup",
     "demo:seed": "pnpm --filter @swapcircle/api demo:seed",
-    "demo:seed:production": "pnpm --filter @swapcircle/api demo:seed:production"
+    "demo:seed:production": "pnpm --filter @swapcircle/api demo:seed:production",
+    "demo:media:check": "pnpm --filter @swapcircle/api demo:media:check",
+    "demo:media:refresh": "pnpm --filter @swapcircle/api demo:media:refresh",
+    "demo:media:check:production": "pnpm --filter @swapcircle/api demo:media:check:production",
+    "demo:media:refresh:production": "pnpm --filter @swapcircle/api demo:media:refresh:production"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
