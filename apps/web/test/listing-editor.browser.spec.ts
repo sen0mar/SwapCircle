@@ -150,12 +150,24 @@ test('create, edit, withdraw and reload with draft recovery', async ({
     page.getByRole('dialog', { name: 'Withdraw item?' }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Keep item' }).click();
-  await expect(page.getByText('Fair · Available')).toBeVisible();
+  await expect(page.locator('.shelf-item .listing-condition')).toHaveText(
+    'Fair',
+  );
+  expect(item?.availability).toBe('available');
   await page.getByRole('button', { name: 'Withdraw', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm withdrawal' }).click();
-  await expect(page.getByText('Withdrawn')).toBeVisible();
+  await expect.poll(() => item?.availability).toBe('withdrawn');
+  await expect(
+    page.getByRole('button', { name: 'Withdraw', exact: true }),
+  ).toHaveCount(0);
   await page.reload();
-  await expect(page.getByText('Withdrawn')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Repaired canvas bag' }),
+  ).toBeVisible();
+  await expect(page.locator('.shelf-item .listing-condition')).toHaveText(
+    'Fair',
+  );
+  await expect(page.getByRole('link', { name: 'View item' })).toHaveCount(0);
   await expect(
     page.getByRole('link', { name: 'Edit', exact: true }),
   ).toHaveCount(0);

@@ -18,6 +18,9 @@ const timestamps = {
 test('avatar preview, failed upload retry, public display and removal', async ({
   page,
 }) => {
+  // Audit settled colors rather than intermediate theme-transition frames.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
   let avatarUrl: string | null = null;
   let avatarCleanupPending = false;
   let attempts = 0;

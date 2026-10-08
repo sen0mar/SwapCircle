@@ -6,9 +6,21 @@ for (const theme of ['light', 'dark']) {
   test(`drawer keyboard, dismissal, layout and accessibility in ${theme}`, async ({
     page,
   }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await signInFixture(page);
+    await page.route('**/api/v1/listings?*', (route) =>
+      route.fulfill({ json: { items: [], nextCursor: null } }),
+    );
+    await page.route('**/api/v1/members/discovery?*', (route) =>
+      route.fulfill({ json: { items: [], nextCursor: null } }),
+    );
+    await page.route('**/api/v1/interests', (route) =>
+      route.fulfill({ json: [] }),
+    );
     await page.goto('/');
     await page.getByLabel('Theme').selectOption(theme);
+    await expect(page.locator('main [role="status"]')).toHaveCount(0);
+    await expect(page.getByLabel('Discover by interest')).toBeEnabled();
 
     const trigger = page.getByRole('button', {
       name: 'Open account',

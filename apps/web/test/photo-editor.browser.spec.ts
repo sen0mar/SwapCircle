@@ -15,6 +15,9 @@ const image = readFileSync(
 test('photo previews, retry, persisted order, removal and accessible layouts', async ({
   page,
 }) => {
+  // Audit settled colors rather than intermediate theme-transition frames.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
   const photos: {
     id: string;
     listingId: string;

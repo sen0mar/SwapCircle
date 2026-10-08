@@ -70,6 +70,9 @@ test('SDK OAuth callback, reload, protected route and sign-out lifecycle (synthe
 test('sign-in and failed callback are usable in both themes and all target widths', async ({
   page,
 }) => {
+  // Audit settled colors rather than intermediate theme-transition frames.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
   for (const theme of ['light', 'dark']) {
     for (const width of [360, 768, 1280, 1600]) {
       await page.setViewportSize({ width, height: 900 });
