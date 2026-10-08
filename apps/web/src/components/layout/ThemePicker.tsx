@@ -1,3 +1,4 @@
+import { Select } from '../ui/select';
 import { useEffect, useState } from 'react';
 import {
   applyTheme,
@@ -38,7 +39,7 @@ export function ThemePicker() {
   return (
     <label className="theme-picker">
       <span>Theme</span>
-      <select
+      <Select
         value={preference}
         onChange={(event) => {
           const value = event.target.value;
@@ -58,7 +59,7 @@ export function ThemePicker() {
         <option value="light">Light</option>
         <option value="dark">Dark</option>
         <option value="system">System</option>
-      </select>
+      </Select>
     </label>
   );
 }

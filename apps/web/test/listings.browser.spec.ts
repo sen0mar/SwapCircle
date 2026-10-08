@@ -68,6 +68,9 @@ test('stored listing photos render on cards and detail with fallback', async ({
 test('public cursor navigation, reload, owner profile, long text and accessible themes', async ({
   page,
 }) => {
+  // Audit settled colors rather than intermediate theme-transition frames.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
   await page.route('**/api/v1/listings?*', (route) =>
     route.fulfill({
       json: new URL(route.request().url()).searchParams.has('cursor')
@@ -232,4 +235,129 @@ test('another signed-in member cannot edit and owner failure can recover', async
   await expect(
     page.getByRole('link', { name: profile.displayName }),
   ).toBeVisible();
+});
+
+test('listing cards show condition dots without availability labels in both themes', async ({
+  page,
+}) => {
+  const variants = [
+    { condition: 'like_new', label: 'Like new', token: '--state-success' },
+    { condition: 'good', label: 'Good', token: '--state-success' },
+    { condition: 'fair', label: 'Fair', token: '--state-warning' },
+    { condition: 'poor', label: 'Poor', token: '--state-error' },
+  ];
+  const items = variants.map((variant, index) => ({
+    ...item,
+    id: crypto.randomUUID(),
+    title: `Condition example ${index + 1}`,
+    condition: variant.condition,
+  }));
+
+  await signInFixture(page);
+  await page.route('**/api/v1/listings?*', (route) =>
+    route.fulfill({ json: { items, nextCursor: null } }),
+  );
+  await page.route('**/api/v1/listings/*/photos', (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route(`**/api/v1/members/${ownerId}`, (route) =>
+    route.fulfill({
+      json: { ...profile, approximateLocation: 'Paris · 11th arrondissement' },
+    }),
+  );
+  await page.route('**/api/v1/listings/mine?*', (route) =>
+    route.fulfill({ json: { items, nextCursor: null } }),
+  );
+
+  for (const path of ['/browse', '/shelf']) {
+    await page.goto(path);
+
+    for (const theme of ['light', 'dark']) {
+      await page.getByLabel('Theme').selectOption(theme);
+      const cards = page.locator('.listing-card, .shelf-item');
+      await expect(cards).toHaveCount(4);
+
+      for (const [index, variant] of variants.entries()) {
+        const card = cards.nth(index);
+        await expect(card.locator('.listing-condition')).toHaveText(
+          variant.label,
+        );
+        await expect(card).not.toContainText(
+          /available|reserved|exchanged|withdrawn|disputed/i,
+        );
+        const dot = card.locator('.listing-condition-dot');
+        await expect(dot).toBeVisible();
+        await expect(dot).toHaveAttribute('aria-hidden', 'true');
+        await expect(dot).toHaveCSS('width', '12px');
+        await expect(dot).toHaveCSS('height', '12px');
+        await expect(dot).not.toHaveCSS('box-shadow', 'none');
+        await expect(dot).toHaveCSS('background-image', /radial-gradient/);
+        expect(
+          await dot.evaluate((element, token) => {
+            const expected = document.createElement('span');
+            expected.style.backgroundColor = `var(${token})`;
+            document.body.append(expected);
+            const color = getComputedStyle(expected).backgroundColor;
+            expected.remove();
+
+            return getComputedStyle(element).backgroundColor === color;
+          }, variant.token),
+        ).toBe(true);
+      }
+
+      if (path === '/browse') {
+        const firstCard = cards.first();
+        const owner = firstCard.locator('.listing-owner');
+        const location = firstCard.locator('.listing-location');
+        await expect(owner).toContainText(profile.displayName);
+        await expect(
+          location.locator('.listing-location-label > span').first(),
+        ).toHaveText('Paris');
+        await expect(location.locator('.listing-location-district')).toHaveText(
+          '11th arrondissement',
+        );
+        const pinBox = await location.locator('svg').boundingBox();
+        const labelBox = await location
+          .locator('.listing-location-label')
+          .boundingBox();
+
+        if (!pinBox || !labelBox)
+          throw new Error('Location pin or label is missing');
+
+        expect(labelBox.x - (pinBox.x + pinBox.width)).toBeCloseTo(6, 0);
+        const ownerBox = await owner.boundingBox();
+        const locationBox = await location.boundingBox();
+
+        if (!ownerBox || !locationBox)
+          throw new Error('Card metadata is missing');
+
+        expect(locationBox.x).toBeGreaterThan(ownerBox.x);
+        expect(
+          Math.abs(
+            locationBox.y +
+              locationBox.height / 2 -
+              (ownerBox.y + ownerBox.height / 2),
+          ),
+        ).toBeLessThan(2);
+        await page.setViewportSize({ width: 360, height: 900 });
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        await expect(owner).toBeVisible();
+        await expect(location).toBeVisible();
+        await page.screenshot({
+          path: `test-results/cards-browse-${theme}-mobile.png`,
+          fullPage: true,
+        });
+        await page.setViewportSize({ width: 1280, height: 900 });
+      }
+
+      await page.screenshot({
+        path: `test-results/cards-${path.slice(1)}-${theme}.png`,
+        fullPage: true,
+      });
+    }
+  }
 });

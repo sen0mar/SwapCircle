@@ -1,5 +1,5 @@
 import { AccountControl } from '../../features/account/AccountControl';
-import { ArrowRightLeft, Search } from 'lucide-react';
+import { ArrowRightLeft } from 'lucide-react';
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { NotificationBell } from '../../features/notifications/NotificationBell';
@@ -24,14 +24,6 @@ export function Header() {
           {session && <NavLink to="/swaps">My Swaps</NavLink>}
           {session && <NavLink to="/inbox">Messages</NavLink>}
         </nav>
-        <Link
-          className="search-entry"
-          to="/browse#catalog-search"
-          aria-label="Search items"
-        >
-          <Search size={18} aria-hidden="true" />
-          <span>Search items</span>
-        </Link>
         <div className="header-controls">
           <NotificationBell />
           <AccountControl />

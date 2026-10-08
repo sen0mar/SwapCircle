@@ -1,3 +1,4 @@
+import { Select } from '../../components/ui/select';
 import { useRef, useState } from 'react';
 import type {
   TradeProblemSubmission,
@@ -224,7 +225,7 @@ export function TradeCompletion({
           {review?.action === 'problem' && (
             <>
               <label htmlFor="problem-kind">Problem type</label>
-              <select
+              <Select
                 id="problem-kind"
                 value={kind}
                 disabled={!!submission}
@@ -234,7 +235,7 @@ export function TradeCompletion({
               >
                 <option value="problem">Problem with the swap</option>
                 <option value="partial_handover">Partial handover</option>
-              </select>
+              </Select>
               <label htmlFor="problem-reason">Private report details</label>
               <textarea
                 id="problem-reason"

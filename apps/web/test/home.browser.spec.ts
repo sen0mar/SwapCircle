@@ -6,6 +6,9 @@ for (const theme of ['light', 'dark']) {
   test(`homepage composition, states and accessibility in ${theme}`, async ({
     page,
   }) => {
+    // Audit settled colors rather than intermediate theme-transition frames.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+
     const errors: string[] = [];
 
     page.on('pageerror', (error) => errors.push(error.message));

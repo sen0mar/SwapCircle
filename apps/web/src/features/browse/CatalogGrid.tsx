@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { Listing } from '@swapcircle/contracts';
 import { Card } from '../../components/ui/card';
-import { CatalogOwner, conditions } from './ListingContent';
+import { CatalogOwner, ListingCondition } from './ListingContent';
 import {
   ListingImage,
   PhotoLoadError,
@@ -31,13 +31,17 @@ export function CatalogGrid({ items }: { items: Listing[] }) {
           <article>
             <CatalogPhoto id={item.id} title={item.title} />
             <div className="listing-copy">
-              <h2>
-                <Link to={`/listings/${item.id}`}>{item.title}</Link>
-              </h2>
-              <p>
-                {conditions[item.condition]} · {item.availability}
-              </p>
-              <CatalogOwner id={item.ownerId} />
+              <div className="listing-heading">
+                <h2>
+                  <Link to={`/listings/${item.id}`}>{item.title}</Link>
+                </h2>
+                <p>
+                  <ListingCondition condition={item.condition} />
+                </p>
+              </div>
+              <div className="listing-meta">
+                <CatalogOwner id={item.ownerId} />
+              </div>
             </div>
           </article>
         </Card>

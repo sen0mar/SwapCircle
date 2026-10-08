@@ -1,3 +1,4 @@
+import { Select } from '../../components/ui/select';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -630,7 +631,7 @@ export function ProposalComposer({
               {members.data && (
                 <label>
                   Add a person
-                  <select
+                  <Select
                     value=""
                     onChange={(event) => {
                       const member = members.data.items.find(
@@ -659,7 +660,7 @@ export function ProposalComposer({
                           {member.displayName}
                         </option>
                       ))}
-                  </select>
+                  </Select>
                 </label>
               )}
               {members.data?.nextCursor && (
@@ -703,7 +704,7 @@ export function ProposalComposer({
                     {displayName(transfer.ownerId)} gives{' '}
                     {titles[transfer.listingId] ?? 'Item'} to
                   </span>
-                  <select
+                  <Select
                     aria-label={`${displayName(transfer.ownerId)} gives ${titles[transfer.listingId] ?? 'Item'} to`}
                     value={transfer.recipientId}
                     onChange={(event) => {
@@ -723,7 +724,7 @@ export function ProposalComposer({
                         {displayName(id)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               ))}
               <p>

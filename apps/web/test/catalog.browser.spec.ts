@@ -13,6 +13,22 @@ const item = {
   updatedAt: '2026-09-01T12:00:00Z',
 };
 
+test('search is available only on Browse and absent from the shared header', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/listings?*', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Search items' })).toHaveCount(0);
+  await expect(page.getByRole('searchbox')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Browse', exact: true }).click();
+  await expect(
+    page.getByRole('searchbox', { name: 'Search items', exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('header').getByText('Search items')).toHaveCount(0);
+});
+
 test('search URLs retain filters across pagination, reload and Back; filter submission resets the cursor', async ({
   page,
 }) => {

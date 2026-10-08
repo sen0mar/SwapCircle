@@ -11,7 +11,7 @@ Use only the two approved homepage references for visual direction:
 
 There is no separately approved dashboard, mobile, or open-profile-drawer image. Extend the same visual language to those views using the rules below. Earlier neon, glass, gold, and editorial concepts are not references.
 
-**Visual language:** approachable, photography-led, rounded, and orderly. Light mode uses pale backgrounds, white cards, blue primary actions, and green community accents. Dark mode is matte near-black/charcoal with restrained forest-green actions, subdued text accents, thin borders, and no luminous effects.
+**Visual language:** approachable, photography-led, rounded, and orderly. Light mode uses pale backgrounds, white cards, blue primary actions, and green community accents. Dark mode is matte near-black/charcoal with restrained blue actions, cool off-white text, thin borders, and green reserved for community and success accents. No luminous effects.
 
 The images establish appearance, not feature scope or valid interaction states. Exact tokens, font stacks, dimensions, and responsive behavior below are implementation specifications, not measurements extracted from the images. Reference inconsistencies and unspecified features are called out below rather than treated as requirements.
 
@@ -29,39 +29,39 @@ Dark mode must not use neon, shine, glow, glassmorphism, bright panel fills, dec
 
 | Role | CSS Variable | HEX / Value |
 | --- | --- | --- |
-| Page background | `--bg-base` | `#0F1315` |
-| Soft page background, solid | `--bg-base-soft` | `#0F1315` |
-| Surface | `--bg-surface` | `#171D20` |
-| Elevated surface | `--bg-elevated` | `#20282B` |
-| Subtle surface | `--bg-subtle` | `#1A2225` |
-| Inset surface | `--bg-inset` | `#101619` |
+| Page background | `--bg-base` | `#090B10` |
+| Soft page background, solid | `--bg-base-soft` | `#090B10` |
+| Surface | `--bg-surface` | `#12151C` |
+| Elevated surface | `--bg-elevated` | `#1B202B` |
+| Subtle surface | `--bg-subtle` | `#171C26` |
+| Inset surface | `--bg-inset` | `#0D1017` |
 | Overlay scrim | `--bg-overlay` | `rgb(0 0 0 / 0.72)` |
 | Background pattern, disabled | `--bg-pattern` | `transparent` |
-| Default border | `--border-default` | `#2C363A` |
-| Subtle border | `--border-subtle` | `#232C30` |
-| Strong / control border | `--border-strong` | `#718187` |
-| Primary text | `--text-primary` | `#ECEFEF` |
-| Secondary text | `--text-secondary` | `#BDC6CA` |
-| Muted text | `--text-muted` | `#9BA8AE` |
-| Faint / disabled text only | `--text-faint` | `#68777D` |
-| Brand button fill | `--accent-primary` | `#335E4C` |
-| Brand hover | `--accent-primary-hover` | `#3D6B56` |
-| Brand active | `--accent-primary-active` | `#294E3E` |
-| Readable brand text | `--accent-primary-text` | `#91B5A2` |
-| Brand soft background | `--accent-primary-soft` | `#1E2F28` |
-| Brand dim background | `--accent-primary-dim` | `#18231F` |
+| Default border | `--border-default` | `#2B3342` |
+| Subtle border | `--border-subtle` | `#202735` |
+| Strong / control border | `--border-strong` | `#6F7C92` |
+| Primary text | `--text-primary` | `#E8EDF7` |
+| Secondary text | `--text-secondary` | `#B6C2D6` |
+| Muted text | `--text-muted` | `#95A4BC` |
+| Faint / disabled text only | `--text-faint` | `#647189` |
+| Brand button fill | `--accent-primary` | `#2855A6` |
+| Brand hover | `--accent-primary-hover` | `#315FBA` |
+| Brand active | `--accent-primary-active` | `#21498F` |
+| Readable brand text | `--accent-primary-text` | `#9BBCFF` |
+| Brand soft background | `--accent-primary-soft` | `#182842` |
+| Brand dim background | `--accent-primary-dim` | `#121C2E` |
 | Brand glow, disabled | `--accent-primary-glow` | `transparent` |
 | Secondary / community action fill | `--accent-secondary` | `#315846` |
-| Text on filled actions | `--text-on-brand` | `#F1F5F2` |
-| Focus ring | `--focus-ring` | `#97B9AA` |
+| Text on filled actions | `--text-on-brand` | `#F3F6FC` |
+| Focus ring | `--focus-ring` | `#AAC6FF` |
 | Destructive action fill | `--action-danger` | `#763A3A` |
 | Destructive hover | `--action-danger-hover` | `#854343` |
 | Success text / icon | `--state-success` | `#93B19C` |
 | Warning text / icon | `--state-warning` | `#C3AC80` |
 | Error text / icon | `--state-error` | `#D0A4A4` |
-| Info text / icon | `--state-info` | `#9BABB7` |
-| Chart primary | `--chart-primary` | `#91B5A2` |
-| Chart secondary | `--chart-secondary` | `#9BABB7` |
+| Info text / icon | `--state-info` | `#9BBCFF` |
+| Chart primary | `--chart-primary` | `#9BBCFF` |
+| Chart secondary | `--chart-secondary` | `#93B19C` |
 | Chart tertiary | `--chart-tertiary` | `#C3AC80` |
 | Card shadow | `--shadow-card` | `none` |
 | Overlay shadow | `--shadow-soft` | `0 12px 36px rgb(0 0 0 / 0.32)` |

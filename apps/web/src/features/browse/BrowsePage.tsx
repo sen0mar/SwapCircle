@@ -1,3 +1,4 @@
+import { Select } from '../../components/ui/select';
 import { useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { catalogQuerySchema } from '@swapcircle/contracts';
@@ -78,7 +79,7 @@ export function BrowsePage() {
         </label>
         <label htmlFor="catalog-condition">
           Condition
-          <select
+          <Select
             id="catalog-condition"
             name="condition"
             defaultValue={params.get('condition') ?? ''}
@@ -89,11 +90,11 @@ export function BrowsePage() {
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label htmlFor="catalog-availability">
           Availability
-          <select
+          <Select
             id="catalog-availability"
             name="availability"
             defaultValue={query.availability}
@@ -103,14 +104,14 @@ export function BrowsePage() {
             <option value="reserved">Reserved</option>
             <option value="exchanged">Exchanged</option>
             <option value="disputed">Disputed</option>
-          </select>
+          </Select>
         </label>
         <label htmlFor="catalog-sort">
           Sort
-          <select id="catalog-sort" name="sort" defaultValue={query.sort}>
+          <Select id="catalog-sort" name="sort" defaultValue={query.sort}>
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
-          </select>
+          </Select>
         </label>
         {query.owner && (
           <input type="hidden" name="owner" value={query.owner} />

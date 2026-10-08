@@ -1,3 +1,4 @@
+import { Select } from '../../components/ui/select';
 import { Link, useSearchParams } from 'react-router-dom';
 import { memberQuerySchema } from '@swapcircle/contracts';
 import { useMemberDiscovery } from './useMemberDiscovery';
@@ -28,7 +29,7 @@ export function MemberDiscovery() {
       </p>
       <label className="member-interest-filter" htmlFor="discovery-interest">
         Discover by interest
-        <select
+        <Select
           id="discovery-interest"
           value={query.interest ?? ''}
           disabled={!interests.data}
@@ -45,7 +46,7 @@ export function MemberDiscovery() {
               {interest.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {interests.isError && (
         <p role="alert">

@@ -8,18 +8,10 @@ import {
   DialogDescription,
   DialogTitle,
 } from '../../components/ui/dialog';
-import { conditions } from '../browse/ListingContent';
+import { ListingCondition } from '../browse/ListingContent';
 import { ApiError } from '../../lib/api-client';
 import { useMyListings, useWithdrawListing } from './useMyListings';
 import type { Listing } from '@swapcircle/contracts';
-
-const availability: Record<Listing['availability'], string> = {
-  available: 'Available',
-  withdrawn: 'Withdrawn',
-  reserved: 'Reserved',
-  exchanged: 'Exchanged',
-  disputed: 'Disputed',
-};
 
 export function MyShelfPage() {
   const [params] = useSearchParams();
@@ -58,8 +50,7 @@ export function MyShelfPage() {
               <Card key={item.id} className="shelf-item">
                 <h2>{item.title}</h2>
                 <p>
-                  {conditions[item.condition]} ·{' '}
-                  {availability[item.availability]}
+                  <ListingCondition condition={item.condition} />
                 </p>
                 <div className="shelf-actions">
                   {item.availability !== 'withdrawn' && (
