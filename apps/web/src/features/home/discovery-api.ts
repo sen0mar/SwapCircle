@@ -9,6 +9,7 @@ export function getMembers(
 ) {
   const search = new URLSearchParams({ limit: String(query.limit) });
 
+  if (query.q) search.set('q', query.q);
   if (query.interest) search.set('interest', query.interest);
   if (query.cursor) search.set('cursor', query.cursor);
 

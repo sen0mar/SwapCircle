@@ -16,6 +16,7 @@ export function safeDestination(value: string | null): string {
       (![
         '/',
         '/browse',
+        '/community',
         '/inbox',
         '/shelf',
         '/swaps',

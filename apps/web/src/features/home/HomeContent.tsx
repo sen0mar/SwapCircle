@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
-import { ArrowRight, Plus } from 'lucide-react';
+import {
+  ForwardIcon,
+  ListingsIcon,
+  AddIcon,
+  CommunityIcon,
+} from '../../components/ui/icons';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import cafe from '../../assets/cafe.jpg';
@@ -28,14 +33,14 @@ export function HomeContent({
           <div className="hero-actions">
             <Button asChild>
               <Link to="/listings/new">
-                <Plus size={20} aria-hidden="true" />
+                <AddIcon size={20} aria-hidden="true" />
                 List an item
               </Link>
             </Button>
             <Button asChild variant="primary">
               <Link to="/browse">
                 Browse items
-                <ArrowRight size={20} aria-hidden="true" />
+                <ForwardIcon size={20} aria-hidden="true" />
               </Link>
             </Button>
           </div>
@@ -48,18 +53,37 @@ export function HomeContent({
           height="667"
         />
       </section>
-      <section aria-labelledby="featured-title">
+      <section
+        className="home-listings-section"
+        aria-labelledby="featured-title"
+      >
         <div className="section-heading">
-          <h2 id="featured-title">Featured listings</h2>
+          <div className="home-section-title">
+            <span className="home-section-icon" aria-hidden="true">
+              <ListingsIcon size={24} />
+            </span>
+            <h2 id="featured-title">Featured listings</h2>
+          </div>
           <Link to="/browse">
-            Browse items <ArrowRight size={16} aria-hidden="true" />
+            Browse items <ForwardIcon size={16} aria-hidden="true" />
           </Link>
         </div>
         {listingContent}
       </section>
-      <section aria-labelledby="members-title">
+      <section
+        className="home-community-section"
+        aria-labelledby="members-title"
+      >
         <div className="section-heading">
-          <h2 id="members-title">Discover your community</h2>
+          <div className="home-section-title">
+            <span className="home-section-icon" aria-hidden="true">
+              <CommunityIcon size={24} />
+            </span>
+            <h2 id="members-title">Discover your community</h2>
+          </div>
+          <Link to="/community">
+            View all members <ForwardIcon size={16} aria-hidden="true" />
+          </Link>
         </div>
         {memberContent}
       </section>

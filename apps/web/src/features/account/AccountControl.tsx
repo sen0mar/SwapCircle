@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { UserRound } from 'lucide-react';
+import { AccountIcon } from '../../components/ui/icons';
 import { safeDestination } from '../auth/safe-destination';
 import { useAuth } from '../auth/AuthProvider';
 import { Button } from '../../components/ui/button';
@@ -23,7 +23,7 @@ export function AccountControl() {
         aria-label="Sign in"
         to={`/sign-in?next=${encodeURIComponent(safeDestination(location.pathname + location.search + location.hash))}`}
       >
-        <UserRound size={20} aria-hidden="true" />
+        <AccountIcon size={20} aria-hidden="true" />
         <span>Sign in</span>
       </Link>
     );
@@ -60,7 +60,7 @@ function SignedInControl({
       description="Manage your SwapCircle profile and settings."
       trigger={
         <Button className="account-button" aria-label="Open account">
-          <UserRound size={20} aria-hidden="true" />
+          <AccountIcon size={20} aria-hidden="true" />
           <span>{profile.data?.displayName ?? 'Account'}</span>
         </Button>
       }

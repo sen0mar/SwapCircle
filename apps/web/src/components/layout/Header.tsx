@@ -1,5 +1,5 @@
 import { AccountControl } from '../../features/account/AccountControl';
-import { ArrowRightLeft } from 'lucide-react';
+import { SwapIcon } from '../ui/icons';
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthProvider';
 import { NotificationBell } from '../../features/notifications/NotificationBell';
@@ -11,7 +11,7 @@ export function Header() {
     <header className="site-header">
       <div className="header-inner">
         <Link className="wordmark" to="/" aria-label="SwapCircle home">
-          <ArrowRightLeft aria-hidden="true" className="brand-mark" />
+          <SwapIcon aria-hidden="true" className="brand-mark" />
           <span>
             Swap<span className="text-brand-ink">Circle</span>
           </span>
@@ -21,6 +21,7 @@ export function Header() {
             Home
           </NavLink>
           <NavLink to="/browse">Browse</NavLink>
+          <NavLink to="/community">Community</NavLink>
           {session && <NavLink to="/swaps">My Swaps</NavLink>}
           {session && <NavLink to="/inbox">Messages</NavLink>}
         </nav>

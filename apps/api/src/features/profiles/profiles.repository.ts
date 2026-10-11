@@ -120,6 +120,7 @@ export class ProfilesRepository {
         LEFT JOIN public.interests i ON i.id = pi.interest_id
         LEFT JOIN public.profile_interests mine ON mine.profile_id = $1 AND mine.interest_id = pi.interest_id
         WHERE ($1::uuid IS NULL OR p.id <> $1)
+          AND strpos(lower(p.display_name), lower($6::text)) > 0
           AND ($2::uuid IS NULL OR EXISTS (
             SELECT 1 FROM public.profile_interests filter WHERE filter.profile_id = p.id AND filter.interest_id = $2))
         GROUP BY p.id
@@ -132,6 +133,7 @@ export class ProfilesRepository {
         cursor?.id ?? null,
         cursor?.sharedInterestCount ?? 0,
         query.limit + 1,
+        query.q ?? '',
       ],
     );
 

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useListingOwner } from './useListings';
-import { ImageOff, MapPin } from 'lucide-react';
+import { UnavailableImageIcon, LocationIcon } from '../../components/ui/icons';
 import type { Listing } from '@swapcircle/contracts';
 import { Button } from '../../components/ui/button';
 
@@ -31,7 +31,7 @@ export function ListingCondition({
 export function ListingPlaceholder() {
   return (
     <div className="photo-unavailable">
-      <ImageOff aria-hidden="true" />
+      <UnavailableImageIcon aria-hidden="true" />
       <span>No photo yet</span>
     </div>
   );
@@ -67,7 +67,7 @@ export function CatalogOwner({ id }: { id: string }) {
         <Link to={`/members/${id}`}>{owner.data.displayName}</Link>
       </p>
       <p className="listing-location">
-        <MapPin size={14} aria-hidden="true" />
+        <LocationIcon size={14} aria-hidden="true" />
         <span className="listing-location-label">
           <span>{city}</span>
           {district && (

@@ -7,6 +7,7 @@ import { AccountPage } from './features/account/AccountPage';
 import { ProfilePage } from './features/account/ProfilePage';
 import { SettingsPage } from './features/account/SettingsPage';
 import { MemberPage } from './features/account/MemberPage';
+import { CommunityPage } from './features/community/CommunityPage';
 import { Home } from './features/home/Home';
 import { ListingPage } from './features/browse/ListingPage';
 import { BrowsePage } from './features/browse/BrowsePage';
@@ -53,6 +54,7 @@ export function AppRoutes() {
         />
       )}
       <Route path="/" element={<Home />} />
+      <Route path="/community" element={<CommunityPage />} />
       <Route path="/browse" element={<BrowsePage />} />
       <Route path="/listings/:id" element={<ListingPage />} />
       <Route path="/members/:id" element={<MemberPage />} />

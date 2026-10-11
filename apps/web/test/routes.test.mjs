@@ -54,3 +54,12 @@ test('Unknown paths offer a useful route home without an active nav link', () =>
   assert.match(html, /href="\/"[^>]*>Back to Home/);
   assert.doesNotMatch(html, /aria-current="page"/);
 });
+
+test('Community renders on a direct URL and marks its navigation as current', () => {
+  const html = render('/community');
+
+  assert.match(html, /<h1[^>]*>Community<\/h1>/);
+  assert.match(html, /aria-current="page"[^>]*href="\/community"/);
+  assert.equal((html.match(/aria-current="page"/g) ?? []).length, 1);
+  assert.match(html, /Loading members/);
+});

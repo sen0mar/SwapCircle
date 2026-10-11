@@ -31,7 +31,7 @@ try {
     [alice, interestIds, 'Local Alice'],
     [bob, interestIds.slice(0, 2), 'Local Bob'],
     [carol, interestIds.slice(0, 1), 'Local Carol'],
-    [dan, [], 'Local Dan'],
+    [dan, [], 'Local %_ Dan'],
   ]) {
     await request(app)
       .put('/api/v1/profiles/me')
@@ -179,6 +179,50 @@ try {
     (await discover(alice, { interest: randomUUID() })).items.length,
     0,
   );
+  // Name matches are case-insensitive literal substrings and combine with interests.
+  for (const actor of [undefined, alice]) {
+    assert.deepEqual(
+      (
+        await discover(actor, { q: '  LOCAL b  ', interest: interestIds[1] })
+      ).items.map((member) => member.id),
+      [bob.id],
+    );
+    assert.equal(
+      (await discover(actor, { q: 'Local Dan', interest: interestIds[0] }))
+        .items.length,
+      0,
+    );
+    assert.deepEqual(
+      (await discover(actor, { q: '%_' })).items.map((member) => member.id),
+      [dan.id],
+    );
+    assert.equal(
+      (await discover(actor, { q: "'; DROP TABLE profiles; --" })).items.length,
+      0,
+    );
+    assert.deepEqual(
+      (await discover(actor, { q: '  ' })).items.map((member) => member.id),
+      (await discover(actor)).items.map((member) => member.id),
+    );
+
+    const filters = { q: 'local', interest: interestIds[0] };
+    const expectedMembers = (await discover(actor, filters)).items.map(
+      (member) => member.id,
+    );
+    const found = [];
+    let searchCursor;
+    do {
+      const response = await discover(actor, {
+        ...filters,
+        limit: 1,
+        ...(searchCursor ? { cursor: searchCursor } : {}),
+      });
+      found.push(...response.items.map((member) => member.id));
+      searchCursor = response.nextCursor;
+    } while (searchCursor);
+    assert.deepEqual(found, expectedMembers);
+    assert.equal(new Set(found).size, found.length);
+  }
   let cursor;
   const memberIds = [];
   do {

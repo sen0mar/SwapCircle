@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { NotificationIcon } from '../../components/ui/icons';
 import { Button } from '../../components/ui/button';
 import {
   Sheet,
@@ -45,7 +45,7 @@ export function NotificationBell() {
               : `Open notifications, ${count} unread`
           }
         >
-          <Bell size={20} aria-hidden="true" />
+          <NotificationIcon size={20} aria-hidden="true" />
           <span className="notification-count" aria-hidden="true">
             {count === null ? '·' : count > 99 ? '99+' : count || ''}
           </span>

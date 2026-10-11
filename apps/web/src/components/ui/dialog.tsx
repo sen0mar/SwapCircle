@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import { CloseIcon } from './icons';
 import { Button } from './button';
 
 export const Dialog = DialogPrimitive.Root;
@@ -33,7 +33,7 @@ export function DialogContent({
             aria-label="Close"
             disabled={closeDisabled}
           >
-            <X size={20} aria-hidden="true" />
+            <CloseIcon size={20} aria-hidden="true" />
           </Button>
         </DialogPrimitive.Close>
         {children}

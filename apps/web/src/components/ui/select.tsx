@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ExpandIcon } from './icons';
 
 export function Select({
   className = '',
@@ -13,7 +13,7 @@ export function Select({
         disabled={disabled}
         {...props}
       />
-      <ChevronDown className="native-select-arrow" aria-hidden="true" />
+      <ExpandIcon className="native-select-arrow" aria-hidden="true" />
     </span>
   );
 }

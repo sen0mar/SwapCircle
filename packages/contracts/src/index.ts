@@ -142,6 +142,7 @@ export const memberCursorSchema = z.strictObject({
   sharedInterestCount: z.number().int().min(0).max(30),
 });
 export const memberQuerySchema = listingQuerySchema.extend({
+  q: z.string().trim().max(120).optional(),
   interest: z.uuid().optional(),
 });
 export const discoveredMemberSchema = publicProfileSchema.extend({

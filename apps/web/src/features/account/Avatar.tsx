@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserRound } from 'lucide-react';
+import { AccountIcon } from '../../components/ui/icons';
 
 export function Avatar({ url, name }: { url: string | null; name: string }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -11,7 +11,7 @@ export function Avatar({ url, name }: { url: string | null; name: string }) {
         role="img"
         aria-label={`${name} has no available avatar`}
       >
-        <UserRound aria-hidden="true" />
+        <AccountIcon aria-hidden="true" />
       </span>
     );
 

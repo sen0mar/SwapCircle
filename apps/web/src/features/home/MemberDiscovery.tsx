@@ -1,3 +1,4 @@
+import { ForwardIcon, LocationIcon } from '../../components/ui/icons';
 import { Select } from '../../components/ui/select';
 import { Link, useSearchParams } from 'react-router-dom';
 import { memberQuerySchema } from '@swapcircle/contracts';
@@ -76,36 +77,49 @@ export function MemberDiscovery() {
             <div className="member-grid">
               {members.data.items.map((member) => (
                 <Card key={member.id} className="member-preview">
-                  <Avatar name={member.displayName} url={member.avatarUrl} />
-                  <h3>
-                    <Link to={`/members/${member.id}`}>
-                      {member.displayName}
-                    </Link>
-                  </h3>
-                  <p>{member.approximateLocation || 'Location not shared'}</p>
-                  {member.sharedInterestCount !== null && (
-                    <p>
-                      {member.sharedInterestCount} shared{' '}
-                      {member.sharedInterestCount === 1
-                        ? 'interest'
-                        : 'interests'}
+                  <div className="member-preview-header">
+                    <Avatar name={member.displayName} url={member.avatarUrl} />
+                    <div className="member-preview-identity">
+                      <h3>
+                        <Link to={`/members/${member.id}`}>
+                          {member.displayName}
+                        </Link>
+                      </h3>
+                      <p className="member-preview-location">
+                        <LocationIcon size={16} aria-hidden="true" />
+                        {member.approximateLocation || 'Location not shared'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="member-preview-interests">
+                    <p className="member-preview-interest-label">
+                      {member.sharedInterestCount === null
+                        ? 'Interests'
+                        : `${member.sharedInterestCount} shared ${member.sharedInterestCount === 1 ? 'interest' : 'interests'}`}
                     </p>
-                  )}
-                  <ul
-                    className="interest-list"
-                    aria-label={`${member.displayName} interests`}
-                  >
-                    {(member.sharedInterestCount === null
-                      ? member.interests
-                      : member.sharedInterests
-                    ).map((interest) => (
-                      <li className="interest-chip" key={interest.id}>
-                        {interest.name}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link to={`/members/${member.id}`}>View profile</Link>
-                  <MessageAction userId={member.id} />
+                    <ul
+                      className="interest-list"
+                      aria-label={`${member.displayName} interests`}
+                    >
+                      {(member.sharedInterestCount === null
+                        ? member.interests
+                        : member.sharedInterests
+                      ).map((interest) => (
+                        <li className="interest-chip" key={interest.id}>
+                          {interest.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="member-preview-actions">
+                    <Button asChild variant="ghost">
+                      <Link to={`/members/${member.id}`}>
+                        View profile
+                        <ForwardIcon size={16} aria-hidden="true" />
+                      </Link>
+                    </Button>
+                    <MessageAction userId={member.id} />
+                  </div>
                 </Card>
               ))}
             </div>

@@ -5,7 +5,7 @@ import {
 } from '@swapcircle/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ImageOff } from 'lucide-react';
+import { UnavailableImageIcon } from '../../components/ui/icons';
 import { apiRequest } from '../../lib/api-client';
 
 export function useListingPhotos(id: string) {
@@ -36,7 +36,7 @@ export function ListingImage({
   if (!photo || failedUrl === photo.url)
     return (
       <div className="photo-unavailable">
-        <ImageOff aria-hidden="true" />
+        <UnavailableImageIcon aria-hidden="true" />
         <span>{photo ? 'Photo unavailable' : 'No photo yet'}</span>
       </div>
     );
@@ -57,7 +57,7 @@ export function ListingImage({
 export function PhotoLoadError() {
   return (
     <div className="photo-unavailable">
-      <ImageOff aria-hidden="true" />
+      <UnavailableImageIcon aria-hidden="true" />
       <span>Photo unavailable</span>
     </div>
   );

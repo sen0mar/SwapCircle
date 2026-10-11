@@ -33,7 +33,7 @@ test('homepage renders live content and navigation without demo sections', () =>
   assert.match(html, /Less stuff/);
   assert.deepEqual(
     [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map((match) => match[1]),
-    ['/listings/new', '/browse', '/browse'],
+    ['/listings/new', '/browse', '/browse', '/community'],
   );
   assert.doesNotMatch(
     html,

@@ -4,6 +4,7 @@ import { safeDestination } from '../src/features/auth/safe-destination';
 const id = '12345678-1234-4234-8234-123456789012';
 test('sign-in returns to implemented shelf, swap and listing flows', () => {
   for (const destination of [
+    '/community?interest=d833e507-cffc-4ee0-8adc-d9aa539765ac',
     '/shelf',
     '/swaps',
     `/swaps/${id}`,

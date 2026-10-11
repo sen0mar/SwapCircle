@@ -49,6 +49,8 @@ test('discovery derives identity from authentication and rejects forged actors a
       { interest: 'invalid' },
       { limit: 51 },
       { cursor: 'invalid' },
+      { q: 'x'.repeat(121) },
+      { q: ['one', 'two'] },
     ]) {
       const result = await request(app)
         .get(`/api/v1${path}`)
@@ -62,4 +64,10 @@ test('discovery derives identity from authentication and rejects forged actors a
     memberQuerySchema.safeParse({ interest: 'not-an-id' }).success,
     false,
   );
+});
+
+test('member name searches trim whitespace and remain optional', () => {
+  assert.equal(memberQuerySchema.parse({ q: '  Jamie  ' }).q, 'Jamie');
+  assert.equal(memberQuerySchema.parse({ q: '  ' }).q, '');
+  assert.equal(memberQuerySchema.parse({}).q, undefined);
 });
