@@ -264,6 +264,21 @@ try {
   await bobPage
     .getByRole('button', { name: 'Cancel coffee', exact: true })
     .click();
+  // The mutation refreshes coffee/trade data before restoring focus. Wait for
+  // that completion before moving focus to the next keyboard interaction.
+  const coffeePair = bobPage.getByRole('region', {
+    name: 'Coffee with Lifecycle Alice',
+    exact: true,
+  });
+  await expect(
+    coffeePair.getByRole('button', {
+      name: 'Refresh coffee with Lifecycle Alice',
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await expect(
+    coffeePair.getByRole('heading', { name: 'You and Lifecycle Alice' }),
+  ).toBeFocused();
   assert.equal((await api(`/trades/${declined.id}`, bob)).status, 'proposed');
 
   for (const theme of ['light', 'dark']) {
