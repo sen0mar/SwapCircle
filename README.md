@@ -29,6 +29,21 @@ pnpm test:browser
 
 Vitest runs typed Supertest API tests and React Testing Library component tests with MSW network handlers. Existing Node regression tests remain alongside them. MSW runs only in tests; its optional worker installation script is disabled. Playwright covers the Home/theme/navigation/drawer smoke, accessibility, production exclusions, and real Express stop/restart recovery. Unit/browser tests use synthetic data and local services; database verification runs separately against isolated local Supabase. GitHub Actions runs on pushes and pull requests with read-only repository permission and no deployments.
 
+The local database coverage runs as one API job and three browser journey shards,
+each on a separate runner with its own Supabase stack. The API job retains migration
+replay, privilege verification, and generation drift checks. The required `database`
+check succeeds only when the API job and every journey shard succeed; controlled
+releases still require `checks` and `database` on the exact trusted push revision.
+Each suite group builds contracts, database, and API once. Journeys remain sequential
+within a shard and keep their individual web builds because their public API URLs
+differ. No build output or database fixtures are shared between runners.
+
+Run all local coverage with `pnpm test:api-local` and `pnpm test:journeys-local`, or
+select a journey shard with `pnpm test:journeys-local 1/3` (also `2/3` and `3/3`).
+Do not run these commands concurrently in the same checkout or against the same
+local stack: journeys share web output and synthetic fixture resources. Individual
+workspace `test:<name>-local` commands still build their prerequisites themselves.
+
 - `apps/web`: browser UI; only browser-safe dependencies belong here.
 - `apps/api`: Express app factory and separate listening process.
 - `packages/contracts`: browser-safe Zod API contracts.

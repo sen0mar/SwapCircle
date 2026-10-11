@@ -47,11 +47,10 @@ jobs:
           path: apps/web/test-results/
           retention-days: 7
           if-no-files-found: ignore
-  database:
+  api-local:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
-    # The prior full database job used 18 minutes before pairwise coffee coverage.
-    timeout-minutes: 35
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -71,12 +70,10 @@ jobs:
           pnpm --filter @swapcircle/database generate
           test -z "$(git status --porcelain -- packages/database/migrations)"
       - run: pnpm test:api-local
-      - run: pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
-      - run: pnpm test:journeys-local
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: local-suite-failure-evidence
+          name: api-local-failure-evidence
           path: |
             test-results/local-*-failure.json
             apps/web/test-results/
@@ -84,6 +81,53 @@ jobs:
           if-no-files-found: ignore
       - if: always()
         run: pnpm db:stop
+  journeys-local:
+    if: github.event_name != 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:start
+      - run: pnpm db:setup
+      - run: pnpm db:reset
+      - run: pnpm db:verify
+      - run: pnpm --filter @swapcircle/web exec playwright install --with-deps chromium
+      - run: pnpm test:journeys-local ${{ matrix.shard }}/3
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: journeys-local-${{ matrix.shard }}-failure-evidence
+          path: |
+            test-results/local-*-failure.json
+            apps/web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+      - if: always()
+        run: pnpm db:stop
+  # Preserve the required check name and exact-revision release contract.
+  database:
+    if: always() && github.event_name != 'workflow_dispatch'
+    needs: [api-local, journeys-local]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Require all isolated local suites
+        env:
+          API_RESULT: ${{ needs.api-local.result }}
+          JOURNEYS_RESULT: ${{ needs.journeys-local.result }}
+        run: test "$API_RESULT" = success && test "$JOURNEYS_RESULT" = success
   private-source-maps:
     # Explicit dispatch is a trusted maintainer operation; PRs never receive secrets.
     if: (github.event_name == 'workflow_dispatch' && inputs.api_release_revision == '' && inputs.frontend_release_revision == '') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
