@@ -241,10 +241,10 @@ test('listing cards show condition dots without availability labels in both them
   page,
 }) => {
   const variants = [
-    { condition: 'like_new', label: 'Like new', token: '--state-success' },
-    { condition: 'good', label: 'Good', token: '--state-success' },
-    { condition: 'fair', label: 'Fair', token: '--state-warning' },
-    { condition: 'poor', label: 'Poor', token: '--state-error' },
+    { condition: 'like_new', label: 'Like new', token: '--condition-good' },
+    { condition: 'good', label: 'Good', token: '--condition-good' },
+    { condition: 'fair', label: 'Fair', token: '--condition-fair' },
+    { condition: 'poor', label: 'Poor', token: '--condition-poor' },
   ];
   const items = variants.map((variant, index) => ({
     ...item,
@@ -291,7 +291,7 @@ test('listing cards show condition dots without availability labels in both them
         await expect(dot).toHaveCSS('width', '12px');
         await expect(dot).toHaveCSS('height', '12px');
         await expect(dot).not.toHaveCSS('box-shadow', 'none');
-        await expect(dot).toHaveCSS('background-image', /radial-gradient/);
+        await expect(dot).toHaveCSS('background-image', 'none');
         expect(
           await dot.evaluate((element, token) => {
             const expected = document.createElement('span');
@@ -324,7 +324,23 @@ test('listing cards show condition dots without availability labels in both them
         if (!pinBox || !labelBox)
           throw new Error('Location pin or label is missing');
 
-        expect(labelBox.x - (pinBox.x + pinBox.width)).toBeCloseTo(6, 0);
+        const city = location.locator('.listing-location-city');
+        await expect(city.locator('svg')).toHaveCount(1);
+        const cityTextBox = await city.evaluate((element) => {
+          const text = Array.from(element.childNodes).find(
+            (node) =>
+              node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+          );
+          if (!text) throw new Error('City text is missing');
+
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          const rect = range.getBoundingClientRect();
+
+          return { x: rect.x, right: rect.right };
+        });
+        expect(cityTextBox.x - (pinBox.x + pinBox.width)).toBeCloseTo(6, 0);
+        expect(cityTextBox.right).toBeCloseTo(labelBox.x + labelBox.width, 0);
         const ownerBox = await owner.boundingBox();
         const locationBox = await location.boundingBox();
 
