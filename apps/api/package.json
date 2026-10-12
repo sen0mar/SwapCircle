@@ -34,7 +34,11 @@
     "demo:media:check": "node --env-file=../../packages/database/.env scripts/demo/refresh-media.ts",
     "demo:media:refresh": "node --env-file=../../packages/database/.env scripts/demo/refresh-media.ts --apply",
     "demo:media:check:production": "node --env-file=../../.env.hosted scripts/demo/refresh-media.ts --production",
-    "demo:media:refresh:production": "node --env-file=../../.env.hosted scripts/demo/refresh-media.ts --production --apply"
+    "demo:media:refresh:production": "node --env-file=../../.env.hosted scripts/demo/refresh-media.ts --production --apply",
+    "demo:conditions:check": "node --env-file=../../packages/database/.env scripts/demo/refresh-conditions.ts",
+    "demo:conditions:refresh": "node --env-file=../../packages/database/.env scripts/demo/refresh-conditions.ts --apply",
+    "demo:conditions:check:production": "node --env-file=../../.env.hosted scripts/demo/refresh-conditions.ts --production",
+    "demo:conditions:refresh:production": "node --env-file=../../.env.hosted scripts/demo/refresh-conditions.ts --production --apply"
   },
   "exports": {
     ".": {

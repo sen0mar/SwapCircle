@@ -211,3 +211,66 @@ test('production seed requires explicit authorization and fingerprints refuse ed
   ).toThrow();
   expect(() => assertInventoryPreserved(saved, [])).toThrow();
 });
+
+test('demo conditions are balanced and preserve frozen trade terms', async () => {
+  const { originalListings } = await import('../scripts/demo/manifest.js');
+  const counts = listings.reduce<Record<string, number>>((result, item) => {
+    result[item.condition] = (result[item.condition] ?? 0) + 1;
+    return result;
+  }, {});
+  expect(counts).toEqual({ good: 11, fair: 11, poor: 10 });
+
+  for (const swap of swaps.filter((swap) =>
+    ['confirmed', 'completed', 'disputed'].includes(swap.status),
+  ))
+    for (const key of swap.items)
+      expect(listings.find((item) => item.key === key)).toEqual(
+        originalListings.find((item) => item.key === key),
+      );
+});
+
+test('condition refresh rejects edits, ownership mismatches and frozen listings', async () => {
+  const { prepareConditionChange } =
+    await import('../scripts/demo/condition-refresh.js');
+  const { originalListings } = await import('../scripts/demo/manifest.js');
+  const desired = listings.find((item) => item.key === 'lamp')!;
+  const original = originalListings.find((item) => item.key === 'lamp')!;
+  const saved = {
+    id: '00000000-0000-4000-8000-000000000001',
+    ownerId: '00000000-0000-4000-8000-000000000002',
+    title: original.title,
+    description: original.description,
+    condition: original.condition,
+    availability: 'available' as const,
+    revision: 1,
+    createdAt: '2026-10-08T00:00:00.000Z',
+    updatedAt: '2026-10-08T00:00:00.000Z',
+  };
+  expect(
+    prepareConditionChange(saved, saved, desired, saved.ownerId),
+  ).toMatchObject({ condition: 'poor', revision: 1 });
+  expect(
+    prepareConditionChange(
+      {
+        ...saved,
+        condition: desired.condition,
+        description: desired.description,
+        revision: 2,
+      },
+      saved,
+      desired,
+      saved.ownerId,
+    ),
+  ).toBeNull();
+
+  for (const current of [
+    { ...saved, revision: 2 },
+    { ...saved, description: 'A subsequent user edit' },
+    { ...saved, availability: 'reserved' as const },
+    { ...saved, availability: 'exchanged' as const },
+    { ...saved, ownerId: '00000000-0000-4000-8000-000000000003' },
+  ])
+    expect(() =>
+      prepareConditionChange(current, saved, desired, saved.ownerId),
+    ).toThrow();
+});

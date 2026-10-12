@@ -84,3 +84,13 @@ The runner verifies seeded Auth metadata, signs in each journal-owned account, c
 Refresh overwrites only the approved image objects and updates the recorded byte counts of those exact photo IDs. It preserves recorded gallery dimensions. All other public database fields are fingerprinted before and after and must remain unchanged. Original bytes and resumable verification receipts are saved privately before replacement. Reruns verify already-replaced bytes and recover interrupted metadata updates. It never creates users, listings or trades, deletes historical photos, resets data, changes schema, or exposes a maintenance endpoint on the deployed API.
 
 Storage images retain their existing URLs; browser/CDN caches from before replacement may display the previous image for their existing one-hour cache lifetime. Refresh sets zero cache lifetime on replacements and verifies stored bytes. The bundled café hero requires the normal controlled frontend release after successful checks.
+
+## Refreshing demo conditions
+
+The demo now includes 11 Good, 11 Fair and 10 Poor listings. Descriptions explain wear or repair needs. The four-condition application contract remains unchanged; this demo uses three conditions. Confirmed, completed and disputed items retain their original terms.
+
+Fresh seeds use the new descriptions and conditions. Listing creation keeps its original journal fingerprint so existing completed seed journals remain resumable. Rerunning the seed preserves existing listings; use the explicit refresh to update them.
+
+Build the API, then run `NODE_ENV=development pnpm demo:conditions:check` followed by `NODE_ENV=development pnpm demo:conditions:refresh`. For an explicitly authorized hosted refresh, use the same production environment, authorization and verified API revision as the hosted seed, with `demo:conditions:check:production` and `demo:conditions:refresh:production`.
+
+The refresh verifies all seeded identities and listing ownership, completes preflight before writing, and refuses subsequent edits or frozen items. Updates use authenticated Express listing edits with revision checks. Proposed trades receive normal new versions and notifications when their item descriptions or conditions change; frozen histories stay intact. Private before-images and receipts remain beside the seed journal. Reruns skip already matching records. No schema migration, SQL write, reset or reseed is required.

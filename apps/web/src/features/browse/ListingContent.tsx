@@ -67,9 +67,11 @@ export function CatalogOwner({ id }: { id: string }) {
         <Link to={`/members/${id}`}>{owner.data.displayName}</Link>
       </p>
       <p className="listing-location">
-        <LocationIcon size={14} aria-hidden="true" />
         <span className="listing-location-label">
-          <span>{city}</span>
+          <span className="listing-location-city">
+            <LocationIcon size={14} aria-hidden="true" />
+            {city}
+          </span>
           {district && (
             <span className="listing-location-district">{district}</span>
           )}

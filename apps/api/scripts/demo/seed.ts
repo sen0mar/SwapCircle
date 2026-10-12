@@ -42,7 +42,13 @@ import { NotificationsService } from '../../dist/features/notifications/notifica
 import { ConversationsRepository } from '../../dist/features/conversations/conversations.repository.js';
 import { ConversationsService } from '../../dist/features/conversations/conversations.service.js';
 import { assertDemoTarget } from '../../dist/features/development/demo-guard.js';
-import { members, listings, swaps, type MemberKey } from './manifest.ts';
+import {
+  members,
+  listings,
+  originalListings,
+  swaps,
+  type MemberKey,
+} from './manifest.ts';
 import { openJournal, writePrivate } from './journal.ts';
 import {
   hostedSeedConfiguration,
@@ -427,9 +433,15 @@ async function main() {
     const savedListings = new Map<string, z.infer<typeof listingSchema>>();
     for (const item of listings) {
       const { key, owner, images, ...input } = item;
+      const original = originalListings.find((listing) => listing.key === key)!;
       const saved = await journal.step(
         `listing/${key}`,
-        input,
+        // Keep the original operation fingerprint so completed seeds remain resumable.
+        {
+          title: original.title,
+          description: original.description,
+          condition: original.condition,
+        },
         listingSchema,
         async () => {
           const existing = await request(

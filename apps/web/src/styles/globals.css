@@ -32,6 +32,9 @@
   --state-warning: #80591d;
   --state-error: #b64141;
   --state-info: #235e95;
+  --condition-good: #22e875;
+  --condition-fair: #ffc421;
+  --condition-poor: #ff4b55;
   --chart-primary: #1457d4;
   --chart-secondary: #177047;
   --chart-tertiary: #80591d;
@@ -934,10 +937,19 @@
   }
   .listing-location-label {
     display: grid;
-    gap: 2px;
+    grid-template-columns: 14px minmax(0, 1fr);
+    gap: 2px 6px;
     min-width: 0;
   }
+  .listing-location-city {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 6px;
+  }
   .listing-location-district {
+    grid-column: 2;
     color: var(--text-muted);
   }
   .location {
@@ -1913,27 +1925,20 @@ select.native-select-control {
   flex-shrink: 0;
   border-radius: calc(infinity * 1px);
   background-color: var(--condition-color);
-  background-image: radial-gradient(
-    circle at 30% 25%,
-    color-mix(in srgb, var(--text-on-brand) 85%, transparent),
-    transparent 55%
-  );
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--condition-color) 18%, transparent),
-    0 0 10px color-mix(in srgb, var(--condition-color) 45%, transparent);
+  box-shadow: 0 0 3px var(--condition-color);
 }
 
 .listing-condition-dot[data-condition='like_new'],
 .listing-condition-dot[data-condition='good'] {
-  --condition-color: var(--state-success);
+  --condition-color: var(--condition-good);
 }
 
 .listing-condition-dot[data-condition='fair'] {
-  --condition-color: var(--state-warning);
+  --condition-color: var(--condition-fair);
 }
 
 .listing-condition-dot[data-condition='poor'] {
-  --condition-color: var(--state-error);
+  --condition-color: var(--condition-poor);
 }
 
 .community-page {

@@ -96,7 +96,7 @@ const item = (
   images,
 });
 
-export const listings: DemoListing[] = [
+export const originalListings: DemoListing[] = [
   item(
     'backpack',
     'guest',
@@ -304,6 +304,115 @@ export const listings: DemoListing[] = [
     'A tidy keyboard for a simple desk setup. Clean keys and a slim profile; connection compatibility can be discussed.',
   ),
 ];
+
+// Preserve the first seed specification for journal compatibility and guarded refreshes.
+const conditionUpdates: Record<
+  string,
+  { condition: 'fair' | 'poor' | 'good'; description: string }
+> = {
+  camera: {
+    condition: 'fair',
+    description:
+      'Camera and zoom lens included. Scuffed body and worn controls; both still work, but the lens zoom ring feels stiff.',
+  },
+  guitar: {
+    condition: 'poor',
+    description:
+      'An acoustic guitar for a repair project. Cracked body, worn frets and missing strings; needs repair before playing.',
+  },
+  headphones: {
+    condition: 'poor',
+    description:
+      'Over-ear headphones for parts or repair. Split ear cushions and an intermittent cable connection; audio cuts out.',
+  },
+  chair: {
+    condition: 'fair',
+    description:
+      'A compact grey upholstered chair. Visible fabric wear and a small stain on the seat; legs remain stable.',
+  },
+  notebook: {
+    condition: 'good',
+    description:
+      'A notebook and fountain pen offered together. Most pages are unused, the pen writes smoothly, and both have light signs of use.',
+  },
+  skateboard: {
+    condition: 'poor',
+    description:
+      'A skateboard for refurbishment. Chipped deck edges, worn grip tape and rough bearings; needs servicing before riding.',
+  },
+  mug: {
+    condition: 'poor',
+    description:
+      'A ceramic mug with a cracked handle and chipped rim. For a decorative planter or upcycling project, not drinking.',
+  },
+  lens: {
+    condition: 'poor',
+    description:
+      'A zoom lens for parts or repair. Autofocus fails and the front glass is scratched. Check mount compatibility; no particular mount is promised.',
+  },
+  boardgame: {
+    condition: 'fair',
+    description:
+      'A strategy board game with all playing pieces and rules. The box corners are split and the cards show noticeable wear.',
+  },
+  woodenchair: {
+    condition: 'poor',
+    description:
+      'A wooden dining chair for restoration. Loose joints and a split seat panel; needs repair before anyone sits on it.',
+  },
+  lamp: {
+    condition: 'poor',
+    description:
+      'A metal desk lamp for parts or repair. Damaged switch and worn cable; do not plug it in before professional repair.',
+  },
+  bag: {
+    condition: 'fair',
+    description:
+      'A structured shoulder bag with worn handles and scuffed corners. Lining and fastening remain usable.',
+  },
+  perfume: {
+    condition: 'poor',
+    description:
+      'An empty fragrance bottle with a chipped neck and missing cap. For a careful upcycling project only; no cosmetic product is included.',
+  },
+  jacket: {
+    condition: 'fair',
+    description:
+      'A clean casual jacket with faded fabric and a repaired sleeve seam. Still wearable; check fit before exchanging.',
+  },
+  fountainpen: {
+    condition: 'poor',
+    description:
+      'A fountain pen for repair. Bent nib and leaking converter; does not currently write reliably. No ink supply included.',
+  },
+  poetrybook: {
+    condition: 'fair',
+    description:
+      'A slim poetry book with a creased cover, annotations and worn page edges. All pages are present and readable.',
+  },
+  vinyl: {
+    condition: 'poor',
+    description:
+      'A scratched vinyl record with a torn sleeve. Skips during playback; best for display or a craft project. No specific artist is promised.',
+  },
+  keyboard: {
+    condition: 'fair',
+    description:
+      'A compact keyboard with worn key legends and a scratched case. All keys work; connection compatibility can be discussed.',
+  },
+};
+
+export const listings: DemoListing[] = originalListings.map((listing) => {
+  const update = conditionUpdates[listing.key];
+
+  if (!update) return listing;
+
+  return {
+    ...listing,
+    condition: update.condition,
+    description: `${update.description}\n\nFictional demo listing; photographs are illustrative. No real exchange is offered.`,
+  };
+});
 
 export const swaps = [
   {
