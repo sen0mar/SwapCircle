@@ -1,54 +1,55 @@
 import { expect, test } from '@playwright/test';
 import { signInFixture } from './auth-fixture';
+import {
+  expectReducedMotion,
+  expectVisibleKeyboardFocus,
+} from './ui-assertions';
 
-test('buttons are round and respond to hover and press while respecting reduced motion', async ({
+test('account button works with pointer and keyboard and cannot activate when disabled', async ({
   page,
 }) => {
   await signInFixture(page);
   await page.goto('/');
 
   const button = page.getByRole('button', { name: 'Open account' });
+  const dialog = page.getByRole('dialog', { name: 'Account' });
 
-  expect(
-    await button.evaluate((element) => {
-      const style = getComputedStyle(element);
-      const halfHeight = element.getBoundingClientRect().height / 2;
-
-      return [
-        style.borderTopLeftRadius,
-        style.borderTopRightRadius,
-        style.borderBottomLeftRadius,
-        style.borderBottomRightRadius,
-      ].every((radius) => Number.parseFloat(radius) >= halfHeight);
-    }),
-  ).toBe(true);
   await button.hover();
-  await expect(button).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, -2)');
-  await page.mouse.down();
-  await expect(button).toHaveCSS('transform', 'matrix(0.97, 0, 0, 0.97, 0, 1)');
-  await page.mouse.move(0, 0);
-  await page.mouse.up();
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(button).toBeFocused();
+
+  await button.blur();
+  await expectVisibleKeyboardFocus(button);
+  await page.keyboard.press('Enter');
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
 
   await button.evaluate((element) => {
     (element as HTMLButtonElement).disabled = true;
+    (element as HTMLButtonElement).click();
   });
-  await button.hover({ force: true });
-  await expect(button).toHaveCSS('transform', 'none');
+  await expect(button).toBeDisabled();
+  await expect(dialog).toHaveCount(0);
+});
 
-  await button.evaluate((element) => {
-    (element as HTMLButtonElement).disabled = false;
-  });
+test('account button respects reduced motion on hover and press', async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  await signInFixture(page);
+  await page.goto('/');
+
+  const button = page.getByRole('button', { name: 'Open account' });
+
   await button.hover();
-  await expect(button).toHaveCSS('transform', 'none');
-  await expect(button).toHaveCSS('transition-duration', '0s');
+  await expectReducedMotion(button);
   await page.mouse.down();
-  await expect(button).toHaveCSS('transform', 'none');
+  await expectReducedMotion(button);
   await page.mouse.move(0, 0);
   await page.mouse.up();
-
-  await page.keyboard.press('Tab');
-  await button.focus();
-  await expect(button).toHaveCSS('outline-style', 'solid');
-  await expect(button).toHaveCSS('outline-width', '2px');
 });

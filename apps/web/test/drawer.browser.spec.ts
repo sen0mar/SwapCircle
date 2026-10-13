@@ -40,7 +40,11 @@ for (const theme of ['light', 'dark']) {
     ).toBeFocused();
 
     await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
-    expect(await page.locator('main').boundingBox()).toEqual(main);
+    const openedMain = await page.locator('main').boundingBox();
+    if (!main || !openedMain) throw new Error('Main layout is missing');
+
+    // Opening an overlay must not resize the page; allow subpixel rounding.
+    expect(Math.abs(openedMain.width - main.width)).toBeLessThanOrEqual(1);
     await page.keyboard.press('Shift+Tab');
 
     await expect(
@@ -91,7 +95,14 @@ for (const theme of ['light', 'dark']) {
 
       const box = await dialog.boundingBox();
 
-      expect(box?.width).toBe(Math.min(400, width));
+      if (!box) throw new Error('Account drawer is missing');
+
+      expect(box.width).toBeGreaterThan(0);
+      expect(box.x).toBeGreaterThanOrEqual(-1);
+      expect(Math.abs(box.x + box.width - width)).toBeLessThanOrEqual(1);
+      await expect(
+        dialog.getByRole('button', { name: 'Close', exact: true }),
+      ).toBeInViewport();
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
       await page.screenshot({

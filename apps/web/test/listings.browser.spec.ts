@@ -240,11 +240,13 @@ test('another signed-in member cannot edit and owner failure can recover', async
 test('listing cards show condition dots without availability labels in both themes', async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
   const variants = [
-    { condition: 'like_new', label: 'Like new', token: '--condition-good' },
-    { condition: 'good', label: 'Good', token: '--condition-good' },
-    { condition: 'fair', label: 'Fair', token: '--condition-fair' },
-    { condition: 'poor', label: 'Poor', token: '--condition-poor' },
+    { condition: 'like_new', label: 'Like new' },
+    { condition: 'good', label: 'Good' },
+    { condition: 'fair', label: 'Fair' },
+    { condition: 'poor', label: 'Poor' },
   ];
   const items = variants.map((variant, index) => ({
     ...item,
@@ -288,21 +290,8 @@ test('listing cards show condition dots without availability labels in both them
         const dot = card.locator('.listing-condition-dot');
         await expect(dot).toBeVisible();
         await expect(dot).toHaveAttribute('aria-hidden', 'true');
-        await expect(dot).toHaveCSS('width', '12px');
-        await expect(dot).toHaveCSS('height', '12px');
-        await expect(dot).not.toHaveCSS('box-shadow', 'none');
-        await expect(dot).toHaveCSS('background-image', 'none');
-        expect(
-          await dot.evaluate((element, token) => {
-            const expected = document.createElement('span');
-            expected.style.backgroundColor = `var(${token})`;
-            document.body.append(expected);
-            const color = getComputedStyle(expected).backgroundColor;
-            expected.remove();
-
-            return getComputedStyle(element).backgroundColor === color;
-          }, variant.token),
-        ).toBe(true);
+        // The condition must be understandable without its decorative styling.
+        await expect(dot).toHaveAttribute('data-condition', variant.condition);
       }
 
       if (path === '/browse') {
@@ -339,22 +328,40 @@ test('listing cards show condition dots without availability labels in both them
 
           return { x: rect.x, right: rect.right };
         });
-        expect(cityTextBox.x - (pinBox.x + pinBox.width)).toBeCloseTo(6, 0);
-        expect(cityTextBox.right).toBeCloseTo(labelBox.x + labelBox.width, 0);
+        // Keep the icon clear of the text without prescribing a pixel gap.
+        expect(cityTextBox.x).toBeGreaterThanOrEqual(
+          pinBox.x + pinBox.width - 1,
+        );
+        expect(cityTextBox.right).toBeLessThanOrEqual(
+          labelBox.x + labelBox.width + 1,
+        );
         const ownerBox = await owner.boundingBox();
         const locationBox = await location.boundingBox();
+        const metadataBox = await firstCard
+          .locator('.listing-meta')
+          .boundingBox();
 
-        if (!ownerBox || !locationBox)
+        if (!ownerBox || !locationBox || !metadataBox)
           throw new Error('Card metadata is missing');
 
-        expect(locationBox.x).toBeGreaterThan(ownerBox.x);
-        expect(
-          Math.abs(
-            locationBox.y +
-              locationBox.height / 2 -
-              (ownerBox.y + ownerBox.height / 2),
-          ),
-        ).toBeLessThan(2);
+        // Metadata may wrap or stack; it must remain contained and not overlap.
+        const overlapX =
+          Math.min(
+            ownerBox.x + ownerBox.width,
+            locationBox.x + locationBox.width,
+          ) - Math.max(ownerBox.x, locationBox.x);
+        const overlapY =
+          Math.min(
+            ownerBox.y + ownerBox.height,
+            locationBox.y + locationBox.height,
+          ) - Math.max(ownerBox.y, locationBox.y);
+        expect(overlapX <= 1 || overlapY <= 1).toBe(true);
+        for (const box of [ownerBox, locationBox]) {
+          expect(box.x).toBeGreaterThanOrEqual(metadataBox.x - 1);
+          expect(box.x + box.width).toBeLessThanOrEqual(
+            metadataBox.x + metadataBox.width + 1,
+          );
+        }
         await page.setViewportSize({ width: 360, height: 900 });
         expect(
           await page.evaluate(

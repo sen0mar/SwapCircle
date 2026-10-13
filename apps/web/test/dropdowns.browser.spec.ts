@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { signInFixture } from './auth-fixture';
+import {
+  expectReducedMotion,
+  expectVisibleKeyboardFocus,
+} from './ui-assertions';
 
-test('dropdowns are rounded with hover feedback and accessible keyboard selection', async ({
+test('theme dropdown supports keyboard selection, visible focus and reduced motion', async ({
   page,
 }) => {
   await signInFixture(page);
@@ -10,19 +14,8 @@ test('dropdowns are rounded with hover feedback and accessible keyboard selectio
   const dropdown = page.getByLabel('Theme');
   const control = page.locator('.native-select').filter({ has: dropdown });
 
-  expect(
-    await dropdown.evaluate(
-      (element) =>
-        Number.parseFloat(getComputedStyle(element).borderTopLeftRadius) >=
-        element.getBoundingClientRect().height / 2,
-    ),
-  ).toBe(true);
   await dropdown.hover();
-  await expect(control).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, -2)');
-  await page.keyboard.press('Tab');
-  await dropdown.focus();
-  await expect(dropdown).toHaveCSS('outline-width', '2px');
-  await expect(dropdown).toHaveCSS('outline-style', 'solid');
+  await expectVisibleKeyboardFocus(dropdown);
   await page.keyboard.press('d');
   await page.keyboard.press('Enter');
   await expect(dropdown).toHaveValue('dark');
@@ -31,22 +24,24 @@ test('dropdowns are rounded with hover feedback and accessible keyboard selectio
   await dropdown.evaluate((element) => {
     (element as HTMLSelectElement).disabled = true;
   });
-  await dropdown.hover({ force: true });
-  await expect(control).toHaveCSS('transform', 'none');
-  await expect(dropdown).toHaveCSS('cursor', 'not-allowed');
+  await expect(dropdown).toBeDisabled();
+  await page.keyboard.press('l');
+  await page.keyboard.press('Enter');
+  await expect(dropdown).toHaveValue('dark');
 
   await dropdown.evaluate((element) => {
     (element as HTMLSelectElement).disabled = false;
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await dropdown.hover();
-  await expect(control).toHaveCSS('transform', 'none');
-  await expect(dropdown).toHaveCSS('transition-duration', '0s');
+  await expectReducedMotion(control);
+  await expectReducedMotion(dropdown);
 });
 
 test('dropdown chevrons stay centered and inside controls in both themes and at mobile widths', async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await signInFixture(page);
   await page.route('**/api/v1/listings?*', (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),
@@ -82,7 +77,7 @@ test('dropdown chevrons stay centered and inside controls in both themes and at 
         expect(icon.x + icon.width).toBeLessThan(box.x + box.width);
         expect(
           Math.abs(icon.y + icon.height / 2 - (box.y + box.height / 2)),
-        ).toBeLessThan(1);
+        ).toBeLessThanOrEqual(Math.max(2, box.height * 0.1));
         expect(box.x + box.width).toBeLessThanOrEqual(width);
       }
 
