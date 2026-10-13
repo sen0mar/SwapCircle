@@ -14,6 +14,9 @@ import { createDiscoveryFixture } from '../../api/test/discovery-fixture.mjs';
 
 const fetch = globalThis.fetch;
 
+// Preserve the journey's source location beyond Playwright's matcher frames.
+Error.stackTraceLimit = 40;
+
 const origin = 'http://127.0.0.1:4211';
 const apiOrigin = 'http://127.0.0.1:4331';
 const fixture = await createDiscoveryFixture(origin);
@@ -325,6 +328,13 @@ try {
           page,
           page.getByRole('button', { name: 'Accept version 1' }),
         );
+        // Keyboard activation completes before the mutation response. Wait for
+        // persisted acceptance before another participant refreshes the trade.
+        await expect(
+          page
+            .getByRole('region', { name: 'Agreement', exact: true })
+            .getByRole('status'),
+        ).toContainText(/Your acceptance is saved|Everyone accepted version 1/);
       }
       await a.getByRole('button', { name: 'Refresh swap status' }).click();
       await expect(
