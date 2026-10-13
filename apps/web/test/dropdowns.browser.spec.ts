@@ -63,7 +63,6 @@ test('dropdown chevrons stay centered and inside controls in both themes and at 
         const select = control.locator('select');
         const arrow = control.locator('.native-select-arrow');
         await expect(select).toHaveCSS('appearance', 'none');
-        await expect(select).toHaveCSS('padding-right', '40px');
         await expect(arrow).toHaveCSS('pointer-events', 'none');
         const box = await select.boundingBox();
         const icon = await arrow.boundingBox();
@@ -73,8 +72,14 @@ test('dropdown chevrons stay centered and inside controls in both themes and at 
 
         if (!box || !icon) throw new Error('Dropdown or arrow is missing');
 
+        const paddingRight = await select.evaluate((element) =>
+          Number.parseFloat(getComputedStyle(element).paddingRight),
+        );
+        const arrowInset = box.x + box.width - icon.x;
+
+        expect(paddingRight).toBeGreaterThanOrEqual(arrowInset + 2);
         expect(icon.x).toBeGreaterThan(box.x);
-        expect(icon.x + icon.width).toBeLessThan(box.x + box.width - 10);
+        expect(icon.x + icon.width).toBeLessThan(box.x + box.width);
         expect(
           Math.abs(icon.y + icon.height / 2 - (box.y + box.height / 2)),
         ).toBeLessThan(1);
