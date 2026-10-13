@@ -1,8 +1,4 @@
-import {
-  ForwardIcon,
-  LocationIcon,
-  CommunityIcon,
-} from '../../components/ui/icons';
+import { ForwardIcon, LocationIcon } from '../../components/ui/icons';
 import { useEffect, useRef } from 'react';
 import { Input } from '../../components/ui/input';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -51,16 +47,8 @@ export function CommunityPage() {
   };
 
   return (
-    <section className="community-page" aria-labelledby="community-title">
-      <div className="community-page-heading">
-        <span className="home-section-icon" aria-hidden="true">
-          <CommunityIcon size={24} />
-        </span>
-        <div>
-          <h1 id="community-title">Community</h1>
-          <p>Find familiar interests. Meet someone new.</p>
-        </div>
-      </div>
+    <section className="community-page" aria-label="Community">
+      <h1 className="sr-only">Community</h1>
       <div className="community-filters">
         <form
           ref={searchForm}
@@ -93,7 +81,7 @@ export function CommunityPage() {
           <Button type="submit">Search</Button>
         </form>
         <label className="member-interest-filter" htmlFor="community-interest">
-          Discover by interest
+          Search by interest
           <Select
             id="community-interest"
             value={query.interest ?? ''}

@@ -1,6 +1,7 @@
 import { Select } from '../../components/ui/select';
 import { useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { RotateCcw } from 'lucide-react';
 import { catalogQuerySchema } from '@swapcircle/contracts';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -45,12 +46,9 @@ export function BrowsePage() {
 
   return (
     <section className="catalog-page" aria-labelledby="browse-title">
-      <div className="section-heading">
-        <div>
-          <h1 id="browse-title">Browse</h1>
-          <p>Find something with a little more life to give.</p>
-        </div>
-      </div>
+      <h1 id="browse-title" className="sr-only">
+        Browse
+      </h1>
       <form
         ref={form}
         className="catalog-filters"
@@ -66,17 +64,20 @@ export function BrowsePage() {
           setParams(next);
         }}
       >
-        <label className="catalog-search" htmlFor="catalog-search">
-          Search items
+        <div className="catalog-search">
           <Input
             id="catalog-search"
+            aria-label="Search items"
             name="q"
             type="search"
             maxLength={120}
             defaultValue={params.get('q') ?? ''}
             placeholder="Titles and descriptions"
           />
-        </label>
+          <Button type="submit" variant="primary">
+            Search
+          </Button>
+        </div>
         <label htmlFor="catalog-condition">
           Condition
           <Select
@@ -116,8 +117,14 @@ export function BrowsePage() {
         {query.owner && (
           <input type="hidden" name="owner" value={query.owner} />
         )}
-        <Button type="submit">Search</Button>
-        <Link to="/browse">Clear filters</Link>
+        <div className="catalog-filter-actions">
+          <Button asChild>
+            <Link to="/browse">
+              <RotateCcw size={18} aria-hidden="true" />
+              Clear all
+            </Link>
+          </Button>
+        </div>
       </form>
       {!parsed.success ? (
         <div className="panel route-panel">

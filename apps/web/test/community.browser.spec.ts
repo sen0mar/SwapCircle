@@ -48,12 +48,12 @@ for (const theme of ['light', 'dark']) {
     await page.getByLabel('Theme').selectOption(theme);
     await page.getByRole('link', { name: 'View all members' }).click();
     await expect(
-      page.getByRole('heading', { name: 'Community', exact: true }),
+      page.getByRole('region', { name: 'Community', exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: member.displayName }),
     ).toBeVisible();
-    await page.getByLabel('Discover by interest').selectOption(interest.id);
+    await page.getByLabel('Search by interest').selectOption(interest.id);
     await page.getByRole('link', { name: 'Next page' }).click();
     await expect(page).toHaveURL(
       new RegExp(`interest=${interest.id}.*cursor=synthetic-cursor`),
@@ -62,13 +62,13 @@ for (const theme of ['light', 'dark']) {
       page.getByRole('heading', { name: 'Next Member' }),
     ).toBeVisible();
     await page.reload();
-    await expect(page.getByLabel('Discover by interest')).toHaveValue(
+    await expect(page.getByLabel('Search by interest')).toHaveValue(
       interest.id,
     );
-    await page.getByLabel('Discover by interest').selectOption('');
+    await page.getByLabel('Search by interest').selectOption('');
     await expect(page).toHaveURL('/community');
     await page.goBack();
-    await expect(page.getByLabel('Discover by interest')).toHaveValue(
+    await expect(page.getByLabel('Search by interest')).toHaveValue(
       interest.id,
     );
     await page.getByRole('link', { name: 'First page' }).click();
@@ -136,7 +136,7 @@ test('community recovers from errors, handles empty and invalid filters, and use
     page.getByRole('heading', { name: member.displayName }),
   ).toBeVisible();
   empty = true;
-  await page.getByLabel('Discover by interest').selectOption(interest.id);
+  await page.getByLabel('Search by interest').selectOption(interest.id);
   await expect(
     page.getByRole('heading', { name: 'No members to show yet' }),
   ).toBeVisible();
@@ -200,12 +200,10 @@ test('name search combines with interests, persists across pagination and histor
   await expect(
     page.getByRole('searchbox', { name: 'Search by name' }),
   ).toHaveValue('Community');
-  await page.getByLabel('Discover by interest').selectOption('');
+  await page.getByLabel('Search by interest').selectOption('');
   await expect(page).toHaveURL('/community?q=Community');
   await page.goBack();
-  await expect(page.getByLabel('Discover by interest')).toHaveValue(
-    interest.id,
-  );
+  await expect(page.getByLabel('Search by interest')).toHaveValue(interest.id);
   await expect(
     page.getByRole('searchbox', { name: 'Search by name' }),
   ).toHaveValue('Community');
