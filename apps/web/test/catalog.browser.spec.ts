@@ -107,7 +107,7 @@ test('invalid shared catalog URLs explain recovery without making a misleading q
   await page.goto('/browse?sort=distance');
   await expect(page.getByRole('alert')).toContainText('filters are invalid');
   expect(calls).toBe(0);
-  await page.getByRole('link', { name: 'Clear filters' }).click();
+  await page.getByRole('link', { name: 'Clear all' }).click();
   await expect(
     page.getByRole('heading', { name: 'No items to show yet' }),
   ).toBeVisible();
