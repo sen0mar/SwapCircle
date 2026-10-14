@@ -10,14 +10,17 @@ import { preparedCommand, selectSuites, suites } from './test-local-suites.mjs';
 
 test('journey shards cover every suite exactly once and retain ordering', () => {
   assert.equal(suites.api.names.length, 19);
-  assert.equal(suites.journeys.names.length, 18);
+  assert.equal(suites.journeys.names.length, 17);
   const shards = [1, 2, 3].map(
     (index) => selectSuites('journeys', `${index}/3`).names,
   );
   const combined = shards.flat();
   assert.equal(new Set(combined).size, suites.journeys.names.length);
   assert.deepEqual(combined.toSorted(), suites.journeys.names.toSorted());
-  assert.ok(shards.every((names) => names.length === 6));
+  assert.deepEqual(
+    shards.map((names) => names.length),
+    [6, 6, 5],
+  );
   assert.deepEqual(selectSuites('api').names, suites.api.names);
   for (const shard of ['0/3', '4/3', '1/0', '1/19', '1/3 extra', '-1/3'])
     assert.throws(() => selectSuites('journeys', shard));

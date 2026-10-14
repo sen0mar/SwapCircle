@@ -376,7 +376,7 @@ try {
           label === 'thread'
             ? 'Group conversation'
             : label === 'terms'
-              ? 'Swap proposal'
+              ? 'Group swap'
               : 'Group invitation',
         exact: true,
       }),

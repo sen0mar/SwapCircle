@@ -68,6 +68,10 @@ const signIn = async (page, user, destination) => {
   ).toBeVisible();
   await page.goto(`${origin}${destination}`);
   await expect(page).toHaveURL(`${origin}${destination}`);
+  await page
+    .locator('summary')
+    .filter({ hasText: /^Swap \+ coffee$/ })
+    .click();
 };
 
 try {
@@ -179,8 +183,6 @@ try {
   await signIn(alicePage, alice, `/swaps/${direct.id}`);
   await signIn(bobPage, bob, `/swaps/${direct.id}`);
   await signIn(carolPage, stranger, `/swaps/${group.id}`);
-  const agreement = (page) =>
-    page.getByRole('region', { name: 'Agreement', exact: true });
   const review = async (page) => {
     await page.getByRole('button', { name: 'Review current terms' }).click();
     await expect(
@@ -257,6 +259,10 @@ try {
     alicePage.getByRole('button', { name: 'Message', exact: true }),
   ).toBeEnabled();
   await alicePage.goto(`${origin}/swaps/${direct.id}`);
+  await alicePage
+    .locator('summary')
+    .filter({ hasText: /^Swap \+ coffee$/ })
+    .click();
   await expect(
     alicePage.getByRole('button', { name: 'Review current terms' }),
   ).toBeEnabled();
@@ -393,14 +399,19 @@ try {
   // Trade agreement is still independent and can confirm after coffee cancellation.
   await accept(alicePage);
   await accept(bobPage);
-  await expect(agreement(bobPage)).toContainText('Agreement confirmed');
+  await expect(bobPage.getByText('Agreed. Arrange your meetup.')).toBeVisible();
   const confirmed = await api(`/trades/${direct.id}`, bob);
   assert.equal(confirmed.status, 'confirmed');
   assert.ok(confirmed.items.every((i) => i.currentAvailability === 'reserved'));
   // Group pairs differ: Bob is eligible, Carol is not; only Alice/Bob agree.
   await updateInterests(bob, 'Coffee Bob', 2);
-  for (const page of [alicePage, bobPage, carolPage])
+  for (const page of [alicePage, bobPage, carolPage]) {
     await page.goto(`${origin}/swaps/${group.id}`);
+    await page
+      .locator('summary')
+      .filter({ hasText: /^Swap \+ coffee$/ })
+      .click();
+  }
   await aliceBob.getByLabel('Swap + coffee').check();
   await expect(
     pair(alicePage, 'Coffee Carol').getByLabel('Swap + coffee'),

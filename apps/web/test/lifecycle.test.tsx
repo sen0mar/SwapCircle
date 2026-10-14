@@ -82,7 +82,7 @@ function mount() {
   };
 }
 
-test('requires explicit cancellation and retains closed history copy after authoritative refresh', async () => {
+test('requires explicit cancellation and removes actions after authoritative closure', async () => {
   const state = mount();
   const user = userEvent.setup();
   await user.click(
@@ -90,12 +90,16 @@ test('requires explicit cancellation and retains closed history copy after autho
   );
   expect(state.calls()).toBe(0);
   expect(screen.getByRole('dialog')).toHaveTextContent(
-    'before any reported handover or receipt',
+    'before any reported exchange or problem',
   );
   await user.click(
     screen.getByRole('button', { name: 'Confirm cancellation' }),
   );
-  await screen.findByText(/cancelled, not completed/);
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('button', { name: 'Cancel confirmed swap' }),
+    ).not.toBeInTheDocument(),
+  );
   expect(state.calls()).toBe(1);
   expect(
     screen.queryByRole('button', { name: 'Cancel confirmed swap' }),
@@ -123,10 +127,9 @@ test('explains recorded handover rejection and never claims release', async () =
 
 test('failed authoritative read disables lifecycle writes until status recovers', async () => {
   const state = mount();
-  const user = userEvent.setup();
   await screen.findByRole('button', { name: 'Cancel confirmed swap' });
   state.setReadFailure();
-  await user.click(screen.getByRole('button', { name: 'Refresh swap status' }));
+  await state.queries.invalidateQueries();
   await waitFor(() =>
     expect(
       screen.getByRole('button', { name: 'Cancel confirmed swap' }),
@@ -135,7 +138,7 @@ test('failed authoritative read disables lifecycle writes until status recovers'
   expect(state.calls()).toBe(0);
 });
 
-test('recorded receipt disables ordinary cancellation with an explanation', async () => {
+test('recorded handover removes ordinary cancellation actions', async () => {
   const state = mount();
   await screen.findByRole('button', { name: 'Cancel confirmed swap' });
   state.queries.setQueryData<TradeDetail>(
@@ -156,11 +159,8 @@ test('recorded receipt disables ordinary cancellation with an explanation', asyn
   );
   await waitFor(() =>
     expect(
-      screen.getByRole('button', { name: 'Cancel confirmed swap' }),
-    ).toBeDisabled(),
+      screen.queryByRole('button', { name: 'Cancel confirmed swap' }),
+    ).not.toBeInTheDocument(),
   );
-  expect(
-    screen.getByText(/Cancellation is unavailable after a receipt/),
-  ).toBeVisible();
   expect(state.calls()).toBe(0);
 });

@@ -470,6 +470,19 @@ export const tradeSummarySchema = z.object({
   participantCount: z.number().int().min(2),
   itemCount: z.number().int().min(1),
   hasUnavailableItems: z.boolean(),
+  itemPreviews: z
+    .array(
+      z.object({
+        listingId: z.uuid(),
+        title: z.string().min(1),
+        ownerId: z.uuid(),
+        recipientId: z.uuid(),
+        ownerName: z.string(),
+        recipientName: z.string(),
+      }),
+    )
+    .max(4)
+    .default([]),
 });
 export const tradePageSchema = z.object({
   items: z.array(tradeSummarySchema).max(50),
@@ -514,12 +527,14 @@ export const tradeEventSchema = z.object({
   ]),
   createdAt: z.iso.datetime({ offset: true }),
 });
-export const tradeDetailSchema = tradeSummarySchema.extend({
-  participants: z.array(tradeParticipantSchema),
-  items: z.array(tradeItemSchema),
-  events: z.array(tradeEventSchema),
-  groupConversationId: z.uuid().nullable().default(null),
-});
+export const tradeDetailSchema = tradeSummarySchema
+  .omit({ itemPreviews: true })
+  .extend({
+    participants: z.array(tradeParticipantSchema),
+    items: z.array(tradeItemSchema),
+    events: z.array(tradeEventSchema),
+    groupConversationId: z.uuid().nullable().default(null),
+  });
 
 export const tradeVersionSchema = z.object({
   tradeId: z.uuid(),

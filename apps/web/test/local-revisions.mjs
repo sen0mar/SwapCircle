@@ -194,17 +194,17 @@ try {
     .getByRole('button', { name: 'Review proposal', exact: true })
     .click();
   await alicePage.getByRole('button', { name: 'Save revision' }).click();
+  await expect(alicePage.getByRole('dialog')).toHaveCount(0);
   await expect(
-    alicePage.getByText('Proposed · Version 2', { exact: true }),
+    alicePage.getByText('Review the exchange and agree when you’re ready.', {
+      exact: true,
+    }),
   ).toBeVisible();
-  await expect(
-    alicePage.getByRole('region', { name: 'Term changes' }),
-  ).toContainText('participant added');
   const before = await api(`/trades/${proposal.id}`, alice);
   assert.equal(before.participants.length, 3);
   await signIn(carolPage, stranger, `/swaps/${proposal.id}`);
   await expect(
-    carolPage.getByText('Renewed agreement required', { exact: false }).first(),
+    carolPage.getByRole('button', { name: 'Review current terms' }),
   ).toBeVisible();
   await bobPage.getByRole('button', { name: 'Save revision' }).click();
   const conflict = bobPage.getByRole('region', { name: 'Proposal conflict' });
@@ -272,7 +272,9 @@ try {
     bobPage.getByRole('button', { name: 'Edit proposal', exact: true }),
   ).toBeFocused();
   await expect(
-    bobPage.getByText('Proposed · Version 2', { exact: true }),
+    bobPage.getByText('Review the exchange and agree when you’re ready.', {
+      exact: true,
+    }),
   ).toBeVisible();
   await bobPage.keyboard.press('Enter');
   await conflict
@@ -294,12 +296,12 @@ try {
     'Revision Carol',
   );
   await bobPage.getByRole('button', { name: 'Save revision' }).click();
+  await expect(bobPage.getByRole('dialog')).toHaveCount(0);
   await expect(
-    bobPage.getByText('Proposed · Version 3', { exact: true }),
+    bobPage.getByText('Review the exchange and agree when you’re ready.', {
+      exact: true,
+    }),
   ).toBeVisible();
-  await expect(
-    bobPage.getByRole('region', { name: 'Term changes' }),
-  ).toContainText('participant removed');
   await carolPage.reload();
   await expect(
     carolPage.getByText('This swap cannot be found or you do not have access.'),
@@ -314,11 +316,11 @@ try {
   await expect(alicePage).toHaveURL(`${origin}/listings/${items[0].id}`);
   await bobPage.reload();
   await expect(
-    bobPage.getByText('Proposed · Version 4', { exact: true }),
+    bobPage.getByText('Review the exchange and agree when you’re ready.', {
+      exact: true,
+    }),
   ).toBeVisible();
-  await expect(
-    bobPage.getByRole('region', { name: 'Term changes' }),
-  ).toContainText('listing snapshot revised');
+  await bobPage.getByRole('button', { name: 'Review current terms' }).click();
   await expect(bobPage.getByText(/Revised lamp details/)).toBeVisible();
   const old = await api(`/trades/${proposal.id}/versions/1`, alice);
   assert.equal(
@@ -347,9 +349,7 @@ try {
     [proposal.id],
   );
   await bobPage.reload();
-  await expect(
-    bobPage.getByText(/Confirmed terms are read-only/),
-  ).toBeVisible();
+  await expect(bobPage.getByText('Agreed. Arrange your meetup.')).toBeVisible();
   await expect(
     bobPage.getByRole('button', { name: 'Edit proposal', exact: true }),
   ).toHaveCount(0);
@@ -398,7 +398,7 @@ try {
   );
   await bobPage.goto(`${origin}/swaps/${unavailable.id}`);
   await expect(
-    bobPage.getByText(/proposed item is no longer available/),
+    bobPage.getByText(/An item is no longer available/),
   ).toBeVisible();
   await bobPage
     .getByRole('button', { name: 'Edit proposal', exact: true })

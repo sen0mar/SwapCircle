@@ -1,6 +1,10 @@
-import type { TradeDetail, TradeVersion } from './trades-api';
+import type { TradeDetail } from './trades-api';
 
-type Terms = Pick<TradeVersion, 'participantIds' | 'items' | 'expiresAt'>;
+type Terms = {
+  participantIds: string[];
+  items: TradeDetail['items'];
+  expiresAt: string;
+};
 
 export function detailTerms(trade: TradeDetail): Terms {
   return {

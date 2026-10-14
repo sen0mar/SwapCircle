@@ -4,17 +4,15 @@ import type {
   ProposalRevision,
   TradeAcceptance,
   TradeTransition,
-  TradeReceiptSubmission,
   TradeProblemSubmission,
 } from '@swapcircle/contracts';
 import { useAuth } from '../auth/AuthProvider';
 import {
-  recordTradeOutcome,
+  reportTradeProblem,
   acceptTrade,
   createTrade,
   getMyTrades,
   getTrade,
-  getTradeVersion,
   reviseTrade,
   transitionTrade,
 } from './trades-api';
@@ -57,17 +55,6 @@ export function useCreateTrade() {
         queryKey: ['private', session?.user.id, 'trade', result.id],
       });
     },
-  });
-}
-
-export function useTradeVersion(id: string, version: number) {
-  const { session, request } = useAuth();
-
-  return useQuery({
-    queryKey: ['private', session?.user.id, 'trade-version', id, version],
-    queryFn: ({ signal }) => getTradeVersion(request, id, version, signal),
-    enabled: !!session && version > 0,
-    retry: false,
   });
 }
 
@@ -141,18 +128,13 @@ export function useTradeTransition(id: string) {
   });
 }
 
-export function useTradeOutcome(id: string) {
+export function useTradeProblem(id: string) {
   const { session, request } = useAuth();
   const queries = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      action,
-      input,
-    }: {
-      action: 'receipt' | 'problem';
-      input: TradeReceiptSubmission | TradeProblemSubmission;
-    }) => recordTradeOutcome(request, id, action, input),
+    mutationFn: (input: TradeProblemSubmission) =>
+      reportTradeProblem(request, id, input),
     onSettled: async () => {
       const root = ['private', session?.user.id];
 

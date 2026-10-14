@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { expect, test, vi } from 'vitest';
 import { apiRequest } from '../src/lib/api-client';
-import { TradeCompletion } from '../src/features/trades/TradeCompletion';
+import { TradeProblem } from '../src/features/trades/TradeProblem';
 import { useTrade } from '../src/features/trades/useTrades';
 import type { TradeDetail } from '../src/features/trades/trades-api';
 import { server } from './setup';
@@ -68,19 +68,6 @@ function mount() {
           { error: { code, message: 'Conflict', requestId: id } },
           { status: 409 },
         );
-      if (params.action === 'receipt' && !detail.events.length)
-        detail = {
-          ...detail,
-          events: [
-            {
-              id,
-              actorId: self,
-              version: 1,
-              eventType: 'receipt_acknowledged',
-              createdAt: detail.createdAt,
-            },
-          ],
-        };
       if (params.action === 'problem')
         detail = { ...detail, status: 'disputed' };
       if (lose) {
@@ -97,7 +84,7 @@ function mount() {
   function Harness() {
     const trade = useTrade(id);
     return trade.data ? (
-      <TradeCompletion detail={trade.data} current={!trade.isError} />
+      <TradeProblem detail={trade.data} current={!trade.isError} />
     ) : null;
   }
   render(
@@ -123,24 +110,6 @@ function mount() {
     },
   };
 }
-
-test('explicit personal receipt shows named pending participants and does not complete', async () => {
-  const state = mount();
-  const user = userEvent.setup();
-  await user.click(
-    await screen.findByRole('button', { name: 'Confirm my receipt' }),
-  );
-  expect(state.calls()).toBe(0);
-  await user.click(
-    screen.getByRole('button', { name: 'I received all my items' }),
-  );
-  await screen.findByRole('heading', { name: 'Waiting for receipts' });
-  expect(screen.getByText('Bob · Receipt pending')).toBeVisible();
-  expect(
-    screen.getByRole('button', { name: 'Your receipt is acknowledged' }),
-  ).toBeDisabled();
-  expect(state.calls()).toBe(1);
-});
 
 test('uncertain private report locks its draft and reuses the original key after close and state refresh', async () => {
   const state = mount();
@@ -178,7 +147,7 @@ test('uncertain private report locks its draft and reuses the original key after
   expect(state.bodies[1]).toEqual(state.bodies[0]);
   expect(screen.queryByText('<private evidence>')).not.toBeInTheDocument();
   expect(
-    screen.getByRole('button', { name: 'Confirm my receipt' }),
+    screen.getByRole('button', { name: 'Report a problem' }),
   ).toBeEnabled();
 });
 
@@ -204,29 +173,6 @@ test('stale new submissions and unavailable reads are blocked without clearing t
     'Keep my draft',
   );
   expect(state.calls()).toBe(0);
-});
-
-test('disputed receipt remains evidence and completed trades explain restrictions', async () => {
-  const state = mount();
-  state.change({ status: 'disputed' });
-  await state.queries.invalidateQueries();
-  await screen.findByRole('heading', { name: 'Dispute unresolved' });
-  expect(screen.getByText(/will not complete or resolve/)).toBeVisible();
-  const user = userEvent.setup();
-  await user.click(screen.getByRole('button', { name: 'Confirm my receipt' }));
-  await user.click(
-    screen.getByRole('button', { name: 'I received all my items' }),
-  );
-  await screen.findByText('Your receipt acknowledgement was saved.');
-  expect(
-    screen.getByRole('heading', { name: 'Dispute unresolved' }),
-  ).toBeVisible();
-  state.change({ status: 'completed' });
-  await state.queries.invalidateQueries();
-  await screen.findByRole('heading', { name: 'Swap completed' });
-  expect(
-    screen.queryByRole('button', { name: 'Report a problem' }),
-  ).not.toBeInTheDocument();
 });
 
 test('unavailable authoritative state blocks a new action and keeps unsent report text', async () => {

@@ -8,8 +8,8 @@ import {
 } from '../../components/ui/dialog';
 import { ApiError } from '../../lib/api-client';
 import type { TradeDetail } from './trades-api';
-import { hasHandover, lifecycleSummary } from './lifecycle-copy';
-import { useTrade, useTradeTransition } from './useTrades';
+import { hasHandover } from './lifecycle-copy';
+import { useTradeTransition } from './useTrades';
 
 export function TradeLifecycle({
   detail,
@@ -18,7 +18,6 @@ export function TradeLifecycle({
   detail: TradeDetail;
   current: boolean;
 }) {
-  const trade = useTrade(detail.id);
   const transition = useTradeTransition(detail.id);
   const heading = useRef<HTMLHeadingElement>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);
@@ -27,7 +26,6 @@ export function TradeLifecycle({
     version: number;
     status: TradeDetail['status'];
   } | null>(null);
-  const terminal = lifecycleSummary(detail.status);
   const protectedHandover = hasHandover(detail);
   const permitted = ['proposed', 'confirmed'].includes(detail.status);
   const changed =
@@ -49,64 +47,37 @@ export function TradeLifecycle({
     });
   }
 
+  if (!permitted || protectedHandover) return null;
+
   return (
-    <section
-      className="panel route-panel trade-lifecycle"
-      aria-label="Swap lifecycle"
-    >
-      <h2 ref={heading} tabIndex={-1}>
-        {terminal ? 'Closed swap' : 'Swap actions'}
+    <section className="swap-lifecycle-actions" aria-label="Swap lifecycle">
+      <h2 ref={heading} tabIndex={-1} className="sr-only">
+        Swap actions
       </h2>
-      {terminal && <p role="status">{terminal}</p>}
-      {protectedHandover && (
-        <p>
-          Cancellation is unavailable after a receipt, handover, or dispute is
-          recorded. Items are not released.
-        </p>
-      )}
-      {permitted && (
-        <>
-          <p>
-            {detail.status === 'confirmed'
-              ? 'Cancel only before any handover or receipt has been reported. The server checks this before releasing reservations.'
-              : 'Declining or cancelling closes this proposal for everyone. It keeps the terms and history.'}
-          </p>
-          <p>
-            Coffee consent has its own controls below. Cancelling coffee leaves
-            the swap unchanged.
-          </p>
-          <div className="notification-actions">
-            {detail.status === 'proposed' && (
-              <Button
-                disabled={!current || protectedHandover || transition.isPending}
-                onClick={(event) => {
-                  trigger.current = event.currentTarget;
-                  open('decline');
-                }}
-              >
-                Decline proposal
-              </Button>
-            )}
-            <Button
-              disabled={!current || protectedHandover || transition.isPending}
-              onClick={(event) => {
-                trigger.current = event.currentTarget;
-                open('cancel');
-              }}
-            >
-              {detail.status === 'confirmed'
-                ? 'Cancel confirmed swap'
-                : 'Cancel proposal'}
-            </Button>
-          </div>
-        </>
-      )}
-      <Button
-        disabled={transition.isPending}
-        onClick={() => void trade.refetch()}
-      >
-        Refresh swap status
-      </Button>
+      <div className="notification-actions">
+        {detail.status === 'proposed' && (
+          <Button
+            disabled={!current || protectedHandover || transition.isPending}
+            onClick={(event) => {
+              trigger.current = event.currentTarget;
+              open('decline');
+            }}
+          >
+            Decline proposal
+          </Button>
+        )}
+        <Button
+          disabled={!current || protectedHandover || transition.isPending}
+          onClick={(event) => {
+            trigger.current = event.currentTarget;
+            open('cancel');
+          }}
+        >
+          {detail.status === 'confirmed'
+            ? 'Cancel confirmed swap'
+            : 'Cancel proposal'}
+        </Button>
+      </div>
       <Dialog
         open={!!review}
         onOpenChange={(open) => {
@@ -132,7 +103,7 @@ export function TradeLifecycle({
             This closes version {review?.version} for all participants and
             preserves its history.
             {review?.status === 'confirmed'
-              ? ' Reservations are released only if the server confirms cancellation before any reported handover or receipt.'
+              ? ' Reservations are released only if the server confirms cancellation before any reported exchange or problem.'
               : ' No items are reserved by this proposal.'}{' '}
             This does not mark any items as received or exchanged.
           </DialogDescription>

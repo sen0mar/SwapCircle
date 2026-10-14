@@ -4,13 +4,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { http, HttpResponse } from 'msw';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import type { Listing } from '@swapcircle/contracts';
 import { AuthProvider } from '../src/features/auth/AuthProvider';
 import { ProposalComposer } from '../src/features/browse/ProposalComposer';
 import { TradeDetailPage } from '../src/features/trades/TradeDetailPage';
 import type { TradeDetail } from '../src/features/trades/trades-api';
 import { server } from './setup';
+
+vi.mock('../src/features/browse/listing-photos', () => ({
+  useListingPhotos: () => ({ data: [] }),
+  ListingImage: () => null,
+}));
 
 const ids = {
   self: 'a8ded912-c170-4988-8750-9747558e8a87',
@@ -466,26 +471,18 @@ test('current detail explains renewed agreement and never presents old acceptanc
     http.get('http://127.0.0.1:3001/api/v1/trades/:id', () =>
       HttpResponse.json(revised),
     ),
-    http.get('http://127.0.0.1:3001/api/v1/trades/:id/versions/:version', () =>
-      HttpResponse.json({
-        tradeId: ids.bicycle,
-        version: 1,
-        participantIds: [ids.self, ids.owner],
-        expiresAt: revised.expiresAt,
-        createdBy: ids.self,
-        createdAt: revised.createdAt,
-        items: proposal().items,
-      }),
-    ),
   );
-  mount(undefined, true);
+  const { user } = mount(undefined, true);
+  await user.click(
+    await screen.findByRole('button', { name: 'Review current terms' }),
+  );
   expect(
-    await screen.findByRole('region', { name: 'Term changes' }),
-  ).toHaveTextContent('Everyone must agree to version 2');
-  expect(await screen.findByText(/1 listing snapshot revised/)).toBeVisible();
-  expect(screen.queryByText('Current terms accepted')).not.toBeInTheDocument();
-  expect(screen.getAllByText(/Renewed agreement required/)).toHaveLength(2);
+    await screen.findByRole('region', { name: 'Acceptance review' }),
+  ).toHaveTextContent('Review version 2');
   expect(screen.getByText(/New material details/)).toBeVisible();
+  expect(
+    screen.queryByText('Your acceptance is saved.', { exact: true }),
+  ).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Edit proposal' })).toBeVisible();
 });
 
@@ -497,9 +494,7 @@ test('confirmed detail freezes the saved terms and exposes no edit control', asy
     ),
   );
   mount(undefined, true);
-  expect(
-    await screen.findByText(/Confirmed terms are read-only/),
-  ).toBeVisible();
+  expect(await screen.findByText('Agreed. Arrange your meetup.')).toBeVisible();
   expect(
     screen.queryByRole('button', { name: 'Edit proposal' }),
   ).not.toBeInTheDocument();
@@ -536,17 +531,6 @@ test('conflict refresh updates shared detail while preserving the independent ol
     http.get('http://127.0.0.1:3001/api/v1/trades/:id', () =>
       HttpResponse.json(authoritative),
     ),
-    http.get('http://127.0.0.1:3001/api/v1/trades/:id/versions/:version', () =>
-      HttpResponse.json({
-        tradeId: ids.bicycle,
-        version: 1,
-        participantIds: [ids.self, ids.owner],
-        expiresAt: authoritative.expiresAt,
-        createdBy: ids.self,
-        createdAt: authoritative.createdAt,
-        items: proposal().items,
-      }),
-    ),
     http.put('http://127.0.0.1:3001/api/v1/trades/:id', () => {
       writes++;
       authoritative = proposal(2);
@@ -575,7 +559,9 @@ test('conflict refresh updates shared detail while preserving the independent ol
     await screen.findByRole('region', { name: 'Proposal conflict' }),
   ).toHaveTextContent('latest version 2');
   await user.keyboard('{Escape}');
-  expect(await screen.findByText('Proposed · Version 2')).toBeVisible();
+  expect(
+    await screen.findByText('Review the exchange and agree when you’re ready.'),
+  ).toBeVisible();
   expect(screen.getByRole('button', { name: 'Edit proposal' })).toHaveFocus();
   await user.click(screen.getByRole('button', { name: 'Edit proposal' }));
   expect(
@@ -625,9 +611,11 @@ test('a frozen authoritative response keeps the open recovery draft while shared
   ).toHaveTextContent('Canvas bag');
   expect(screen.getByRole('button', { name: 'Save revision' })).toBeDisabled();
   await user.keyboard('{Escape}');
-  expect(await screen.findByText('Confirmed · Version 1')).toBeVisible();
-  expect(screen.getByText(/Confirmed terms are read-only/)).toBeVisible();
-  expect(screen.getByRole('heading', { name: 'Swap proposal' })).toHaveFocus();
+  expect(await screen.findByText('Agreed. Arrange your meetup.')).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Edit proposal' }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Your swap' })).toHaveFocus();
   expect(
     screen.queryByRole('button', { name: 'Edit proposal' }),
   ).not.toBeInTheDocument();
@@ -668,7 +656,7 @@ test('acceptance requires explicit refreshed review, preserves key on failure an
     ['listings', { availability: 'available' }],
     ['proposal-items', ids.self],
   ];
-  await screen.findByRole('heading', { name: 'Agree to current terms' });
+  await screen.findByRole('heading', { name: 'Accept this swap' });
   for (const key of refreshedKeys)
     queries.setQueryData(key, { synthetic: true });
   expect(
@@ -690,7 +678,7 @@ test('acceptance requires explicit refreshed review, preserves key on failure an
   await user.click(screen.getByRole('button', { name: 'Accept version 1' }));
   await screen.findByText(/Your acceptance is saved/);
   expect(
-    screen.getByRole('heading', { name: 'Agree to current terms' }),
+    screen.getByRole('heading', { name: 'Accept this swap' }),
   ).toHaveFocus();
   expect(payloads[0]).toEqual(payloads[1]);
   for (const key of refreshedKeys)
@@ -704,10 +692,6 @@ test('stale acceptance retains old terms and requires a deliberate review of the
   server.use(
     http.get('http://127.0.0.1:3001/api/v1/trades/:id', () =>
       HttpResponse.json(saved),
-    ),
-    http.get(
-      'http://127.0.0.1:3001/api/v1/trades/:id/versions/:version',
-      () => new HttpResponse(null, { status: 404 }),
     ),
     http.post('http://127.0.0.1:3001/api/v1/trades/:id/accept', () => {
       writes++;
@@ -763,8 +747,8 @@ test('confirmed reservations represent agreement without reporting its own items
     ),
   );
   mount(undefined, true);
-  await screen.findByRole('heading', { name: 'Agreement confirmed' });
-  expect(screen.getByText(/not physical handover/)).toBeInTheDocument();
+  await screen.findByText('Agreed. Arrange your meetup.');
+  expect(screen.getByText('Agreed. Arrange your meetup.')).toBeVisible();
   expect(
     screen.queryByText(/proposed items are no longer/),
   ).not.toBeInTheDocument();

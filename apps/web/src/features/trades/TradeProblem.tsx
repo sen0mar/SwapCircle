@@ -1,9 +1,6 @@
 import { Select } from '../../components/ui/select';
 import { useRef, useState } from 'react';
-import type {
-  TradeProblemSubmission,
-  TradeReceiptSubmission,
-} from '@swapcircle/contracts';
+import type { TradeProblemSubmission } from '@swapcircle/contracts';
 import { Button } from '../../components/ui/button';
 import {
   Dialog,
@@ -12,44 +9,28 @@ import {
   DialogTitle,
 } from '../../components/ui/dialog';
 import { ApiError } from '../../lib/api-client';
-import { useAuth } from '../auth/AuthProvider';
 import type { TradeDetail } from './trades-api';
-import { useTradeOutcome } from './useTrades';
+import { useTradeProblem } from './useTrades';
 
-type Submission = {
-  action: 'receipt' | 'problem';
-  input: TradeReceiptSubmission | TradeProblemSubmission;
-};
-
-export function TradeCompletion({
+export function TradeProblem({
   detail,
   current,
 }: {
   detail: TradeDetail;
   current: boolean;
 }) {
-  const { session } = useAuth();
-  const outcome = useTradeOutcome(detail.id);
+  const outcome = useTradeProblem(detail.id);
   const heading = useRef<HTMLHeadingElement>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);
   const [review, setReview] = useState<{
-    action: 'receipt' | 'problem';
     version: number;
   } | null>(null);
-  const [submission, setSubmission] = useState<Submission | null>(null);
+  const [submission, setSubmission] = useState<TradeProblemSubmission | null>(
+    null,
+  );
   const [kind, setKind] = useState<TradeProblemSubmission['kind']>('problem');
   const [reason, setReason] = useState('');
   const [saved, setSaved] = useState('');
-  const receipts = new Set(
-    detail.events
-      .filter(
-        (event) =>
-          event.eventType === 'receipt_acknowledged' &&
-          event.version === detail.currentVersion,
-      )
-      .map((event) => event.actorId),
-  );
-  const acknowledged = receipts.has(session?.user.id ?? '');
   const active = detail.status === 'confirmed' || detail.status === 'disputed';
   const rejected =
     outcome.error instanceof ApiError &&
@@ -57,40 +38,28 @@ export function TradeCompletion({
     outcome.error.status < 500;
   const changed = review?.version !== detail.currentVersion || !active;
 
-  function open(action: 'receipt' | 'problem', button: HTMLButtonElement) {
+  function open(button: HTMLButtonElement) {
     trigger.current = button;
     setSaved('');
     if (!submission) outcome.reset();
     setReview({
-      action,
-      version: submission?.input.expectedVersion ?? detail.currentVersion,
+      version: submission?.expectedVersion ?? detail.currentVersion,
     });
   }
 
   function submit() {
     if (!review) return;
     const next = submission ?? {
-      action: review.action,
-      input:
-        review.action === 'problem'
-          ? {
-              operationKey: crypto.randomUUID(),
-              expectedVersion: review.version,
-              kind,
-              reason: reason.trim(),
-            }
-          : {
-              operationKey: crypto.randomUUID(),
-              expectedVersion: review.version,
-            },
+      operationKey: crypto.randomUUID(),
+      expectedVersion: review.version,
+      kind,
+      reason: reason.trim(),
     };
     setSubmission(next);
     outcome.mutate(next, {
       onSuccess: () => {
         setSaved(
-          next.action === 'problem'
-            ? 'Your private report was submitted. The dispute is unresolved.'
-            : 'Your receipt acknowledgement was saved.',
+          'Your private report was submitted. The dispute is unresolved.',
         );
         setSubmission(null);
         setReason('');
@@ -99,79 +68,19 @@ export function TradeCompletion({
     });
   }
 
-  if (!active && detail.status !== 'completed' && !submission && !review)
-    return null;
+  if (!active && !submission && !review) return null;
 
   return (
-    <section
-      className="panel route-panel trade-lifecycle"
-      aria-label="Receipt and problems"
-    >
-      <h2 ref={heading} tabIndex={-1}>
-        {detail.status === 'completed'
-          ? 'Swap completed'
-          : detail.status === 'disputed'
-            ? 'Dispute unresolved'
-            : receipts.size
-              ? 'Waiting for receipts'
-              : 'Confirm your receipt'}
+    <section className="swap-report-action" aria-label="Problems">
+      <h2 ref={heading} tabIndex={-1} className="sr-only">
+        Report a problem
       </h2>
-      <p>
-        Accepting the terms confirms agreement, not delivery. Each participant
-        records only their own receipt after receiving all items due to them.
-      </p>
-      <ul>
-        {detail.participants.map((person) => (
-          <li key={person.userId}>
-            {person.displayName}
-            {person.userId === session?.user.id ? ' (you)' : ''} ·{' '}
-            {receipts.has(person.userId)
-              ? 'Receipt acknowledged'
-              : 'Receipt pending'}
-          </li>
-        ))}
-      </ul>
-      {detail.status === 'confirmed' && (
-        <p>
-          {receipts.size} of {detail.participants.length} receipts acknowledged.
-          The swap completes only when everyone acknowledges; items stay
-          reserved until then.
-        </p>
-      )}
-      {detail.status === 'disputed' && (
-        <p>
-          A report does not resolve the dispute. Items stay reserved. You may
-          still record your own receipt as evidence, but this will not complete
-          or resolve the disputed swap. Private report review and dispute
-          resolution are not available yet.
-        </p>
-      )}
-      {detail.status === 'completed' && (
-        <p>
-          Everyone acknowledged receipt. Items are exchanged. Cancellation and
-          new problem reports are unavailable after completion; a review process
-          is not available yet.
-        </p>
-      )}
-      <p>
-        Report details are private and are not shared in participant history or
-        notifications. Report submission is not a promise of review or
-        resolution.
-      </p>
       {saved && <p role="status">{saved}</p>}
       {active && !submission && (
         <div className="notification-actions">
           <Button
-            disabled={!current || acknowledged || outcome.isPending}
-            onClick={(event) => open('receipt', event.currentTarget)}
-          >
-            {acknowledged
-              ? 'Your receipt is acknowledged'
-              : 'Confirm my receipt'}
-          </Button>
-          <Button
             disabled={!current || outcome.isPending}
-            onClick={(event) => open('problem', event.currentTarget)}
+            onClick={(event) => open(event.currentTarget)}
           >
             Report a problem
           </Button>
@@ -189,9 +98,7 @@ export function TradeCompletion({
             Your original submission is saved. Reopen it to verify the same
             action without creating a duplicate.
           </p>
-          <Button
-            onClick={(event) => open(submission.action, event.currentTarget)}
-          >
+          <Button onClick={(event) => open(event.currentTarget)}>
             Review saved submission
           </Button>
         </>
@@ -212,17 +119,13 @@ export function TradeCompletion({
             else heading.current?.focus();
           }}
         >
-          <DialogTitle>
-            {review?.action === 'problem'
-              ? 'Submit a private problem report'
-              : 'Confirm your own receipt?'}
-          </DialogTitle>
+          <DialogTitle>Submit a private problem report</DialogTitle>
           <DialogDescription>
-            {review?.action === 'problem'
-              ? 'This records a problem and protects the reserved items. It does not resolve the dispute or release items. Private review and resolution are not available yet.'
-              : 'Confirm only after receiving all items due to you in these terms. You cannot acknowledge for anyone else. A disputed swap will remain disputed.'}
+            This records a problem and protects the reserved items. It does not
+            resolve the dispute or release items. Private review and resolution
+            are not available yet.
           </DialogDescription>
-          {review?.action === 'problem' && (
+          {review && (
             <>
               <label htmlFor="problem-kind">Problem type</label>
               <Select
@@ -287,10 +190,7 @@ export function TradeCompletion({
               disabled={
                 outcome.isPending ||
                 rejected ||
-                (!submission &&
-                  (changed ||
-                    !current ||
-                    (review?.action === 'problem' && !reason.trim())))
+                (!submission && (changed || !current || !reason.trim()))
               }
               onClick={submit}
             >
@@ -298,9 +198,7 @@ export function TradeCompletion({
                 ? 'Checking and saving…'
                 : submission
                   ? 'Retry same submission'
-                  : review?.action === 'problem'
-                    ? 'Submit private report'
-                    : 'I received all my items'}
+                  : 'Submit private report'}
             </Button>
           </div>
         </DialogContent>

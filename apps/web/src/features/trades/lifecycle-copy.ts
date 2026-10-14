@@ -3,7 +3,7 @@ import type { TradeDetail } from './trades-api';
 export function lifecycleSummary(status: TradeDetail['status']) {
   switch (status) {
     case 'completed':
-      return 'Everyone acknowledged receipt. This swap is completed and its items are exchanged. Completion cannot be undone here; reporting after completion is not supported yet.';
+      return 'This swap is completed and its items are exchanged. Completion cannot be undone here; reporting after completion is not supported yet.';
     case 'disputed':
       return 'A problem was reported. This dispute is unresolved; items remain reserved and ordinary cancellation and completion are blocked. Private report review and dispute resolution are not available yet.';
     case 'declined':

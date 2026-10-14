@@ -331,59 +331,46 @@ try {
         // Keyboard activation completes before the mutation response. Wait for
         // persisted acceptance before another participant refreshes the trade.
         await expect(
-          page
-            .getByRole('region', { name: 'Agreement', exact: true })
-            .getByRole('status'),
-        ).toContainText(/Your acceptance is saved|Everyone accepted version 1/);
+          page.getByText(
+            /Your acceptance is saved|Agreed. Arrange your meetup./,
+          ),
+        ).toBeVisible();
       }
-      await a.getByRole('button', { name: 'Refresh swap status' }).click();
-      await expect(
-        a.getByRole('button', { name: 'Confirm my receipt' }),
-      ).toBeVisible();
+      await a.reload();
       const meeting = a.getByRole('region', {
         name: 'Meeting arrangement',
         exact: true,
       });
-      await meeting
-        .getByRole('button', { name: 'Plan meeting', exact: true })
-        .click();
-      await meeting
+      await meeting.getByRole('button', { name: 'Plan meetup' }).click();
+      const dialog = a.getByRole('dialog');
+      await dialog
         .getByLabel('Public meeting place')
         .fill('Synthetic public library entrance');
-      await meeting.getByLabel('Arrangement time zone').fill('Europe/Paris');
-      await meeting
-        .getByLabel('Date and time in arrangement zone')
-        .fill('2026-11-03T12:00');
-      await meeting.getByRole('button', { name: 'Save meeting' }).click();
-      await expect(
-        meeting.getByRole('heading', { name: 'Arrangement 1', exact: true }),
-      ).toBeVisible();
-      await meeting
-        .getByRole('button', { name: 'Confirm this meeting' })
-        .click();
-      await b
-        .getByRole('button', { name: 'Refresh meeting', exact: true })
-        .click();
-      await b.getByRole('button', { name: 'Confirm this meeting' }).click();
-      await audit(a, `confirmed-${theme}-${width}`, true);
+      await dialog.getByLabel('Time zone').selectOption('Europe/Paris');
+      await dialog.getByLabel('Date', { exact: true }).fill('2026-11-03');
+      await dialog.getByLabel('Hour', { exact: true }).selectOption('12');
+      await dialog.getByLabel('Minute', { exact: true }).selectOption('00');
+      await dialog.getByRole('button', { name: 'Save meeting' }).click();
+      await expect(dialog).toHaveCount(0);
       for (const page of [a, b]) {
-        await keyboardOpen(
-          page,
-          page.getByRole('button', { name: 'Confirm my receipt' }),
-        );
-        await activate(
-          page,
-          page.getByRole('button', { name: 'Confirm my receipt' }),
-        );
+        if (page === b) await page.reload();
         await page
-          .getByRole('button', { name: 'I received all my items' })
+          .getByRole('button', { name: 'Confirm this meeting' })
           .click();
+        await page.getByRole('button', { name: 'Confirm and notify' }).click();
         await expect(page.getByRole('dialog')).toHaveCount(0);
       }
-      await a.getByRole('button', { name: 'Refresh swap status' }).click();
-      await expect(
-        a.getByText('Everyone acknowledged receipt', { exact: false }).first(),
-      ).toBeVisible();
+      await audit(a, `confirmed-${theme}-${width}`, true);
+      // Retain completed-history rendering coverage using server-owned synthetic fixture actions.
+      for (const user of [alice, bob])
+        await api(
+          `/trades/${id}/receipt`,
+          user,
+          { operationKey: randomUUID(), expectedVersion: 1 },
+          'POST',
+        );
+      await a.reload();
+      await expect(a.getByText('Swap complete.')).toBeVisible();
       assert.equal((await api(`/trades/${id}`, alice)).status, 'completed');
       const rows = (
         await fixture.migration.query(
@@ -630,7 +617,7 @@ try {
   ).toBeVisible();
   await a.unroute(`**/api/v1/trades/${completedId}`);
   await a.getByRole('button', { name: 'Retry swap status' }).click();
-  await expect(a.getByText(/Everyone acknowledged receipt/)).toBeVisible();
+  await expect(a.getByText(/This swap is completed/)).toBeVisible();
   // Explicit account recovery clears private forms and channels via the real SDK sign-out.
   await a.goto(`${origin}/account`);
   await a.getByRole('button', { name: 'Open account' }).click();

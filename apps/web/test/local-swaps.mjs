@@ -171,16 +171,18 @@ try {
   await expect(alicePage).toHaveURL(/\/swaps\/[0-9a-f-]+$/);
   const tradeId = alicePage.url().split('/').pop();
   await expect(
-    alicePage.getByRole('heading', { name: 'Current terms', exact: true }),
+    alicePage.getByRole('heading', { name: 'You give', exact: true }),
   ).toBeVisible();
   await expect(
-    alicePage.getByText('This is a proposal.', { exact: false }),
+    alicePage.getByText('Review the exchange and agree when you’re ready.', {
+      exact: true,
+    }),
   ).toBeVisible();
   await alicePage.reload();
   await expect(alicePage.getByText(aliceItem.title).first()).toBeVisible();
   await alicePage.getByRole('link', { name: 'My Swaps' }).first().click();
   await expect(
-    alicePage.getByRole('link', { name: 'View swap' }),
+    alicePage.getByRole('link', { name: /^View swap/ }),
   ).toBeVisible();
   await alicePage.getByLabel('Theme').selectOption('light');
   await alicePage.setViewportSize({ width: 360, height: 900 });
@@ -190,9 +192,9 @@ try {
   });
 
   await signIn(bobPage, bob, '/swaps');
-  await expect(bobPage.getByRole('link', { name: 'View swap' })).toBeVisible();
+  await expect(bobPage.getByRole('link', { name: /^View swap/ })).toBeVisible();
   await bobPage.reload();
-  await expect(bobPage.getByRole('link', { name: 'View swap' })).toBeVisible();
+  await expect(bobPage.getByRole('link', { name: /^View swap/ })).toBeVisible();
   await bobPage.getByLabel('Theme').selectOption('dark');
   await bobPage.setViewportSize({ width: 1280, height: 900 });
   await bobPage.screenshot({
@@ -203,11 +205,11 @@ try {
   await expect(
     bobPage
       .getByRole('dialog', { name: 'Notifications' })
-      .getByRole('link', { name: 'View swap' }),
+      .getByRole('link', { name: /^View swap/ }),
   ).toBeVisible();
   await bobPage
     .getByRole('dialog', { name: 'Notifications' })
-    .getByRole('link', { name: 'View swap' })
+    .getByRole('link', { name: /^View swap/ })
     .click();
   await expect(bobPage).toHaveURL(`${origin}/swaps/${tradeId}`);
   await expect(
@@ -241,7 +243,7 @@ try {
   );
   await bobPage.reload();
   await expect(
-    bobPage.getByText(/proposed item is no longer available/),
+    bobPage.getByText(/An item is no longer available/),
   ).toBeVisible();
 
   for (const [name, page] of [

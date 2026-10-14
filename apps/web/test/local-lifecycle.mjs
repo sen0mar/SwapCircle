@@ -196,7 +196,11 @@ try {
 
   const lifecycle = (page) =>
     page.getByRole('region', { name: 'Swap lifecycle' });
-  const capture = async (page, state, target = lifecycle(page)) => {
+  const capture = async (
+    page,
+    state,
+    target = page.locator('.trade-detail'),
+  ) => {
     for (const theme of ['light', 'dark']) {
       await page.getByLabel('Theme').selectOption(theme);
       for (const width of [360, 768, 800, 1280, 1600]) {
@@ -255,6 +259,10 @@ try {
     { action: 'accept' },
     'POST',
   );
+  await bobPage
+    .locator('summary')
+    .filter({ hasText: /^Swap \+ coffee$/ })
+    .click();
   await bobPage
     .getByRole('button', {
       name: 'Refresh coffee with Lifecycle Alice',
@@ -337,15 +345,7 @@ try {
   await bobPage
     .getByRole('button', { name: 'Confirm decline', exact: true })
     .click();
-  await expect(lifecycle(bobPage)).toContainText(
-    'A participant declined this proposal',
-  );
-  await expect(
-    bobPage.getByRole('heading', { name: 'History', exact: true }),
-  ).toBeVisible();
-  await expect(
-    bobPage.getByRole('heading', { name: 'Closed swap' }),
-  ).toBeFocused();
+  await expect(bobPage.getByText('This swap is declined.')).toBeVisible();
   assert.equal(
     (await api(`/trades/${declined.id}`, alice)).events.at(-1).eventType,
     'declined',
@@ -361,9 +361,7 @@ try {
     [expired.id],
   );
   await alicePage.goto(`${origin}/swaps/${expired.id}`);
-  await expect(lifecycle(alicePage)).toContainText(
-    'server has marked this proposal expired',
-  );
+  await expect(alicePage.getByText('This swap is expired.')).toBeVisible();
   await expect(
     alicePage.getByRole('button', { name: 'Review current terms' }),
   ).toHaveCount(0);
@@ -397,10 +395,7 @@ try {
   ).toContainText('no longer available');
   await alicePage.goto(`${origin}/swaps/${cancelled.id}`);
   await expect(
-    alicePage.getByRole('heading', {
-      name: 'Agreement confirmed',
-      includeHidden: true,
-    }),
+    alicePage.getByText('Agreed. Arrange your meetup.'),
   ).toBeVisible();
   let release;
   let committed;
@@ -426,21 +421,10 @@ try {
   await expect(
     alicePage.getByRole('button', { name: 'Checking and saving…' }),
   ).toBeDisabled();
-  await expect(
-    alicePage.getByRole('heading', {
-      name: 'Agreement confirmed',
-      includeHidden: true,
-    }),
-  ).toBeVisible();
-  await expect(
-    alicePage.getByText('Synthetic camera to Lifecycle Bob · reserved', {
-      exact: true,
-    }),
-  ).toBeVisible();
   release();
-  await expect(lifecycle(alicePage)).toContainText('cancelled, not completed');
+  await expect(alicePage.getByText('This swap is cancelled.')).toBeVisible();
   await expect(
-    alicePage.getByText('Synthetic camera to Lifecycle Bob', { exact: true }),
+    alicePage.getByRole('heading', { name: 'Synthetic camera', exact: true }),
   ).toBeVisible();
   assert.equal(
     (await api(`/listings/${left.id}`, alice)).availability,
@@ -490,7 +474,9 @@ try {
   assert.equal((await api(`/trades/${stale.id}`, bob)).status, 'proposed');
   await bobPage.getByRole('button', { name: 'Go back', exact: true }).click();
   await expect(
-    bobPage.getByText('Proposed · Version 2', { exact: true }),
+    bobPage.getByText('Review the exchange and agree when you’re ready.', {
+      exact: true,
+    }),
   ).toBeVisible();
   await lifecycle(bobPage)
     .getByRole('button', { name: 'Cancel proposal' })
@@ -498,7 +484,7 @@ try {
   await bobPage
     .getByRole('button', { name: 'Confirm cancellation', exact: true })
     .click();
-  await expect(lifecycle(bobPage)).toContainText('cancelled, not completed');
+  await expect(bobPage.getByText('This swap is cancelled.')).toBeVisible();
 
   stage = 'same-version-change';
 
@@ -532,12 +518,12 @@ try {
     .getByRole('button', { name: 'Cancel confirmed swap' })
     .click();
   await expect(bobPage.getByRole('dialog')).toContainText(
-    'before any reported handover or receipt',
+    'before any reported exchange or problem',
   );
   await bobPage
     .getByRole('button', { name: 'Confirm cancellation', exact: true })
     .click();
-  await expect(lifecycle(bobPage)).toContainText('cancelled, not completed');
+  await expect(bobPage.getByText('This swap is cancelled.')).toBeVisible();
 
   stage = 'acceptance-replay';
 
@@ -580,10 +566,10 @@ try {
   await bobPage
     .getByRole('button', { name: 'Accept version 1', exact: true })
     .click();
-  await expect(lifecycle(bobPage)).toContainText('cancelled, not completed');
-  await expect(
-    bobPage.getByRole('heading', { name: 'Agreement confirmed' }),
-  ).toHaveCount(0);
+  await expect(bobPage.getByText('This swap is cancelled.')).toBeVisible();
+  await expect(bobPage.getByText('Agreed. Arrange your meetup.')).toHaveCount(
+    0,
+  );
   assert.equal(
     (await api(`/listings/${left.id}`, alice)).availability,
     'available',
@@ -607,7 +593,7 @@ try {
     await bobPage.goto(`${origin}/notifications/${notice.id}`);
     await expect(bobPage.getByText(new RegExp(copy))).toBeVisible();
     await expect(
-      bobPage.getByRole('link', { name: 'View swap', exact: true }),
+      bobPage.getByRole('link', { name: /^View swap/ }),
     ).toBeVisible();
     await expect(bobPage.getByText('Synthetic camera')).toHaveCount(0);
     if (id === cancelled.id)
@@ -619,9 +605,9 @@ try {
   }
   const notice = notifications.find((n) => n.resource_id === cancelled.id);
   await outsider.goto(`${origin}/notifications/${notice.id}`);
-  await expect(
-    outsider.getByRole('link', { name: 'View swap', exact: true }),
-  ).toHaveCount(0);
+  await expect(outsider.getByRole('link', { name: /^View swap/ })).toHaveCount(
+    0,
+  );
   await expect(outsider.getByText(/cancelled, not completed/)).toHaveCount(0);
   stage = 'revoked-access';
 
@@ -675,7 +661,7 @@ try {
   await expect(bobPage.getByText(/Current swap status: proposed/)).toHaveCount(
     0,
   );
-  await bobPage.getByRole('link', { name: 'View swap', exact: true }).click();
+  await bobPage.getByRole('link', { name: /^View swap/ }).click();
   await expect(
     bobPage.getByRole('heading', { name: 'Swap unavailable' }),
   ).toBeVisible();

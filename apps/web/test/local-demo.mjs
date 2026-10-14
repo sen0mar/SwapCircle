@@ -135,9 +135,7 @@ try {
   await expect(page.locator('.shelf-item')).toHaveCount(10);
   stage = 'swaps';
   await page.goto(`${origin}/swaps`);
-  await expect(
-    page.getByRole('link', { name: 'View swap', exact: true }),
-  ).toHaveCount(9);
+  await expect(page.getByRole('link', { name: /^View swap/ })).toHaveCount(9);
   for (const key of [
     'confirmed-plants',
     'completed-books',

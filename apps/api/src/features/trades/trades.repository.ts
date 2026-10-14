@@ -23,7 +23,20 @@ const summarySql = `SELECT t.id, t.creator_id AS "creatorId",
   EXISTS (SELECT 1 FROM public.trade_items i JOIN public.trade_versions v ON v.id=i.version_id
    LEFT JOIN public.listings l ON l.id=i.listing_id
    WHERE v.trade_id=t.id AND v.version=t.current_version
-     AND l.availability IS DISTINCT FROM 'available') AS "hasUnavailableItems"
+     AND l.availability IS DISTINCT FROM 'available') AS "hasUnavailableItems",
+  COALESCE((SELECT jsonb_agg(preview.data ORDER BY preview.id) FROM (
+    SELECT i.id, jsonb_build_object(
+      'listingId', i.listing_id, 'title', i.title_snapshot,
+      'ownerId', i.owner_id, 'recipientId', i.recipient_id,
+      'ownerName', giver.display_name, 'recipientName', receiver.display_name
+    ) AS data
+    FROM public.trade_items i
+    JOIN public.trade_versions v ON v.id=i.version_id
+    JOIN public.profiles giver ON giver.id=i.owner_id
+    JOIN public.profiles receiver ON receiver.id=i.recipient_id
+    WHERE v.trade_id=t.id AND v.version=t.current_version
+    ORDER BY i.id LIMIT 4
+  ) preview), '[]'::jsonb) AS "itemPreviews"
   FROM public.trades t`;
 
 export class TradesRepository {

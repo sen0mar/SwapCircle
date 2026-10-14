@@ -229,7 +229,7 @@ try {
   await expect(agreement(alicePage)).toContainText('Your acceptance is saved');
   await expect(
     alicePage.getByRole('heading', {
-      name: 'Agree to current terms',
+      name: 'Accept this swap',
       exact: true,
     }),
   ).toBeFocused();
@@ -238,8 +238,10 @@ try {
     'available',
   );
   await capture(alicePage, 'pending');
-  await bobPage.getByRole('button', { name: 'Refresh agreement' }).click();
-  await expect(agreement(bobPage)).toContainText('1 of 2');
+  await bobPage.reload();
+  await expect(agreement(bobPage)).toContainText(
+    'Items are reserved once everyone agrees.',
+  );
   // Commit succeeds but the response is lost: authoritative read still confirms the outcome.
   let committed = false;
   const releaseResponse = new Promise((resolve) => {
@@ -258,18 +260,21 @@ try {
     bobPage.getByRole('button', { name: 'Saving acceptance…' }),
   ).toBeDisabled();
   await expect(
-    bobPage.getByText('Proposed · Version 1', { exact: true }),
+    bobPage.getByText('Review the exchange and agree when you’re ready.', {
+      exact: true,
+    }),
   ).toBeVisible();
   releaseAcceptance();
-  await expect(agreement(bobPage)).toContainText('Agreement confirmed');
-  await expect(agreement(bobPage)).toContainText('not physical handover');
+  await expect(bobPage.getByText('Agreed. Arrange your meetup.')).toBeVisible();
   await bobPage.unroute(`**/trades/${direct.id}/accept`);
   await alicePage.goto(`${origin}/swaps`);
   await expect(
-    alicePage.getByText('Confirmed · agreement reached'),
+    alicePage.getByText('Confirmed', { exact: true }).first(),
   ).toBeVisible();
   await alicePage.goto(`${origin}/swaps/${direct.id}`);
-  await expect(agreement(alicePage)).toContainText('Agreement confirmed');
+  await expect(
+    alicePage.getByText('Agreed. Arrange your meetup.'),
+  ).toBeVisible();
   await capture(alicePage, 'confirmed');
   await alicePage.goto(`${origin}/listings/${items[0].id}`);
   await expect(
@@ -318,16 +323,18 @@ try {
     await page.goto(`${origin}/swaps/${group.id}`);
   await accept(alicePage);
   await accept(bobPage);
-  await expect(agreement(bobPage)).toContainText('2 of 3');
+  await expect(agreement(bobPage)).toContainText('Your acceptance is saved');
   assert.equal(
     (await api(`/listings/${items[1].id}`, alice)).availability,
     'available',
   );
   await accept(carolPage);
-  await expect(agreement(carolPage)).toContainText('Agreement confirmed');
+  await expect(
+    carolPage.getByText('Agreed. Arrange your meetup.'),
+  ).toBeVisible();
   for (const page of [alicePage, bobPage]) {
     await page.reload();
-    await expect(agreement(page)).toContainText('Everyone accepted version 1');
+    await expect(page.getByText('Agreed. Arrange your meetup.')).toBeVisible();
   }
   const groupTerms = await api(`/trades/${group.id}`, alice);
   assert.ok(groupTerms.participants.every((p) => p.acceptedVersion === 1));

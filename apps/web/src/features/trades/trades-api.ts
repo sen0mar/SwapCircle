@@ -1,6 +1,5 @@
 import {
   tradeOutcomeResultSchema,
-  type TradeReceiptSubmission,
   type TradeProblemSubmission,
   tradeTransitionResultSchema,
   type TradeTransition,
@@ -11,7 +10,6 @@ import {
   tradePageSchema,
   type ProposalCreation,
   type ProposalRevision,
-  tradeVersionSchema,
 } from '@swapcircle/contracts';
 import type { apiRequest } from '../../lib/api-client';
 
@@ -67,7 +65,6 @@ export function getTrade(
 }
 
 export type TradeDetail = Awaited<ReturnType<typeof getTrade>>;
-export type TradeVersion = Awaited<ReturnType<typeof getTradeVersion>>;
 
 export function reviseTrade(
   request: typeof apiRequest,
@@ -82,19 +79,6 @@ export function reviseTrade(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     },
-  );
-}
-
-export function getTradeVersion(
-  request: typeof apiRequest,
-  id: string,
-  version: number,
-  signal: AbortSignal,
-) {
-  return request(
-    `/api/v1/trades/${encodeURIComponent(id)}/versions/${version}`,
-    tradeVersionSchema,
-    { signal },
   );
 }
 
@@ -114,14 +98,13 @@ export function acceptTrade(
   );
 }
 
-export function recordTradeOutcome(
+export function reportTradeProblem(
   request: typeof apiRequest,
   id: string,
-  action: 'receipt' | 'problem',
-  input: TradeReceiptSubmission | TradeProblemSubmission,
+  input: TradeProblemSubmission,
 ) {
   return request(
-    `/api/v1/trades/${encodeURIComponent(id)}/${action}`,
+    `/api/v1/trades/${encodeURIComponent(id)}/problem`,
     tradeOutcomeResultSchema,
     {
       method: 'POST',

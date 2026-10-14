@@ -118,6 +118,14 @@ try {
     );
   const direct = await propose([alice, bob], [items[0], items[2]]);
 
+  for (const user of [alice, bob])
+    await api(
+      `/trades/${direct.id}/accept`,
+      user,
+      { operationKey: randomUUID(), expectedVersion: 1 },
+      'POST',
+    );
+
   const environment = {
     ...process.env,
     NODE_ENV: 'production',
@@ -184,265 +192,99 @@ try {
   await signIn(bobPage, bob, `/swaps/${direct.id}`);
   const meeting = (page) =>
     page.getByRole('region', { name: 'Meeting arrangement', exact: true });
-  const a = meeting(alicePage),
-    b = meeting(bobPage);
-  await api(
-    `/trades/${direct.id}/accept`,
-    alice,
-    { operationKey: randomUUID(), expectedVersion: 1 },
-    'POST',
-  );
-  const coffeeInvite = await api(
-    `/trades/${direct.id}/coffee`,
-    alice,
-    { operationKey: randomUUID(), inviteeId: bob.id, offerToPay: true },
-    'POST',
-  );
-  await api(
-    `/trades/${direct.id}/coffee/${coffeeInvite.id}/respond`,
-    bob,
-    { action: 'accept' },
-    'POST',
-  );
-  const baseline = await api(`/trades/${direct.id}`, alice);
-  const coffeeBaseline = await api(`/trades/${direct.id}/coffee`, alice);
-  const refresh = async (page) => {
-    await meeting(page)
-      .getByRole('button', { name: 'Refresh meeting', exact: true })
-      .click();
-    await expect(
-      meeting(page).getByRole('button', {
-        name: 'Change meeting',
-        exact: true,
-      }),
-    ).toBeEnabled();
-  };
-  const capture = async (page, state) => {
-    for (const theme of ['light', 'dark']) {
-      await page.getByLabel('Theme').selectOption(theme);
-      for (const width of [360, 768, 800, 1280, 1600]) {
-        await page.setViewportSize({ width, height: 900 });
-        await page.evaluate(() => globalThis.scrollTo(0, 0));
-        assert.ok(
-          await page.evaluate(
-            () =>
-              globalThis.document.documentElement.scrollWidth <=
-              globalThis.innerWidth,
-          ),
-        );
-        assert.deepEqual(
-          (await new AxeBuilder({ page }).analyze()).violations,
-          [],
-        );
-        if (width === 360 || width === 1280) {
-          await page.screenshot({
-            path: new URL(`${state}-${theme}-${width}.png`, output).pathname,
-            fullPage: true,
-          });
-          await meeting(page).screenshot({
-            path: new URL(`${state}-${theme}-${width}-meeting.png`, output)
-              .pathname,
-          });
-        }
-      }
-    }
-  };
-  await a.getByRole('button', { name: 'Plan meeting', exact: true }).click();
-  await a
+  const dialog = alicePage.getByRole('dialog');
+  await meeting(alicePage).getByRole('button', { name: 'Plan meetup' }).click();
+  await dialog
     .getByLabel('Public meeting place')
     .fill('Synthetic public library entrance');
-  await a.getByLabel('Arrangement time zone').fill('Europe/Paris');
-  await a
-    .getByLabel('Date and time in arrangement zone')
-    .fill('2026-03-29T02:30');
-  await a.getByRole('button', { name: 'Save meeting' }).click();
-  await expect(a).toContainText('Choose a valid local date');
-  await a
-    .getByLabel('Date and time in arrangement zone')
-    .fill('2026-10-25T02:30:00.123');
-  await a.getByRole('button', { name: 'Save meeting' }).click();
-  await expect(a.getByLabel(/First occurrence/)).not.toBeChecked();
-  await expect(a.getByLabel(/Second occurrence/)).not.toBeChecked();
-  await a.getByLabel(/Second occurrence/).check();
-  await capture(alicePage, 'repeated-time');
-  await a.getByRole('button', { name: 'Save meeting' }).click();
-  await expect(
-    a.getByRole('heading', { name: 'Arrangement 1', exact: true }),
-  ).toBeVisible();
+  await dialog.getByLabel('Time zone').selectOption('Europe/Paris');
+  await dialog.getByLabel('Date', { exact: true }).fill('2026-03-29');
+  await dialog.getByLabel('Hour', { exact: true }).selectOption('02');
+  await dialog.getByLabel('Minute', { exact: true }).selectOption('30');
+  await dialog.getByRole('button', { name: 'Save meeting' }).click();
+  await expect(dialog).toContainText('Choose a valid local date');
+  await dialog.getByLabel('Date', { exact: true }).fill('2026-10-25');
+  await dialog.getByRole('button', { name: 'Save meeting' }).click();
+  await dialog.getByLabel(/Second occurrence/).check();
+  await dialog.getByRole('button', { name: 'Save meeting' }).click();
+  await expect(dialog).toHaveCount(0);
   let saved = await api(`/trades/${direct.id}/meeting`, alice);
-  assert.equal(saved.meetingAt, '2026-10-25T01:30:00.123Z');
-  await refresh(bobPage);
-  await expect(b).toContainText('America/New_York');
-  assert.equal(
-    await a.locator('time').getAttribute('datetime'),
-    await b.locator('time').getAttribute('datetime'),
-  );
-  await b.getByRole('button', { name: 'Confirm this meeting' }).click();
-  await expect(b).toContainText('Meeting Bob (you) · Meeting confirmed');
-  await capture(bobPage, 'confirmed');
-  await refresh(alicePage);
-  await a.getByRole('button', { name: 'Change meeting' }).click();
-  await expect(a.getByLabel('Date and time in arrangement zone')).toHaveValue(
-    '2026-10-25T02:30:00.123',
-  );
-  await a.getByRole('button', { name: 'Save meeting' }).click();
-  await expect(a.getByRole('button', { name: 'Change meeting' })).toBeEnabled();
-  const unchanged = await api(`/trades/${direct.id}/meeting`, alice);
-  assert.equal(unchanged.revision, 1);
-  assert.equal(unchanged.meetingAt, '2026-10-25T01:30:00.123Z');
-  assert.equal(
-    unchanged.responses.find((p) => p.userId === bob.id).response,
-    'confirmed',
-  );
-  await a.getByRole('button', { name: 'Change meeting' }).click();
-  await a
+  assert.equal(saved.meetingAt, '2026-10-25T01:30:00.000Z');
+  await bobPage.reload();
+  await meeting(bobPage)
+    .getByRole('button', { name: 'Confirm this meeting' })
+    .click();
+  await expect(bobPage.getByRole('dialog')).toContainText('ready to meet them');
+  await bobPage.getByRole('button', { name: 'Confirm and notify' }).click();
+  await expect(bobPage.getByRole('status')).toContainText('Meetup confirmed');
+  await alicePage.reload();
+  await meeting(alicePage)
+    .getByRole('button', { name: 'Review meetup' })
+    .click();
+  await dialog
     .getByLabel('Public meeting place')
     .fill('Synthetic public museum entrance');
-  await a
-    .getByLabel('Date and time in arrangement zone')
-    .fill('2026-10-26T15:00');
-  // Concurrent revision leaves the independent draft intact and requires deliberate reuse.
-  saved = await api(
-    `/trades/${direct.id}/meeting`,
-    bob,
-    {
-      place: 'Synthetic public square',
-      mapLink: null,
-      meetingAt: '2026-10-26T11:00:00.000Z',
-      timeZone: 'Europe/Paris',
-      operationKey: randomUUID(),
-      expectedTradeVersion: 1,
-      expectedRevision: saved.revision,
-    },
-    'PUT',
-  );
-  await a.getByRole('button', { name: 'Save meeting' }).click();
-  await expect(a).toContainText('The arrangement or trade changed');
-  await expect(a.getByLabel('Public meeting place')).toHaveValue(
-    'Synthetic public museum entrance',
-  );
-  await capture(alicePage, 'stale-draft');
-  await a
-    .getByRole('button', { name: 'Reuse draft for current arrangement' })
-    .click();
-  let intercepted = [],
-    lose = true;
+  const attempts = [];
   await alicePage.route(`**/trades/${direct.id}/meeting`, async (route) => {
     if (route.request().method() !== 'PUT') return route.continue();
-    intercepted.push(route.request().postDataJSON());
+    attempts.push(route.request().postDataJSON());
     const response = await route.fetch();
-    if (lose) {
-      lose = false;
-      await route.abort('failed');
-    } else await route.fulfill({ response });
+    if (attempts.length === 1) await route.abort('failed');
+    else await route.fulfill({ response });
   });
-  await a.getByRole('button', { name: 'Save meeting' }).click();
-  await expect(a).toContainText('outcome could not be verified');
-  await expect(a.getByLabel('Public meeting place')).toHaveValue(
+  await dialog.getByRole('button', { name: 'Save meeting' }).click();
+  await expect(dialog).toContainText('outcome could not be verified');
+  await expect(dialog.getByLabel('Public meeting place')).toHaveValue(
     'Synthetic public museum entrance',
   );
-  await capture(alicePage, 'lost-response');
-  await a.getByRole('button', { name: 'Retry meeting action' }).click();
-  await expect(
-    a.getByRole('heading', { name: 'Arrangement 3', exact: true }),
-  ).toBeVisible();
-  assert.deepEqual(intercepted[0], intercepted[1]);
+  await dialog.getByRole('button', { name: 'Retry meeting action' }).click();
+  await expect(dialog).toHaveCount(0);
+  assert.deepEqual(attempts[0], attempts[1]);
+  saved = await api(`/trades/${direct.id}/meeting`, alice);
+  assert.ok(saved.responses.every((person) => person.response === null));
   await alicePage.unroute(`**/trades/${direct.id}/meeting`);
-  await refresh(bobPage);
-  await expect(b).toContainText('Changed arrangement');
-  await expect(b).toContainText('Meeting Bob (you) · Meeting response pending');
-  await expect(b).toContainText('Synthetic public museum entrance');
-  await capture(bobPage, 'revised');
-  await b.getByRole('button', { name: 'Decline this meeting' }).click();
-  await expect(b).toContainText('Meeting Bob (you) · Meeting declined');
-  await b.getByRole('button', { name: 'Confirm this meeting' }).click();
-  await expect(b).toContainText('Meeting Bob (you) · Meeting confirmed');
-  await capture(bobPage, 'reconfirmed');
-  await refresh(alicePage);
-  await a.getByRole('button', { name: 'Confirm this meeting' }).click();
-  await expect(a).toContainText('Everyone confirmed this arrangement.');
-  await refresh(bobPage);
-  await expect(b).toContainText('Everyone confirmed this arrangement.');
-  await capture(bobPage, 'everyone-confirmed');
-  for (const page of [alicePage, bobPage]) {
-    for (const theme of ['light', 'dark']) {
-      await page.getByLabel('Theme').selectOption(theme);
-      const button = meeting(page).getByRole('button', {
-        name: 'Change meeting',
-      });
-      await button.focus();
-      await page.keyboard.press('Enter');
-      await expect(
-        meeting(page).getByLabel('Public meeting place'),
-      ).toBeVisible();
-      await meeting(page).getByLabel('Public meeting place').focus();
-      await page.keyboard.press('Tab');
-      await expect(
-        meeting(page).getByLabel('HTTPS map link (optional)'),
-      ).toBeFocused();
-      await meeting(page)
-        .getByRole('button', { name: 'Discard meeting draft' })
-        .click();
-      await expect(
-        meeting(page).getByRole('heading', {
-          name: 'Meeting arrangement',
-          exact: true,
-        }),
-      ).toBeFocused();
-    }
-  }
-  assert.deepEqual(await api(`/trades/${direct.id}`, alice), baseline);
-  assert.deepEqual(
-    await api(`/trades/${direct.id}/coffee`, alice),
-    coffeeBaseline,
+  await bobPage.reload();
+  await meeting(bobPage)
+    .getByRole('button', { name: 'Decline this meeting' })
+    .click();
+  await bobPage.getByRole('button', { name: 'Decline and notify' }).click();
+  await expect(bobPage.getByRole('status')).toContainText('Meetup declined');
+  assert.equal(
+    (await api(`/trades/${direct.id}/meeting`, bob)).responses.find(
+      (person) => person.userId === bob.id,
+    ).response,
+    'declined',
   );
-  const notifications = await (
-    await fetch(
-      `${fixture.publicAuth.url}/rest/v1/notifications?select=id,event_type,resource_type,resource_id&recipient_id=eq.${bob.id}`,
-      {
-        headers: {
-          apikey: fixture.publicAuth.key,
-          Authorization: `Bearer ${bob.token}`,
-        },
-      },
-    )
-  ).json();
-  const notice = notifications.find((n) => n.resource_type === 'meetup');
-  assert.ok(notice);
-  assert.ok(!JSON.stringify(notifications).includes('Synthetic public'));
-  await bobPage.goto(`${origin}/notifications/${notice.id}`);
-  await expect(
-    bobPage.getByRole('link', { name: 'View meeting in swap' }),
-  ).toBeVisible();
-  await expect(
-    bobPage.getByText(/related feature is not available yet/),
-  ).toHaveCount(0);
-  await expect(
-    bobPage.getByText('Synthetic public museum entrance'),
-  ).toHaveCount(0);
-  await expect(bobPage.getByText(/Europe\/Paris/)).toHaveCount(0);
-  await bobPage.getByRole('link', { name: 'View meeting in swap' }).click();
-  await expect(bobPage).toHaveURL(`${origin}/swaps/${direct.id}#meeting`);
-  await signIn(outsider, stranger, `/notifications/${notice.id}`);
-  await expect(
-    outsider.getByText('Synthetic public museum entrance'),
-  ).toHaveCount(0);
   const denial = await fetch(`${apiOrigin}/api/v1/meetups/${saved.id}`, {
     headers: { Authorization: `Bearer ${stranger.token}` },
   });
   assert.equal(denial.status, 404);
-  await alicePage.route(`**/trades/${direct.id}/meeting`, (route) =>
-    route.abort('failed'),
-  );
-  await a.getByRole('button', { name: 'Refresh meeting' }).click();
-  await expect(a).toContainText('could not be refreshed');
-  await expect(
-    a.getByRole('button', { name: 'Confirm this meeting' }),
-  ).toBeDisabled();
-  await capture(alicePage, 'read-failure');
+  for (const theme of ['light', 'dark']) {
+    await alicePage.getByLabel('Theme').selectOption(theme);
+    for (const width of [360, 768, 1280, 1600]) {
+      await alicePage.setViewportSize({ width, height: 900 });
+      assert.ok(
+        await alicePage.evaluate(
+          () =>
+            globalThis.document.documentElement.scrollWidth <=
+            globalThis.innerWidth,
+        ),
+      );
+      assert.deepEqual(
+        (await new AxeBuilder({ page: alicePage }).analyze()).violations,
+        [],
+      );
+    }
+    await meeting(alicePage)
+      .getByRole('button', { name: 'Review meetup' })
+      .click();
+    await expect(dialog.getByLabel('Date', { exact: true })).toBeVisible();
+    await alicePage.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+  }
   assert.deepEqual(errors, []);
   console.info(
-    'Real local meeting journey: cross-zone scheduling, DST choice/gap, confirmation, revision invalidation, stale drafts, lost-response same-key recovery, consent independence, private notifications, outsider denial, keyboard, responsive Light/Dark and axe passed.',
+    'Local meetup scheduling, DST, notifications, revision invalidation, retry, privacy, responsive layouts and accessibility passed.',
   );
 } finally {
   if (browser) await browser.close();

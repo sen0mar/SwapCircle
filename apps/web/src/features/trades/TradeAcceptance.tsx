@@ -52,26 +52,6 @@ export function TradeAcceptance({ detail }: { detail: TradeDetail }) {
     setReview({ terms: fresh.data, operationKey: crypto.randomUUID() });
   }
 
-  if (detail.status === 'confirmed')
-    return (
-      <section
-        className="panel route-panel trade-acceptance"
-        aria-label="Agreement"
-      >
-        <h2 ref={heading} tabIndex={-1}>
-          Agreement confirmed
-        </h2>
-        <p role="status">
-          Everyone accepted version {detail.currentVersion}. Items are reserved
-          for this swap.
-        </p>
-        <p>
-          This confirms the agreement, not physical handover or receipt of
-          items.
-        </p>
-      </section>
-    );
-
   if (detail.status !== 'proposed' || !self) return null;
 
   return (
@@ -80,29 +60,17 @@ export function TradeAcceptance({ detail }: { detail: TradeDetail }) {
       aria-label="Agreement"
     >
       <h2 ref={heading} tabIndex={-1}>
-        Agree to current terms
+        Accept this swap
       </h2>
       <p role="status">
-        {
-          detail.participants.filter(
-            (p) => p.acceptedVersion === detail.currentVersion,
-          ).length
-        }{' '}
-        of {detail.participantCount} participants accepted version{' '}
-        {detail.currentVersion}.
         {accepted
-          ? ' Your acceptance is saved. Waiting for the other participants.'
-          : ' Your acceptance is pending.'}
-      </p>
-      <p>
-        Items are reserved only when everyone accepts and the server confirms
-        availability. Chat membership is separate.
+          ? 'Your acceptance is saved. Waiting for the other participants.'
+          : 'Items are reserved once everyone agrees.'}
       </p>
       {unavailable && (
         <p role="alert">
           An item is no longer available, possibly reserved by another swap.
-          This proposal cannot confirm with these items. Your terms and history
-          remain below.
+          This proposal cannot confirm with these items.
         </p>
       )}
       {readError && (
@@ -132,6 +100,7 @@ export function TradeAcceptance({ detail }: { detail: TradeDetail }) {
       )}
       {!accepted && (
         <Button
+          variant="primary"
           onClick={() => void reviewCurrent()}
           disabled={reading || acceptance.isPending}
         >
@@ -207,13 +176,15 @@ export function TradeAcceptance({ detail }: { detail: TradeDetail }) {
           )}
         </section>
       )}
-      <Button
-        variant="secondary"
-        disabled={reading || acceptance.isPending}
-        onClick={() => void trade.refetch()}
-      >
-        Refresh agreement
-      </Button>
+      {(readError || error || changed) && (
+        <Button
+          variant="secondary"
+          disabled={reading || acceptance.isPending}
+          onClick={() => void trade.refetch()}
+        >
+          Refresh agreement
+        </Button>
+      )}
     </section>
   );
 }

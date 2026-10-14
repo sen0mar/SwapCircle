@@ -48,7 +48,6 @@ export const suites = {
       'coffee',
       'meetings',
       'lifecycle',
-      'completion',
       'accessibility',
       'backup',
       'password',
