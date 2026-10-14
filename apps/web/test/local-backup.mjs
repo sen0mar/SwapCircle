@@ -461,8 +461,8 @@ try {
   });
   await page.goto(`${origin}/swaps/${trade.id}`);
   await expect(
-    page.getByRole('region', { name: 'Swap lifecycle' }),
-  ).toContainText('cancelled, not completed');
+    page.getByText('This swap is cancelled.', { exact: true }),
+  ).toBeVisible();
   await page.screenshot({
     path: new URL('history.png', evidence).pathname,
     fullPage: true,
