@@ -278,7 +278,7 @@ try {
   const item = (current, id) =>
     panel(current).locator(`[data-notification-id="${id}"]`);
   await expect(bell(page, 3)).toBeVisible();
-  await expect(page.getByText('1 unread', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('1 unread', { exact: true })).toBeVisible();
   // Cold readiness: wait for the real replication-ready system frame, then
   // assert immediate seeded INSERT delivery without relying on focus or polling.
   await expect.poll(() => readyTopics.size).toBe(1);
@@ -674,7 +674,7 @@ try {
   }
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page.goto(`${origin}/inbox`);
-  await expect(page.getByText('1 unread', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('1 unread', { exact: true })).toBeVisible();
   await expect(bell(page, 2)).toBeVisible();
   for (const theme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: theme });

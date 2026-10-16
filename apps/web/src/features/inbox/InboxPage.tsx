@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Avatar } from '../account/Avatar';
 import { ConversationDenied } from './inbox-api';
@@ -11,13 +12,10 @@ import { useGroup } from '../groups/useGroup';
 import { UnreadBadge } from './UnreadBadge';
 import { useComposer } from './MessageComposerProvider';
 
-export function MessageTime({ value }: { value: string }) {
+function MessageTime({ value }: { value: string }) {
   return (
     <time dateTime={value}>
       {new Date(value).toLocaleString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
       })}
@@ -31,8 +29,10 @@ export function InboxPage() {
   const live = useInboxRealtime(id);
 
   return (
-    <section aria-labelledby="inbox-title">
-      <h1 id="inbox-title">Messages</h1>
+    <section className="inbox-page" aria-labelledby="inbox-title">
+      <h1 id="inbox-title" className="sr-only">
+        Messages
+      </h1>
       {live.status && (
         <div>
           <p role="status">{live.status}</p>
@@ -83,7 +83,6 @@ function ConversationList({ selected }: { selected: string | undefined }) {
       <h2 id="conversations-title" ref={title} tabIndex={-1}>
         Conversations
       </h2>
-      <p className="inbox-note">Newest conversations first</p>
       {inbox.isPending ? (
         <p role="status">Loading conversations…</p>
       ) : inbox.isError ? (
@@ -132,20 +131,19 @@ function ConversationList({ selected }: { selected: string | undefined }) {
                     >
                       <Avatar url={profile?.avatarUrl ?? null} name={name} />
                       <span className="conversation-summary">
-                        <strong>{name}</strong>
-                        <UnreadBadge count={unreadCount} />
-                        <span>
-                          {conversation.type === 'group'
-                            ? 'Group'
-                            : 'Direct message'}
+                        <span className="conversation-name-row">
+                          <strong>{name}</strong>
+                          {conversation.type === 'group' && (
+                            <span className="conversation-group-badge">
+                              Group
+                            </span>
+                          )}
                         </span>
                         <span className="inbox-preview">
                           {latest?.body ?? 'No messages yet'}
                         </span>
-                        <MessageTime
-                          value={latest?.created_at ?? conversation.created_at}
-                        />
                       </span>
+                      <UnreadBadge count={unreadCount} />
                     </Link>
                   </li>
                 );
@@ -202,6 +200,16 @@ function Thread({
     )
     .join(',');
   const scroll = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const textarea = input.current;
+    if (!textarea) return;
+
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight + 2}px`;
+  }, [draft, history.data]);
+
   const read = useVisibleRead(
     id,
     scroll,
@@ -285,15 +293,23 @@ function Thread({
                   .join(', ')}
               </p>
             )}
-            {conversation.data && !denied && (
-              <p>
-                {conversation.data.type === 'group'
-                  ? 'Group conversation'
-                  : 'Direct message'}
-              </p>
+            {conversation.data?.type === 'group' && !denied && (
+              <p>Group conversation</p>
             )}
           </div>
         </div>
+        {!denied && !unavailable && history.data && (
+          <Button
+            className="thread-refresh"
+            variant="ghost"
+            aria-label="Refresh history"
+            title="Refresh history"
+            disabled={history.isFetching}
+            onClick={() => void history.refetch()}
+          >
+            <RefreshCw size={16} aria-hidden="true" />
+          </Button>
+        )}
       </header>
       {conversation.data?.type === 'group' && !denied && (
         <details className="group-thread-membership">
@@ -323,12 +339,6 @@ function Thread({
         <p role="status">Loading history…</p>
       ) : (
         <>
-          <Button
-            disabled={history.isFetching}
-            onClick={() => void history.refetch()}
-          >
-            Refresh history
-          </Button>
           <div
             className="thread-scroll"
             ref={scroll}
@@ -362,18 +372,27 @@ function Thread({
             )}
             {messages.length || local.length ? (
               <ol className="message-history">
-                {messages.map((message) => {
-                  const sender =
-                    message.sender_id === userId
-                      ? 'You'
-                      : (group.data?.members.find(
-                          (member) => member.userId === message.sender_id,
-                        )?.displayName ??
-                        profiles?.get(message.sender_id)?.displayName ??
-                        'Member unavailable');
-                  return (
+                {messages.map((message, index) => (
+                  <Fragment key={message.id}>
+                    {(index === 0 ||
+                      new Date(message.created_at).toDateString() !==
+                        new Date(
+                          messages[index - 1]!.created_at,
+                        ).toDateString()) && (
+                      <li className="message-day">
+                        <time dateTime={message.created_at}>
+                          {new Date(message.created_at).toLocaleDateString(
+                            undefined,
+                            {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            },
+                          )}
+                        </time>
+                      </li>
+                    )}
                     <li
-                      key={message.id}
                       data-message-order={message.message_order}
                       data-message-id={message.id}
                       className={
@@ -381,23 +400,18 @@ function Thread({
                       }
                     >
                       <div className="message-bubble">
-                        <strong>{sender}</strong>
                         <p>{message.body}</p>
                         <MessageTime value={message.created_at} />
-                        {message.sender_id === userId && (
-                          <span className="message-status">Sent</span>
-                        )}
                       </div>
                     </li>
-                  );
-                })}
+                  </Fragment>
+                ))}
                 {local.map((message) => (
                   <li
                     key={message.payload.client_message_id}
                     className="message-own"
                   >
                     <div className="message-bubble">
-                      <strong>You</strong>
                       <p>{message.payload.body}</p>
                       {message.status === 'pending' ? (
                         <span role="status">
@@ -439,23 +453,25 @@ function Thread({
               composer.send(id);
             }}
           >
-            <label htmlFor="message-draft">Message draft</label>
+            <label className="sr-only" htmlFor="message-draft">
+              Message draft
+            </label>
             <textarea
+              ref={input}
               id="message-draft"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               maxLength={5000}
-              rows={3}
+              rows={1}
+              placeholder="Write a message…"
               aria-describedby="composer-help"
             />
             <div>
-              <p id="composer-help">
-                Sent means saved by the server. New messages update live;
-                refresh history if your connection is interrupted. Drafts and
-                failed sends stay while you browse; reloading clears them.
+              <p id="composer-help" className="sr-only">
+                Drafts stay while you browse. Reloading clears unsent text.
               </p>
               <Button type="submit" disabled={!draft.trim()}>
-                Send message
+                Send
               </Button>
             </div>
           </form>

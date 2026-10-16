@@ -253,7 +253,7 @@ try {
     await page
       .getByRole('textbox', { name: 'Message draft' })
       .fill(`Four-person message ${index + 1}`);
-    await page.getByRole('button', { name: 'Send message' }).click();
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(
       page
         .getByText(`Four-person message ${index + 1}`, { exact: true })
@@ -321,7 +321,7 @@ try {
   await a
     .getByRole('textbox', { name: 'Message draft' })
     .fill('After leave, active members only');
-  await a.getByRole('button', { name: 'Send message' }).click();
+  await a.getByRole('button', { name: 'Send', exact: true }).click();
   await c.getByRole('button', { name: 'Refresh history' }).click();
   await expect(
     c

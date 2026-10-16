@@ -120,8 +120,8 @@ restriction tables have explicit runtime grants and RLS policies; browser roles
 have no application table access. There are no seeded accounts. Permission probes
 are synthetic and rolled back.
 
-The server-only `createDatabase` factory uses at most five connections and provides
-`close()` for shutdown. Remote runtime connections require certificate-verified
+The API's database pool uses the shared server-only `databaseConfig` settings with
+at most five connections. Remote runtime connections require certificate-verified
 TLS; URL query overrides are rejected. Migration connections use one connection.
 Database credentials and CLI output are never printed by the wrapper commands.
 CI runs a fresh isolated local rebuild and privilege checks without hosted secrets.

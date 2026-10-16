@@ -183,7 +183,7 @@ try {
     current.getByRole('region', { name: 'Message history' });
   const send = async (current, body) => {
     await current.getByLabel('Message draft').fill(body);
-    await current.getByRole('button', { name: 'Send message' }).focus();
+    await current.getByRole('button', { name: 'Send', exact: true }).focus();
     await current.keyboard.press('Enter');
     // A prior same-body message may already be Sent. Wait for the new bubble's
     // persisted identity/status before a later scenario stops the API.
@@ -233,7 +233,7 @@ try {
         await route.continue();
       });
       await page.getByLabel('Message draft').fill(body);
-      await page.getByRole('button', { name: 'Send message' }).focus();
+      await page.getByRole('button', { name: 'Send', exact: true }).focus();
       await page.keyboard.press('Enter');
       await bounded(seen);
       await expect(
@@ -337,7 +337,7 @@ try {
     });
     const body = `Committed before lost response ${refreshFirst}`;
     await page.getByLabel('Message draft').fill(body);
-    await page.getByRole('button', { name: 'Send message' }).click();
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
     await bounded(commit);
     await expect(
       history(page).getByText('Connecting… The API may be waking up.', {
@@ -383,7 +383,7 @@ try {
   ).toHaveCount(2);
   await stopApi();
   await page.getByLabel('Message draft').fill('Private failed send');
-  await page.getByRole('button', { name: 'Send message' }).click();
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(
     page.getByRole('button', { name: 'Retry message' }),
   ).toBeVisible();

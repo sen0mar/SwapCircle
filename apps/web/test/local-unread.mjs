@@ -152,16 +152,16 @@ try {
   await send(bob, direct.id, 'Unopened incoming two');
   await send(alice, direct.id, 'Outgoing does not count');
   await send(stranger, other.id, 'Other conversation stays unread');
-  await expect(page.getByText('2 unread', { exact: true })).toBeVisible();
-  await expect(page.getByText('1 unread', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('2 unread', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('1 unread', { exact: true })).toBeVisible();
   assert.equal(await unread(direct.id), 2);
   // An Inbox list mount never acknowledges messages.
   await page.reload();
-  await expect(page.getByText('2 unread', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('2 unread', { exact: true })).toBeVisible();
   await tab.goto(`${origin}/inbox`);
   await device.goto(`${origin}/inbox`);
-  await expect(tab.getByText('2 unread', { exact: true })).toBeVisible();
-  await expect(device.getByText('2 unread', { exact: true })).toBeVisible();
+  await expect(tab.getByLabel('2 unread', { exact: true })).toBeVisible();
+  await expect(device.getByLabel('2 unread', { exact: true })).toBeVisible();
   for (const theme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: theme });
     for (const width of [360, 768, 800, 1280, 1600]) {
@@ -207,8 +207,8 @@ try {
   await expect(page.getByLabel('Message draft')).toBeVisible();
   await expect.poll(() => unread(direct.id)).toBe(0);
   assert.equal(await unread(other.id), 1);
-  await expect(tab.getByText('2 unread', { exact: true })).toHaveCount(0);
-  await expect(device.getByText('2 unread', { exact: true })).toHaveCount(0);
+  await expect(tab.getByLabel('2 unread', { exact: true })).toHaveCount(0);
+  await expect(device.getByLabel('2 unread', { exact: true })).toHaveCount(0);
   await page.reload();
   await expect(page.getByLabel('Message draft')).toBeVisible();
   assert.equal(await unread(direct.id), 0);
@@ -241,7 +241,7 @@ try {
   await device.evaluate(() =>
     globalThis.dispatchEvent(new globalThis.Event('online')),
   );
-  await expect(device.getByText('4 unread', { exact: true })).toBeVisible();
+  await expect(device.getByLabel('4 unread', { exact: true })).toBeVisible();
   await device.goto(`${origin}/inbox/${direct.id}`);
   await expect(
     device
@@ -249,7 +249,7 @@ try {
       .getByText('Missed unread 3', { exact: true }),
   ).toBeVisible();
   await expect.poll(() => unread(direct.id)).toBe(0);
-  await expect(page.getByText('4 unread', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('4 unread', { exact: true })).toHaveCount(0);
   for (const theme of ['light', 'dark']) {
     await device.emulateMedia({ colorScheme: theme });
     for (const width of [360, 768, 800, 1280, 1600]) {
@@ -277,7 +277,7 @@ try {
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await signIn(page, stranger);
   await page.goto(`${origin}/inbox`);
-  await expect(page.getByText('1 unread', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('1 unread', { exact: true })).toHaveCount(0);
   assert.ok(
     !(await page.locator('body').innerText()).includes('Missed unread'),
   );

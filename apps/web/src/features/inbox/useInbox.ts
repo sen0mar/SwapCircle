@@ -145,12 +145,7 @@ export function useThread(id: string) {
     ).values(),
   ].sort((a, b) => a.message_order - b.message_order);
   const peer = conversation.data ? directPeer(conversation.data, userId) : null;
-  const ids = [
-    ...new Set([
-      ...(peer ? [peer] : []),
-      ...messages.map((message) => message.sender_id),
-    ]),
-  ].sort();
+  const ids = peer ? [peer] : [];
   const profiles = useQuery({
     queryKey: [...key, 'profiles', ids],
     queryFn: async ({ signal }) =>

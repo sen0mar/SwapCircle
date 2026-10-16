@@ -39,6 +39,21 @@ test('private deep link requires sign-in and returns to its stable URL; switchin
   await page.route('**/api/v1/conversations/read', (route) =>
     route.fulfill({ json: { lastViewedOrder: 32, unreadCount: 0 } }),
   );
+  await page.route('**/api/v1/conversations/messages', (route) => {
+    const payload = route.request().postDataJSON();
+    expect(payload.conversation_id).toBe(id);
+    expect(payload.body).toBe('A reply from the demo');
+
+    return route.fulfill({
+      json: {
+        ...payload,
+        id: '30000000-0000-4000-8000-000000000002',
+        sender_id: alice,
+        message_order: 2,
+        created_at: '2026-09-28T10:01:00Z',
+      },
+    });
+  });
   await page.route('**/rest/v1/conversations?*', async (route) => {
     const url = new URL(route.request().url());
     if (url.searchParams.get('id') === `eq.${denied}`) {
@@ -71,9 +86,55 @@ test('private deep link requires sign-in and returns to its stable URL; switchin
   await expect(
     page.getByRole('region', { name: 'Message history' }),
   ).toContainText('Private thread body');
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 360, height: 800 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.locator('.inbox-thread').scrollIntoViewIfNeeded();
+    await expect(page.getByLabel('Message draft')).toBeInViewport();
+    await expect(
+      page.getByRole('button', { name: 'Send', exact: true }),
+    ).toBeInViewport();
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const threadBox = (await page.locator('.inbox-thread').boundingBox())!;
+  const listBox = (await page.locator('.inbox-list').boundingBox())!;
+  expect(Math.abs(threadBox.height - listBox.height)).toBeLessThan(2);
+  expect(Math.abs(threadBox.y + threadBox.height - (800 - 24))).toBeLessThan(2);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(
+    800,
+  );
+  await expect(
+    page.getByRole('link', { name: 'Back to conversations' }),
+  ).toBeHidden();
+  const draftInput = page.getByLabel('Message draft');
+  const singleLineHeight = (await draftInput.boundingBox())!.height;
+  const sendBox = (await page
+    .getByRole('button', { name: 'Send', exact: true })
+    .boundingBox())!;
+  const inputBox = (await draftInput.boundingBox())!;
+  expect(singleLineHeight).toBe(44);
+  expect(sendBox.height).toBe(singleLineHeight);
+  expect(sendBox.y).toBe(inputBox.y);
+  await draftInput.fill('First line\nSecond line\nThird line');
+  await expect
+    .poll(async () => (await draftInput.boundingBox())!.height)
+    .toBeGreaterThan(singleLineHeight);
+  await draftInput.fill('A reply from the demo');
+  await expect
+    .poll(async () => (await draftInput.boundingBox())!.height)
+    .toBe(singleLineHeight);
+  await page.getByLabel('Message draft').fill('A reply from the demo');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(page.getByLabel('Message draft')).toHaveValue('');
+  await expect(
+    page.getByRole('region', { name: 'Message history' }),
+  ).toContainText('A reply from the demo');
   await page.getByLabel('Message draft').fill('Unsent draft');
   await expect(
-    page.getByRole('button', { name: 'Send message' }),
+    page.getByRole('button', { name: 'Send', exact: true }),
   ).toBeEnabled();
   await page.locator(`.conversation-list a[href="/inbox/${denied}"]`).click();
   await expect(

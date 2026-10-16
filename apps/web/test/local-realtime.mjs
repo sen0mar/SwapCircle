@@ -203,7 +203,7 @@ try {
     current.getByRole('region', { name: 'Message history' });
   const send = async (current, body) => {
     await current.getByLabel('Message draft').fill(body);
-    await current.getByRole('button', { name: 'Send message' }).click();
+    await current.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(history(current).getByText(body, { exact: true })).toHaveCount(
       1,
     );

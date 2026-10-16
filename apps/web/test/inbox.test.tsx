@@ -56,11 +56,12 @@ const message = (order: number) => ({
   body: order === 32 ? '<script>plain text</script>' : `Message ${order}`,
   client_message_id: `40000000-0000-4000-8000-${String(order).padStart(12, '0')}`,
   message_order: order,
-  created_at: date,
+  created_at: order <= 2 ? '2026-09-27T10:00:00+00:00' : date,
 });
 
 function fixture() {
   const requests: URL[] = [];
+  const profileRequests: string[] = [];
   server.use(
     http.get(
       'http://127.0.0.1:55439/rest/v1/conversations',
@@ -94,16 +95,18 @@ function fixture() {
               .slice(0, limit);
       return HttpResponse.json(rows);
     }),
-    http.get('http://127.0.0.1:3001/api/v1/members/:id', ({ params }) =>
-      HttpResponse.json({
+    http.get('http://127.0.0.1:3001/api/v1/members/:id', ({ params }) => {
+      profileRequests.push(String(params.id));
+
+      return HttpResponse.json({
         id: params.id,
         displayName: 'Reader Bob',
         biography: '',
         approximateLocation: '',
         avatarUrl: null,
         interests: [],
-      }),
-    ),
+      });
+    }),
   );
   const queries = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -122,15 +125,19 @@ function fixture() {
     </QueryClientProvider>,
   );
 
-  return { requests, queries };
+  return { requests, queries, profileRequests };
 }
 
 test('history pages render chronologically as plain text, use exclusive bounded cursors, and retain unsent per-thread drafts', async () => {
-  const { requests } = fixture();
+  const { requests, profileRequests } = fixture();
   const user = userEvent.setup();
   await screen.findByText('<script>plain text</script>', { selector: 'p' });
+  await screen.findByRole('heading', { name: 'Reader Bob' });
+  expect(profileRequests.length).toBeGreaterThan(0);
+  expect(new Set(profileRequests)).toEqual(new Set([bob]));
   const history = screen.getByRole('region', { name: 'Message history' });
   expect(history.querySelector('script')).toBeNull();
+  expect(history.querySelectorAll('.message-day')).toHaveLength(1);
   expect(
     [...history.querySelectorAll('[data-message-order]')].map((li) =>
       Number(li.getAttribute('data-message-order')),
@@ -138,6 +145,12 @@ test('history pages render chronologically as plain text, use exclusive bounded 
   ).toEqual(Array.from({ length: 30 }, (_, i) => i + 3));
   await user.click(screen.getByRole('button', { name: 'Load older messages' }));
   await screen.findByText('Message 1');
+  expect(history.querySelectorAll('.message-day')).toHaveLength(2);
+  expect(
+    [...history.querySelectorAll('.message-day time')].map((element) =>
+      new Date(element.getAttribute('datetime')!).getDate(),
+    ),
+  ).toEqual([27, 28]);
   expect(
     requests.some(
       (url) =>
@@ -146,7 +159,7 @@ test('history pages render chronologically as plain text, use exclusive bounded 
     ),
   ).toBe(true);
   await user.type(screen.getByLabelText('Message draft'), 'Still unsent');
-  expect(screen.getByRole('button', { name: 'Send message' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled();
   await user.click(
     screen.getByRole('link', { name: /Reader Bob.*No messages yet/ }),
   );
@@ -280,7 +293,7 @@ test('pending and failed sends retain text across navigation; explicit retry sen
   );
   await screen.findByLabelText('Message draft');
   await user.type(screen.getByLabelText('Message draft'), 'Kept message');
-  await user.click(screen.getByRole('button', { name: 'Send message' }));
+  await user.click(screen.getByRole('button', { name: 'Send' }));
   expect(screen.getByText('Sending…')).toBeVisible();
   expect(screen.getByLabelText('Message draft')).toHaveValue('');
   await screen.findByRole('button', { name: 'Retry message' });
@@ -296,7 +309,11 @@ test('pending and failed sends retain text across navigation; explicit retry sen
   await user.type(screen.getByLabelText('Message draft'), 'Next draft');
   fail = false;
   await user.click(screen.getByRole('button', { name: 'Retry message' }));
-  await screen.findByText('Sent', { exact: true });
+  await waitFor(() =>
+    expect(
+      document.querySelector('.message-own[data-message-id]'),
+    ).toBeInTheDocument(),
+  );
   expect(payloads).toHaveLength(2);
   expect(payloads[1]).toEqual(payloads[0]);
   expect(screen.getAllByText('Kept message', { selector: 'p' })).toHaveLength(
@@ -306,7 +323,7 @@ test('pending and failed sends retain text across navigation; explicit retry sen
     screen.queryByRole('button', { name: 'Retry message' }),
   ).not.toBeInTheDocument();
   expect(screen.getByLabelText('Message draft')).toHaveValue('Next draft');
-  await user.click(screen.getByRole('button', { name: 'Send message' }));
+  await user.click(screen.getByRole('button', { name: 'Send' }));
   await waitFor(() => expect(payloads).toHaveLength(3));
   expect(payloads[2]?.client_message_id).not.toBe(
     payloads[0]?.client_message_id,
@@ -334,7 +351,7 @@ test('a committed message with a lost response is reconciled by client ID on ref
   );
   await screen.findByLabelText('Message draft');
   await user.type(screen.getByLabelText('Message draft'), 'Message 32');
-  await user.click(screen.getByRole('button', { name: 'Send message' }));
+  await user.click(screen.getByRole('button', { name: 'Send' }));
   await screen.findByRole('button', { name: 'Retry message' });
   server.use(
     http.get('http://127.0.0.1:55439/rest/v1/messages', () =>
@@ -342,7 +359,11 @@ test('a committed message with a lost response is reconciled by client ID on ref
     ),
   );
   await user.click(screen.getByRole('button', { name: 'Refresh history' }));
-  await screen.findByText('Sent', { exact: true });
+  await waitFor(() =>
+    expect(
+      document.querySelector('.message-own[data-message-id]'),
+    ).toBeInTheDocument(),
+  );
   await waitFor(() =>
     expect(
       screen.queryByRole('button', { name: 'Retry message' }),
@@ -377,7 +398,7 @@ test('slow committed sends show a quiet delayed notice, timeout honestly, and ex
     screen.getByLabelText('Message draft'),
     'Committed before timeout',
   );
-  await user.click(screen.getByRole('button', { name: 'Send message' }));
+  await user.click(screen.getByRole('button', { name: 'Send' }));
   expect(
     screen.queryByText('Connecting… The API may be waking up.'),
   ).not.toBeInTheDocument();
@@ -391,9 +412,15 @@ test('slow committed sends show a quiet delayed notice, timeout honestly, and ex
     { name: 'Retry message' },
     { timeout: 16000 },
   );
-  expect(screen.queryByText('Sent', { exact: true })).not.toBeInTheDocument();
+  expect(
+    document.querySelector('.message-own[data-message-id]'),
+  ).not.toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Retry message' }));
-  await screen.findByText('Sent', { exact: true });
+  await waitFor(() =>
+    expect(
+      document.querySelector('.message-own[data-message-id]'),
+    ).toBeInTheDocument(),
+  );
   expect(payloads).toHaveLength(2);
   expect(payloads[1]).toEqual(payloads[0]);
   expect(
@@ -438,8 +465,12 @@ test('a stale history request cannot overwrite a send receipt committed while th
     screen.getByLabelText('Message draft'),
     'Saved during stale read',
   );
-  await user.click(screen.getByRole('button', { name: 'Send message' }));
-  await screen.findByText('Sent', { exact: true });
+  await user.click(screen.getByRole('button', { name: 'Send' }));
+  await waitFor(() =>
+    expect(
+      document.querySelector('.message-own[data-message-id]'),
+    ).toBeInTheDocument(),
+  );
   await waitFor(() => expect(aborted).toBe(true));
   expect(
     screen.getAllByText('Saved during stale read', { selector: 'p' }),
@@ -471,7 +502,7 @@ test('retry receipt already observed on an older page stays unique and ordered',
     screen.getByLabelText('Message draft'),
     'Saved on older page',
   );
-  await user.click(screen.getByRole('button', { name: 'Send message' }));
+  await user.click(screen.getByRole('button', { name: 'Send' }));
   await screen.findByRole('button', { name: 'Retry message' });
   await user.click(screen.getByRole('button', { name: 'Retry message' }));
   await waitFor(() => expect(requests).toBe(2));
@@ -529,7 +560,7 @@ test('a send completing during a fresh history load after navigation seeds saved
     screen.getByLabelText('Message draft'),
     'Saved while returning',
   );
-  await user.click(screen.getByRole('button', { name: 'Send message' }));
+  await user.click(screen.getByRole('button', { name: 'Send' }));
   await user.click(
     screen.getByRole('link', { name: /Reader Bob.*No messages yet/ }),
   );
@@ -631,7 +662,7 @@ test('unavailable unread service preserves authorized conversation links and exp
   await userEvent
     .setup()
     .click(screen.getByRole('button', { name: 'Retry unread counts' }));
-  await screen.findAllByText('2 unread');
+  await screen.findAllByLabelText('2 unread');
 });
 
 test.each(['access revalidation', 'reconnect', 'focus'] as const)(
