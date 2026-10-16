@@ -464,6 +464,7 @@ try {
     }
     await a.setViewportSize({ width: 360, height: 900 });
     await a.goto(`${origin}/inbox/${threadId}`);
+    await a.setViewportSize({ width: 360, height: 900 });
     await a.getByLabel('Message draft').fill('Keep keyboard navigation draft');
     const back = a.getByRole('link', { name: 'Back to conversations' });
     await back.focus();

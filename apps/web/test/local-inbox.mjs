@@ -307,7 +307,7 @@ try {
     outsider.getByText('No conversations yet.', { exact: false }),
   ).toBeVisible();
   // Reload/deep links and list pagination retain unique stable URLs.
-  await page.getByRole('link', { name: 'Back to conversations' }).click();
+  await page.getByRole('link', { name: 'Messages', exact: true }).click();
   await expect(page.locator('.conversation-list li')).toHaveCount(20);
   await page.getByRole('button', { name: 'More conversations' }).click();
   await expect(page.locator('.conversation-list li')).toHaveCount(23);
@@ -444,7 +444,12 @@ try {
           path: new URL(`${theme}-${width}-thread.png`, output).pathname,
           fullPage: true,
         });
-      await page.getByRole('link', { name: 'Back to conversations' }).click();
+      await page
+        .getByRole('link', {
+          name: width === 360 ? 'Back to conversations' : 'Messages',
+          exact: true,
+        })
+        .click();
       await expect(page).toHaveURL(`${origin}/inbox`);
     }
   }

@@ -254,8 +254,8 @@ try {
     history(page)
       .getByText('Event before response', { exact: true })
       .locator('..')
-      .getByText('Sent', { exact: true }),
-  ).toBeVisible();
+      .locator('..'),
+  ).toHaveAttribute('data-message-order', /^\d+$/);
   const receiptResponse = page.waitForResponse(endpoint);
   releaseReceipt();
   await receiptResponse;

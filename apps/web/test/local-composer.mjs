@@ -185,14 +185,13 @@ try {
     await current.getByLabel('Message draft').fill(body);
     await current.getByRole('button', { name: 'Send', exact: true }).focus();
     await current.keyboard.press('Enter');
-    // A prior same-body message may already be Sent. Wait for the new bubble's
-    // persisted identity/status before a later scenario stops the API.
+    // A prior same-body message may already be saved. Wait for the new bubble's
+    // persisted identity before a later scenario stops the API.
     const bubble = history(current)
       .getByRole('listitem')
       .filter({ has: current.getByText(body, { exact: true }) })
       .last();
     await expect(bubble).toHaveAttribute('data-message-order', /^\d+$/);
-    await expect(bubble.getByText('Sent', { exact: true })).toBeVisible();
     await expect(
       current.getByRole('button', { name: 'Retry message' }),
     ).toHaveCount(0);
