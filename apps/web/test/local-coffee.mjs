@@ -399,7 +399,11 @@ try {
   // Trade agreement is still independent and can confirm after coffee cancellation.
   await accept(alicePage);
   await accept(bobPage);
-  await expect(bobPage.getByText('Agreed. Arrange your meetup.')).toBeVisible();
+  await expect(
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Confirmed' }),
+  ).toBeVisible();
   const confirmed = await api(`/trades/${direct.id}`, bob);
   assert.equal(confirmed.status, 'confirmed');
   assert.ok(confirmed.items.every((i) => i.currentAvailability === 'reserved'));

@@ -51,6 +51,7 @@ export function MySwapsPage() {
 
   return (
     <section className="swaps-page" aria-label="My Swaps">
+      <h1 className="sr-only">My Swaps</h1>
       {trades.isPending ? (
         <p role="status">Loading your swaps…</p>
       ) : trades.isError ? (

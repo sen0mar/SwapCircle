@@ -371,7 +371,7 @@ try {
   ]) {
     await page.goto(`${origin}${destination}`);
     await expect(
-      page.getByRole('heading', {
+      page.getByRole(label === 'terms' ? 'article' : 'heading', {
         name:
           label === 'thread'
             ? 'Group conversation'

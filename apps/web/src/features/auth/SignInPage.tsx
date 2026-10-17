@@ -65,6 +65,7 @@ export function SignInPage() {
       className="panel route-panel auth-panel"
       aria-label="Sign in to SwapCircle"
     >
+      <h1 className="sr-only">Sign in to SwapCircle</h1>
       {(error || restorationError) && (
         <p role="alert">{error || restorationError}</p>
       )}

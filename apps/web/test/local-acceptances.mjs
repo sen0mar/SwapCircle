@@ -260,12 +260,16 @@ try {
     bobPage.getByRole('button', { name: 'Saving acceptance…' }),
   ).toBeDisabled();
   await expect(
-    bobPage.getByText('Review the exchange and agree when you’re ready.', {
-      exact: true,
-    }),
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Proposed' }),
   ).toBeVisible();
   releaseAcceptance();
-  await expect(bobPage.getByText('Agreed. Arrange your meetup.')).toBeVisible();
+  await expect(
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Confirmed' }),
+  ).toBeVisible();
   await bobPage.unroute(`**/trades/${direct.id}/accept`);
   await alicePage.goto(`${origin}/swaps`);
   await expect(
@@ -273,7 +277,9 @@ try {
   ).toBeVisible();
   await alicePage.goto(`${origin}/swaps/${direct.id}`);
   await expect(
-    alicePage.getByText('Agreed. Arrange your meetup.'),
+    alicePage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Confirmed' }),
   ).toBeVisible();
   await capture(alicePage, 'confirmed');
   await alicePage.goto(`${origin}/listings/${items[0].id}`);
@@ -330,11 +336,17 @@ try {
   );
   await accept(carolPage);
   await expect(
-    carolPage.getByText('Agreed. Arrange your meetup.'),
+    carolPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Confirmed' }),
   ).toBeVisible();
   for (const page of [alicePage, bobPage]) {
     await page.reload();
-    await expect(page.getByText('Agreed. Arrange your meetup.')).toBeVisible();
+    await expect(
+      page
+        .getByLabel('Swap status', { exact: true })
+        .filter({ hasText: 'Confirmed' }),
+    ).toBeVisible();
   }
   const groupTerms = await api(`/trades/${group.id}`, alice);
   assert.ok(groupTerms.participants.every((p) => p.acceptedVersion === 1));

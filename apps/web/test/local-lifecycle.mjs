@@ -345,7 +345,11 @@ try {
   await bobPage
     .getByRole('button', { name: 'Confirm decline', exact: true })
     .click();
-  await expect(bobPage.getByText('This swap is declined.')).toBeVisible();
+  await expect(
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Declined' }),
+  ).toBeVisible();
   assert.equal(
     (await api(`/trades/${declined.id}`, alice)).events.at(-1).eventType,
     'declined',
@@ -361,7 +365,11 @@ try {
     [expired.id],
   );
   await alicePage.goto(`${origin}/swaps/${expired.id}`);
-  await expect(alicePage.getByText('This swap is expired.')).toBeVisible();
+  await expect(
+    alicePage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Expired' }),
+  ).toBeVisible();
   await expect(
     alicePage.getByRole('button', { name: 'Review current terms' }),
   ).toHaveCount(0);
@@ -395,7 +403,9 @@ try {
   ).toContainText('no longer available');
   await alicePage.goto(`${origin}/swaps/${cancelled.id}`);
   await expect(
-    alicePage.getByText('Agreed. Arrange your meetup.'),
+    alicePage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Confirmed' }),
   ).toBeVisible();
   let release;
   let committed;
@@ -422,7 +432,11 @@ try {
     alicePage.getByRole('button', { name: 'Checking and saving…' }),
   ).toBeDisabled();
   release();
-  await expect(alicePage.getByText('This swap is cancelled.')).toBeVisible();
+  await expect(
+    alicePage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Cancelled' }),
+  ).toBeVisible();
   await expect(
     alicePage.getByRole('heading', { name: 'Synthetic camera', exact: true }),
   ).toBeVisible();
@@ -474,9 +488,9 @@ try {
   assert.equal((await api(`/trades/${stale.id}`, bob)).status, 'proposed');
   await bobPage.getByRole('button', { name: 'Go back', exact: true }).click();
   await expect(
-    bobPage.getByText('Review the exchange and agree when you’re ready.', {
-      exact: true,
-    }),
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Proposed' }),
   ).toBeVisible();
   await lifecycle(bobPage)
     .getByRole('button', { name: 'Cancel proposal' })
@@ -484,7 +498,11 @@ try {
   await bobPage
     .getByRole('button', { name: 'Confirm cancellation', exact: true })
     .click();
-  await expect(bobPage.getByText('This swap is cancelled.')).toBeVisible();
+  await expect(
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Cancelled' }),
+  ).toBeVisible();
 
   stage = 'same-version-change';
 
@@ -523,7 +541,11 @@ try {
   await bobPage
     .getByRole('button', { name: 'Confirm cancellation', exact: true })
     .click();
-  await expect(bobPage.getByText('This swap is cancelled.')).toBeVisible();
+  await expect(
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Cancelled' }),
+  ).toBeVisible();
 
   stage = 'acceptance-replay';
 
@@ -566,10 +588,16 @@ try {
   await bobPage
     .getByRole('button', { name: 'Accept version 1', exact: true })
     .click();
-  await expect(bobPage.getByText('This swap is cancelled.')).toBeVisible();
-  await expect(bobPage.getByText('Agreed. Arrange your meetup.')).toHaveCount(
-    0,
-  );
+  await expect(
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Cancelled' }),
+  ).toBeVisible();
+  await expect(
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Confirmed' }),
+  ).toHaveCount(0);
   assert.equal(
     (await api(`/listings/${left.id}`, alice)).availability,
     'available',
@@ -680,7 +708,7 @@ try {
         .isVisible()
         .catch(() => false),
       signInPage: await page
-        .getByRole('heading', { name: 'Sign in to SwapCircle' })
+        .getByRole('region', { name: 'Sign in to SwapCircle' })
         .isVisible()
         .catch(() => false),
       unavailable: await page

@@ -89,6 +89,9 @@ function ListingForm({
       className="panel route-panel listing-editor"
       aria-label={mode === 'create' ? 'List an item' : 'Edit item'}
     >
+      <h1 className="sr-only">
+        {mode === 'create' ? 'List an item' : 'Edit item'}
+      </h1>
       <Link to="/shelf">Back to My Shelf</Link>
       {listing && <Link to={`/listings/${listing.id}`}>View item</Link>}
       <form

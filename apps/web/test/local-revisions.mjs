@@ -196,9 +196,9 @@ try {
   await alicePage.getByRole('button', { name: 'Save revision' }).click();
   await expect(alicePage.getByRole('dialog')).toHaveCount(0);
   await expect(
-    alicePage.getByText('Review the exchange and agree when you’re ready.', {
-      exact: true,
-    }),
+    alicePage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Proposed' }),
   ).toBeVisible();
   const before = await api(`/trades/${proposal.id}`, alice);
   assert.equal(before.participants.length, 3);
@@ -272,9 +272,9 @@ try {
     bobPage.getByRole('button', { name: 'Edit proposal', exact: true }),
   ).toBeFocused();
   await expect(
-    bobPage.getByText('Review the exchange and agree when you’re ready.', {
-      exact: true,
-    }),
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Proposed' }),
   ).toBeVisible();
   await bobPage.keyboard.press('Enter');
   await conflict
@@ -298,9 +298,9 @@ try {
   await bobPage.getByRole('button', { name: 'Save revision' }).click();
   await expect(bobPage.getByRole('dialog')).toHaveCount(0);
   await expect(
-    bobPage.getByText('Review the exchange and agree when you’re ready.', {
-      exact: true,
-    }),
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Proposed' }),
   ).toBeVisible();
   await carolPage.reload();
   await expect(
@@ -316,9 +316,9 @@ try {
   await expect(alicePage).toHaveURL(`${origin}/listings/${items[0].id}`);
   await bobPage.reload();
   await expect(
-    bobPage.getByText('Review the exchange and agree when you’re ready.', {
-      exact: true,
-    }),
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Proposed' }),
   ).toBeVisible();
   await bobPage.getByRole('button', { name: 'Review current terms' }).click();
   await expect(bobPage.getByText(/Revised lamp details/)).toBeVisible();
@@ -349,7 +349,11 @@ try {
     [proposal.id],
   );
   await bobPage.reload();
-  await expect(bobPage.getByText('Agreed. Arrange your meetup.')).toBeVisible();
+  await expect(
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Confirmed' }),
+  ).toBeVisible();
   await expect(
     bobPage.getByRole('button', { name: 'Edit proposal', exact: true }),
   ).toHaveCount(0);

@@ -100,6 +100,13 @@ export function TradeDetailPage() {
   return (
     <article className="trade-detail" aria-labelledby="trade-title">
       <Link to="/swaps">← My Swaps</Link>
+      <p
+        role="status"
+        aria-label="Swap status"
+        className={`swap-status swap-status-${trade.data.status}`}
+      >
+        {trade.data.status.charAt(0).toUpperCase() + trade.data.status.slice(1)}
+      </p>
       {trade.isError && (
         <div role="alert">
           Current agreement could not be refreshed. These are the last loaded

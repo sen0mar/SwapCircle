@@ -53,7 +53,7 @@ test('SDK OAuth callback, reload, protected route and sign-out lifecycle (synthe
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
   await expect(
-    page.getByRole('heading', { name: 'Sign in to SwapCircle' }),
+    page.getByRole('region', { name: 'Sign in to SwapCircle' }),
   ).toBeVisible();
 
   await expect(page.getByRole('button', { name: 'Open account' })).toHaveCount(
@@ -63,7 +63,7 @@ test('SDK OAuth callback, reload, protected route and sign-out lifecycle (synthe
   await page.reload();
 
   await expect(
-    page.getByRole('heading', { name: 'Sign in to SwapCircle' }),
+    page.getByRole('region', { name: 'Sign in to SwapCircle' }),
   ).toBeVisible();
 });
 

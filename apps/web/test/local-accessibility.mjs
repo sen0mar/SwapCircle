@@ -331,9 +331,13 @@ try {
         // Keyboard activation completes before the mutation response. Wait for
         // persisted acceptance before another participant refreshes the trade.
         await expect(
-          page.getByText(
-            /Your acceptance is saved|Agreed. Arrange your meetup./,
-          ),
+          page
+            .getByText('Your acceptance is saved', { exact: false })
+            .or(
+              page
+                .getByLabel('Swap status', { exact: true })
+                .filter({ hasText: 'Confirmed' }),
+            ),
         ).toBeVisible();
       }
       await a.reload();
@@ -370,7 +374,11 @@ try {
           'POST',
         );
       await a.reload();
-      await expect(a.getByText('Swap complete.')).toBeVisible();
+      await expect(
+        a
+          .getByLabel('Swap status', { exact: true })
+          .filter({ hasText: 'Completed' }),
+      ).toBeVisible();
       assert.equal((await api(`/trades/${id}`, alice)).status, 'completed');
       const rows = (
         await fixture.migration.query(

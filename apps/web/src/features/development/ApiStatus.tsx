@@ -7,6 +7,7 @@ export default function ApiStatus() {
 
   return (
     <section className="panel route-panel" aria-label="Development API status">
+      <h1 className="sr-only">Development API status</h1>
       {status.isFetching ? (
         <p role="status">Connecting to the API. It may need time to wake up.</p>
       ) : status.isError ? (

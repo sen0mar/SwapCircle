@@ -763,6 +763,9 @@ test('confirmed reservations represent agreement without reporting its own items
   expect(
     screen.queryByText('Agreed. Arrange your meetup.'),
   ).not.toBeInTheDocument();
+  expect(screen.getByRole('status', { name: 'Swap status' })).toHaveTextContent(
+    'Confirmed',
+  );
   expect(
     screen.queryByText(/proposed items are no longer/),
   ).not.toBeInTheDocument();

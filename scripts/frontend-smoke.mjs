@@ -129,9 +129,7 @@ export async function smoke(environment) {
     await page.getByRole('heading', { name: 'Browse', exact: true }).waitFor();
     assert.equal(await page.getByLabel('Condition').inputValue(), 'good');
     await visit(`${frontendOrigin}/account/settings`);
-    await page
-      .getByRole('heading', { name: 'Sign in to SwapCircle' })
-      .waitFor();
+    await page.getByRole('region', { name: 'Sign in to SwapCircle' }).waitFor();
     assert.equal(
       await page
         .getByRole('button', { name: 'Continue with Google' })

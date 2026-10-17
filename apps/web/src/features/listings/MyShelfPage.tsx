@@ -22,6 +22,7 @@ export function MyShelfPage() {
 
   return (
     <section className="shelf-page" aria-label="My Shelf">
+      <h1 className="sr-only">My Shelf</h1>
       <div className="section-heading">
         <Button asChild variant="primary">
           <Link to="/listings/new">List an item</Link>

@@ -461,7 +461,9 @@ try {
   });
   await page.goto(`${origin}/swaps/${trade.id}`);
   await expect(
-    page.getByText('This swap is cancelled.', { exact: true }),
+    page
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Cancelled' }),
   ).toBeVisible();
   await page.screenshot({
     path: new URL('history.png', evidence).pathname,
@@ -512,7 +514,7 @@ try {
   ).toBeVisible();
   await page.evaluate(() => globalThis.scrollTo(0, 0));
   await expect(
-    page.getByRole('heading', { name: 'My Shelf', exact: true }),
+    page.getByRole('region', { name: 'My Shelf', exact: true }),
   ).toBeVisible();
   await page.screenshot({
     path: new URL('recovered.png', evidence).pathname,

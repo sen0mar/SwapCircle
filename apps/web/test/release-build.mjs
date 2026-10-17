@@ -142,7 +142,7 @@ try {
   assert.equal(await page.getByLabel('Condition').inputValue(), 'good');
   await visit(`${origin}/account/settings`);
   await expect(
-    page.getByRole('heading', { name: 'Sign in to SwapCircle' }),
+    page.getByRole('region', { name: 'Sign in to SwapCircle' }),
   ).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Continue as guest' }),

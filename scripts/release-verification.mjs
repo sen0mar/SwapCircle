@@ -137,13 +137,9 @@ export async function verifyPublicRelease(revision) {
     }
 
     await visit('/account/profile');
-    await page
-      .getByRole('heading', { name: 'Sign in to SwapCircle' })
-      .waitFor();
+    await page.getByRole('region', { name: 'Sign in to SwapCircle' }).waitFor();
     await reload();
-    await page
-      .getByRole('heading', { name: 'Sign in to SwapCircle' })
-      .waitFor();
+    await page.getByRole('region', { name: 'Sign in to SwapCircle' }).waitFor();
     assert.equal(
       new URL(page.url()).searchParams.get('next'),
       '/account/profile',

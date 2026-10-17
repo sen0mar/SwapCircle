@@ -171,7 +171,7 @@ try {
   // Publish through the real production form, then read it from a separate
   // signed-out browser context. The catalogue is not pre-seeded with this item.
   await expect(
-    page.getByRole('heading', { name: 'List an item', exact: true }),
+    page.getByRole('region', { name: 'List an item', exact: true }),
   ).toBeVisible();
   await page.getByLabel('Title', { exact: true }).fill(title);
   await page
@@ -203,7 +203,7 @@ try {
   ).toHaveCount(0);
   await visitor.close();
   await page.goto(`${origin}/listings/${item.id}/edit`);
-  await expect(page.getByRole('heading', { name: 'Edit item' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Edit item' })).toBeVisible();
   await page.getByLabel('Choose photos').setInputFiles({
     name: 'camera.jpg',
     mimeType: 'image/jpeg',

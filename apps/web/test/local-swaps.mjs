@@ -174,9 +174,9 @@ try {
     alicePage.getByRole('heading', { name: 'You give', exact: true }),
   ).toBeVisible();
   await expect(
-    alicePage.getByText('Review the exchange and agree when you’re ready.', {
-      exact: true,
-    }),
+    alicePage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Proposed' }),
   ).toBeVisible();
   await alicePage.reload();
   await expect(alicePage.getByText(aliceItem.title).first()).toBeVisible();

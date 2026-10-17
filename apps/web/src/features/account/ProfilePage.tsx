@@ -31,6 +31,7 @@ export function ProfilePage() {
       className="panel route-panel profile-page"
       aria-label="Your profile"
     >
+      <h1 className="sr-only">Your profile</h1>
       <ProfileForm
         key={profile.data.id}
         profile={profile.data}
