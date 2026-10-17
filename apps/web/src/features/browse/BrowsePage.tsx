@@ -1,7 +1,7 @@
 import { Select } from '../../components/ui/select';
 import { useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCcw } from 'lucide-react';
 import { catalogQuerySchema } from '@swapcircle/contracts';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -37,10 +37,12 @@ export function BrowsePage() {
     ? parsed.data
     : catalogQuerySchema.parse({ limit: 12 });
   const listings = useListings(query, parsed.success);
-  const pageLink = (cursor?: string) => {
+  const pageLink = (cursor?: string, direction?: 'previous' | 'last') => {
     const next = new URLSearchParams(params);
     next.delete('cursor');
+    next.delete('direction');
     if (cursor) next.set('cursor', cursor);
+    if (direction) next.set('direction', direction);
     return `/browse?${next}`;
   };
 
@@ -155,10 +157,65 @@ export function BrowsePage() {
             </div>
           )}
           <nav className="catalog-pagination" aria-label="Catalog pages">
-            {query.cursor && <Link to={pageLink()}>First page</Link>}
-            {listings.data.nextCursor && (
-              <Link to={pageLink(listings.data.nextCursor)}>Next page</Link>
-            )}
+            <div className="catalog-pagination-first">
+              <Button
+                asChild={!!listings.data.previousCursor}
+                disabled={!listings.data.previousCursor}
+              >
+                {listings.data.previousCursor ? (
+                  <Link to={pageLink()}>First page</Link>
+                ) : (
+                  'First page'
+                )}
+              </Button>
+            </div>
+            <div className="catalog-pagination-adjacent">
+              {listings.data.previousCursor && (
+                <Button
+                  asChild
+                  variant="primary"
+                  className="catalog-page-button"
+                >
+                  <Link to={pageLink(listings.data.previousCursor, 'previous')}>
+                    <ArrowLeft size={18} aria-hidden="true" />
+                    Previous
+                  </Link>
+                </Button>
+              )}
+              {listings.data.page && listings.data.totalPages && (
+                <span
+                  className="catalog-page-indicator"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  Page {listings.data.page} of {listings.data.totalPages}
+                </span>
+              )}
+              {listings.data.nextCursor && (
+                <Button
+                  asChild
+                  variant="primary"
+                  className="catalog-page-button"
+                >
+                  <Link to={pageLink(listings.data.nextCursor)}>
+                    Next
+                    <ArrowRight size={18} aria-hidden="true" />
+                  </Link>
+                </Button>
+              )}
+            </div>
+            <div className="catalog-pagination-last">
+              <Button
+                asChild={!!listings.data.nextCursor}
+                disabled={!listings.data.nextCursor}
+              >
+                {listings.data.nextCursor ? (
+                  <Link to={pageLink(undefined, 'last')}>Last page</Link>
+                ) : (
+                  'Last page'
+                )}
+              </Button>
+            </div>
           </nav>
         </>
       )}

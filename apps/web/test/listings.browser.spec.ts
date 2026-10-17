@@ -73,12 +73,16 @@ test('public cursor navigation, reload, owner profile, long text and accessible 
 
   await page.route('**/api/v1/listings?*', (route) =>
     route.fulfill({
-      json: new URL(route.request().url()).searchParams.has('cursor')
-        ? {
-            items: [{ ...item, id: secondId, title: 'Second item' }],
-            nextCursor: null,
-          }
-        : { items: [item], nextCursor: 'stable-cursor' },
+      json:
+        new URL(route.request().url()).searchParams.has('cursor') &&
+        new URL(route.request().url()).searchParams.get('direction') !==
+          'previous'
+          ? {
+              items: [{ ...item, id: secondId, title: 'Second item' }],
+              nextCursor: null,
+              previousCursor: 'second-page-start',
+            }
+          : { items: [item], nextCursor: 'stable-cursor' },
     }),
   );
   await page.route(`**/api/v1/listings/${id}`, (route) => {
@@ -89,7 +93,7 @@ test('public cursor navigation, reload, owner profile, long text and accessible 
     route.fulfill({ json: profile }),
   );
   await page.goto('/browse');
-  await page.getByRole('link', { name: 'Next page' }).click();
+  await page.getByRole('link', { name: 'Next' }).click();
   await expect(
     page.getByRole('heading', { name: 'Second item' }),
   ).toBeVisible();
@@ -98,7 +102,7 @@ test('public cursor navigation, reload, owner profile, long text and accessible 
   await expect(
     page.getByRole('heading', { name: 'Second item' }),
   ).toBeVisible();
-  await page.getByRole('link', { name: 'First page' }).click();
+  await page.getByRole('link', { name: 'Previous' }).click();
   const link = page.getByRole('link', { name: item.title });
   await link.focus();
   await page.keyboard.press('Enter');

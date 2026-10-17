@@ -416,11 +416,9 @@ export function ProposalComposer({
           >
             {revision ? 'Edit proposal' : 'Propose a trade'}
           </Button>
-          <p>
-            {revision
-              ? 'Saved terms stay unchanged until your revision succeeds.'
-              : 'Invite members to review a proposed swap.'}
-          </p>
+          {revision && (
+            <p>Saved terms stay unchanged until your revision succeeds.</p>
+          )}
         </>
       )}
       <Dialog

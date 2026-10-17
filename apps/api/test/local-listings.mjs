@@ -269,6 +269,44 @@ try {
   );
   assert.equal(new Set(seen).size, seen.length);
   assert.ok(!seen.includes(a.id));
+  // Five matching items with a limit of two must end with one item,
+  // regardless of whether navigation reaches the end sequentially or directly.
+  for (const sort of ['oldest', 'newest']) {
+    for (const limit of [1, 2, 3, 5, 8]) {
+      const filters = { limit, sort, owner: bob.id, condition: 'good' };
+      const pages = [];
+      let nextCursor;
+      do {
+        const response = await request(app)
+          .get('/api/v1/listings')
+          .query({ ...filters, ...(nextCursor ? { cursor: nextCursor } : {}) })
+          .expect(200);
+        pages.push(listingPageSchema.parse(response.body));
+        assert.equal(response.body.page, pages.length);
+        assert.equal(response.body.totalPages, Math.ceil(tied.length / limit));
+        nextCursor = response.body.nextCursor;
+      } while (nextCursor);
+      const lastResponse = await request(app)
+        .get('/api/v1/listings')
+        .query({ ...filters, direction: 'last' })
+        .expect(200);
+      let current = listingPageSchema.parse(lastResponse.body);
+      assert.deepEqual(current, pages.at(-1));
+      for (let index = pages.length - 2; index >= 0; index--) {
+        const response = await request(app)
+          .get('/api/v1/listings')
+          .query({
+            ...filters,
+            cursor: current.previousCursor,
+            direction: 'previous',
+          })
+          .expect(200);
+        current = listingPageSchema.parse(response.body);
+        assert.deepEqual(current, pages[index]);
+      }
+      assert.equal(current.previousCursor, null);
+    }
+  }
   for (const query of [
     { limit: 0 },
     { limit: 51 },

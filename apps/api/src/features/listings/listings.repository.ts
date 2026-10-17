@@ -111,8 +111,10 @@ export class ListingsRepository {
 
   async page(query: CatalogQuery, cursor?: ListingCursor) {
     // Only validated enum values choose SQL operators; all user values are parameters.
-    const direction = query.sort === 'oldest' ? 'ASC' : 'DESC';
-    const comparison = query.sort === 'oldest' ? '>' : '<';
+    const ascending =
+      (query.sort === 'oldest') !== (query.direction === 'previous');
+    const direction = ascending ? 'ASC' : 'DESC';
+    const comparison = ascending ? '>' : '<';
     const result = await this.pool.query<Listing>(
       `SELECT ${projection} FROM public.listings
       WHERE availability <> 'withdrawn'
@@ -134,6 +136,71 @@ export class ListingsRepository {
     );
 
     return result.rows;
+  }
+
+  async pagination(query: CatalogQuery, first?: ListingCursor) {
+    const comparison = query.sort === 'oldest' ? '<' : '>';
+    const result = await this.pool.query<{ page: number; totalPages: number }>(
+      `SELECT
+        (count(*) FILTER (WHERE (created_at, id) ${comparison} ($2::timestamptz, $3::uuid)) / $1::bigint + 1)::integer AS page,
+        greatest(1, (count(*) + $1::bigint - 1) / $1::bigint)::integer AS "totalPages"
+      FROM public.listings
+      WHERE availability <> 'withdrawn'
+        AND ($4 = 'all' OR availability = $4)
+        AND ($5::text IS NULL OR condition = $5)
+        AND ($6 = '' OR to_tsvector('english', title || ' ' || description) @@ websearch_to_tsquery('english', $6))
+        AND ($7::uuid IS NULL OR owner_id = $7)`,
+      [
+        query.limit,
+        first?.createdAt ?? null,
+        first?.id ?? null,
+        query.availability,
+        query.condition ?? null,
+        query.q,
+        query.owner ?? null,
+      ],
+    );
+
+    return result.rows[0]!;
+  }
+
+  async lastPage(query: CatalogQuery) {
+    const direction = query.sort === 'oldest' ? 'ASC' : 'DESC';
+    // Count and select from one snapshot so a partial final page keeps the
+    // same boundaries as forward navigation, including concurrent changes.
+    const result = await this.pool.query<Listing & { hasPrevious: boolean }>(
+      `WITH filtered AS (
+        SELECT * FROM public.listings
+        WHERE availability <> 'withdrawn'
+          AND ($2 = 'all' OR availability = $2)
+          AND ($3::text IS NULL OR condition = $3)
+          AND ($4 = '' OR to_tsvector('english', title || ' ' || description) @@ websearch_to_tsquery('english', $4))
+          AND ($5::uuid IS NULL OR owner_id = $5)
+      ), counted AS (
+        SELECT *, count(*) OVER () AS total FROM filtered
+      )
+      SELECT ${projection}, total > $1 AS "hasPrevious" FROM counted
+      ORDER BY created_at ${direction}, id ${direction}
+      OFFSET (SELECT CASE WHEN count(*) = 0 THEN 0
+        ELSE ((count(*) - 1) / $1::bigint) * $1::bigint END FROM filtered)`,
+      [
+        query.limit,
+        query.availability,
+        query.condition ?? null,
+        query.q,
+        query.owner ?? null,
+      ],
+    );
+
+    return {
+      items: result.rows.map((row) => {
+        const { hasPrevious, ...item } = row;
+        void hasPrevious;
+
+        return item;
+      }),
+      hasPrevious: result.rows[0]?.hasPrevious ?? false,
+    };
   }
 
   async ownerPage(actor: string, limit: number, cursor?: ListingCursor) {

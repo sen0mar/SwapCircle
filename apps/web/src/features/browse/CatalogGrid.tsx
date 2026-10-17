@@ -29,11 +29,18 @@ export function CatalogGrid({ items }: { items: Listing[] }) {
       {items.map((item) => (
         <Card className="listing-card" key={item.id}>
           <article>
-            <CatalogPhoto id={item.id} title={item.title} />
+            <div className="listing-card-photo">
+              <CatalogPhoto id={item.id} title={item.title} />
+            </div>
             <div className="listing-copy">
               <div className="listing-heading">
                 <h2>
-                  <Link to={`/listings/${item.id}`}>{item.title}</Link>
+                  <Link
+                    className="listing-card-link"
+                    to={`/listings/${item.id}`}
+                  >
+                    {item.title}
+                  </Link>
                 </h2>
                 <p>
                   <ListingCondition condition={item.condition} />

@@ -127,6 +127,7 @@ export const listingQuerySchema = z.strictObject({
   cursor: z.string().max(300).optional(),
 });
 export const catalogQuerySchema = listingQuerySchema.extend({
+  direction: z.enum(['next', 'previous', 'last']).optional(),
   q: z.string().trim().max(120).default(''),
   condition: listingConditionSchema.optional(),
   availability: z
@@ -160,6 +161,9 @@ export type MemberCursor = z.infer<typeof memberCursorSchema>;
 export const listingPageSchema = z.object({
   items: z.array(listingSchema),
   nextCursor: z.string().nullable(),
+  previousCursor: z.string().nullable().optional(),
+  page: z.number().int().positive().optional(),
+  totalPages: z.number().int().positive().optional(),
 });
 export type Listing = z.infer<typeof listingSchema>;
 export type ListingCreate = z.infer<typeof listingCreateSchema>;

@@ -108,8 +108,43 @@ export class ListingsService {
   }
 
   async page(query: CatalogQuery, cursor?: ListingCursor) {
+    const encodeCursor = (
+      item: { createdAt: string; id: string } | undefined,
+    ) =>
+      item
+        ? Buffer.from(
+            JSON.stringify({ createdAt: item.createdAt, id: item.id }),
+          ).toString('base64url')
+        : null;
+
+    if (query.direction === 'last') {
+      const last = await this.repository.lastPage(query);
+
+      return {
+        ...(await this.repository.pagination(query, last.items[0])),
+        items: last.items,
+        nextCursor: null,
+        previousCursor: last.hasPrevious ? encodeCursor(last.items[0]) : null,
+      };
+    }
+
     const rows = await this.repository.page(query, cursor);
-    return this.makePage(rows, query.limit);
+    const backwards = query.direction === 'previous';
+    const hasMore = rows.length > query.limit;
+    const items = rows.slice(0, query.limit);
+
+    if (backwards) items.reverse();
+
+    return {
+      ...(await this.repository.pagination(query, items[0])),
+      items,
+      nextCursor: (backwards ? !!cursor : hasMore)
+        ? encodeCursor(items.at(-1))
+        : null,
+      previousCursor: (backwards ? hasMore : !!cursor)
+        ? encodeCursor(items[0])
+        : null,
+    };
   }
 
   async ownerPage(actor: string, limit: number, cursor?: ListingCursor) {

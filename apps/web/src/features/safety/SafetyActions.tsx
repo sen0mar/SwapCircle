@@ -227,11 +227,12 @@ export function RestrictionNotice() {
 }
 
 export function SafetyActions({
+  compact = false,
   userId,
   name,
   targetType,
   targetId,
-}: { userId: string; name: string } & Pick<
+}: { compact?: boolean; userId: string; name: string } & Pick<
   ReportSubmission,
   'targetType' | 'targetId'
 >) {
@@ -240,8 +241,11 @@ export function SafetyActions({
   if (loading || session?.user.id === userId) return null;
 
   return (
-    <section className="safety-actions" aria-label="Safety actions">
-      <h2>Safety</h2>
+    <section
+      className={`safety-actions${compact ? ' safety-actions-compact' : ''}`}
+      aria-label="Safety actions"
+    >
+      {!compact && <h2>Safety</h2>}
       {!session ? (
         <p>
           <Link
