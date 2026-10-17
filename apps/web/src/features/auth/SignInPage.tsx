@@ -63,10 +63,8 @@ export function SignInPage() {
   return (
     <section
       className="panel route-panel auth-panel"
-      aria-labelledby="sign-in-title"
+      aria-label="Sign in to SwapCircle"
     >
-      <h1 id="sign-in-title">Sign in to SwapCircle</h1>
-      <p>Use your Google account or your email and password to sign in.</p>
       {(error || restorationError) && (
         <p role="alert">{error || restorationError}</p>
       )}

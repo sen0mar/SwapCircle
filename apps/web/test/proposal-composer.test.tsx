@@ -494,7 +494,12 @@ test('confirmed detail freezes the saved terms and exposes no edit control', asy
     ),
   );
   mount(undefined, true);
-  expect(await screen.findByText('Agreed. Arrange your meetup.')).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Your swap' })).toHaveClass(
+    'sr-only',
+  );
+  expect(
+    screen.queryByText('Agreed. Arrange your meetup.'),
+  ).not.toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: 'Edit proposal' }),
   ).not.toBeInTheDocument();
@@ -559,9 +564,9 @@ test('conflict refresh updates shared detail while preserving the independent ol
     await screen.findByRole('region', { name: 'Proposal conflict' }),
   ).toHaveTextContent('latest version 2');
   await user.keyboard('{Escape}');
-  expect(
-    await screen.findByText('Review the exchange and agree when you’re ready.'),
-  ).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Your swap' })).toHaveClass(
+    'sr-only',
+  );
   expect(screen.getByRole('button', { name: 'Edit proposal' })).toHaveFocus();
   await user.click(screen.getByRole('button', { name: 'Edit proposal' }));
   expect(
@@ -611,7 +616,12 @@ test('a frozen authoritative response keeps the open recovery draft while shared
   ).toHaveTextContent('Canvas bag');
   expect(screen.getByRole('button', { name: 'Save revision' })).toBeDisabled();
   await user.keyboard('{Escape}');
-  expect(await screen.findByText('Agreed. Arrange your meetup.')).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Your swap' })).toHaveClass(
+    'sr-only',
+  );
+  expect(
+    screen.queryByText('Agreed. Arrange your meetup.'),
+  ).not.toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: 'Edit proposal' }),
   ).not.toBeInTheDocument();
@@ -747,8 +757,12 @@ test('confirmed reservations represent agreement without reporting its own items
     ),
   );
   mount(undefined, true);
-  await screen.findByText('Agreed. Arrange your meetup.');
-  expect(screen.getByText('Agreed. Arrange your meetup.')).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Your swap' })).toHaveClass(
+    'sr-only',
+  );
+  expect(
+    screen.queryByText('Agreed. Arrange your meetup.'),
+  ).not.toBeInTheDocument();
   expect(
     screen.queryByText(/proposed items are no longer/),
   ).not.toBeInTheDocument();

@@ -20,17 +20,17 @@ export function ProfilePage() {
 
   if (profile.isError)
     return (
-      <section className="panel route-panel">
-        <h1>Your profile</h1>
+      <section className="panel route-panel" aria-label="Your profile">
         <p role="alert">Your profile could not be loaded.</p>
         <Button onClick={() => void profile.refetch()}>Retry</Button>
       </section>
     );
 
   return (
-    <section className="panel route-panel profile-page">
-      <h1>Your profile</h1>
-      <p>Choose what other members can see about you.</p>
+    <section
+      className="panel route-panel profile-page"
+      aria-label="Your profile"
+    >
       <ProfileForm
         key={profile.data.id}
         profile={profile.data}

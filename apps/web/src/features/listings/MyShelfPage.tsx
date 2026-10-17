@@ -21,12 +21,8 @@ export function MyShelfPage() {
   const [selected, setSelected] = useState<Listing | null>(null);
 
   return (
-    <section className="shelf-page" aria-labelledby="shelf-title">
+    <section className="shelf-page" aria-label="My Shelf">
       <div className="section-heading">
-        <div>
-          <h1 id="shelf-title">My Shelf</h1>
-          <p>Manage the items you have shared.</p>
-        </div>
         <Button asChild variant="primary">
           <Link to="/listings/new">List an item</Link>
         </Button>

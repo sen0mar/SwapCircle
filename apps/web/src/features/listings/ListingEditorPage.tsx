@@ -33,7 +33,6 @@ function EditListingPage({ id }: { id: string }) {
   if (listing.isError)
     return (
       <section className="panel route-panel">
-        <h1>Edit item</h1>
         <p role="alert">This item could not be loaded for editing.</p>
         <Button onClick={() => void listing.refetch()}>Retry</Button>
       </section>
@@ -45,7 +44,6 @@ function EditListingPage({ id }: { id: string }) {
   )
     return (
       <section className="panel route-panel">
-        <h1>Edit item</h1>
         <p>This item is unavailable for editing.</p>
         <Link to="/shelf">Back to My Shelf</Link>
       </section>
@@ -87,11 +85,12 @@ function ListingForm({
   });
 
   return (
-    <section className="panel route-panel listing-editor">
+    <section
+      className="panel route-panel listing-editor"
+      aria-label={mode === 'create' ? 'List an item' : 'Edit item'}
+    >
       <Link to="/shelf">Back to My Shelf</Link>
       {listing && <Link to={`/listings/${listing.id}`}>View item</Link>}
-      <h1>{mode === 'create' ? 'List an item' : 'Edit item'}</h1>
-      <p>Describe your item so another member knows what to expect.</p>
       <form
         className="profile-form"
         onSubmit={handleSubmit(async (values) => {

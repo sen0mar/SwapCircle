@@ -109,24 +109,9 @@ export function TradeDetailPage() {
           </Button>
         </div>
       )}
-      <div className="section-heading">
-        <div>
-          <h1 ref={heading} tabIndex={-1} id="trade-title">
-            {trade.data.participantCount > 2 ? 'Group swap' : 'Your swap'}
-          </h1>
-          <p>
-            {trade.data.status === 'proposed'
-              ? 'Review the exchange and agree when you’re ready.'
-              : trade.data.status === 'confirmed'
-                ? 'Agreed. Arrange your meetup.'
-                : trade.data.status === 'completed'
-                  ? 'Swap complete.'
-                  : trade.data.status === 'disputed'
-                    ? 'A problem was reported. This swap remains unresolved.'
-                    : `This swap is ${trade.data.status}.`}
-          </p>
-        </div>
-      </div>
+      <h1 ref={heading} tabIndex={-1} id="trade-title" className="sr-only">
+        {trade.data.participantCount > 2 ? 'Group swap' : 'Your swap'}
+      </h1>
       <section className="panel swap-overview" aria-label="Items in this swap">
         <div className="trade-detail-grid">
           {[

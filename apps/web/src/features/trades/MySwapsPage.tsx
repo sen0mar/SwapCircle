@@ -50,13 +50,7 @@ export function MySwapsPage() {
   const trades = useMyTrades(after);
 
   return (
-    <section className="swaps-page" aria-labelledby="swaps-title">
-      <div className="section-heading">
-        <div>
-          <h1 id="swaps-title">My Swaps</h1>
-          <p>Proposals and swaps you participate in.</p>
-        </div>
-      </div>
+    <section className="swaps-page" aria-label="My Swaps">
       {trades.isPending ? (
         <p role="status">Loading your swaps…</p>
       ) : trades.isError ? (

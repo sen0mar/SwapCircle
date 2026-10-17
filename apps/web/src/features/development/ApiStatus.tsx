@@ -6,9 +6,7 @@ export default function ApiStatus() {
   const status = useApiStatus();
 
   return (
-    <section className="panel route-panel" aria-labelledby="api-status-title">
-      <h1 id="api-status-title">Development API status</h1>
-      <p>This checks API liveness only, not database readiness.</p>
+    <section className="panel route-panel" aria-label="Development API status">
       {status.isFetching ? (
         <p role="status">Connecting to the API. It may need time to wake up.</p>
       ) : status.isError ? (
