@@ -216,7 +216,9 @@ try {
     .click();
   await expect(bobPage.getByRole('dialog')).toContainText('ready to meet them');
   await bobPage.getByRole('button', { name: 'Confirm and notify' }).click();
-  await expect(bobPage.getByRole('status')).toContainText('Meetup confirmed');
+  await expect(
+    bobPage.getByRole('status', { name: '', exact: true }),
+  ).toContainText('Meetup confirmed');
   await alicePage.reload();
   await meeting(alicePage)
     .getByRole('button', { name: 'Review meetup' })
@@ -248,7 +250,9 @@ try {
     .getByRole('button', { name: 'Decline this meeting' })
     .click();
   await bobPage.getByRole('button', { name: 'Decline and notify' }).click();
-  await expect(bobPage.getByRole('status')).toContainText('Meetup declined');
+  await expect(
+    bobPage.getByRole('status', { name: '', exact: true }),
+  ).toContainText('Meetup declined');
   assert.equal(
     (await api(`/trades/${direct.id}/meeting`, bob)).responses.find(
       (person) => person.userId === bob.id,
