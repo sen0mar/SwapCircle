@@ -334,9 +334,17 @@ try {
   );
   await page.reload();
   await expect(page.getByLabel('Message draft')).toHaveValue('');
-  // Listing and discovery actions open the same DM without shared interests/trades.
+  // Listing proposals and member discovery use the same DM without shared interests/trades.
   await page.goto(`${origin}/listings/${item.id}`);
-  await page.getByRole('button', { name: 'Message', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Propose a trade', exact: true })
+    .click();
+  await page
+    .getByRole('textbox', { name: 'Your message' })
+    .fill('I can offer a book in exchange.');
+  await page
+    .getByRole('button', { name: 'Send proposal', exact: true })
+    .click();
   await expect(page).toHaveURL(`${origin}/inbox/${direct.id}`);
   // A unique filter keeps Bob discoverable when the local stack has demo members.
   // Alice retains no interests, so this still tests messaging without a shared one.
