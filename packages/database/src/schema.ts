@@ -356,6 +356,7 @@ export const messages = pgTable(
       .references(() => profiles.id),
     body: varchar('body', { length: 5000 }).notNull(),
     clientMessageId: uuid('client_message_id').notNull(),
+    hasPhoto: boolean('has_photo').notNull().default(false),
     messageOrder: integer('message_order').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -887,6 +888,24 @@ export const tradeOutcomeOperations = pgTable(
     check(
       'trade_outcome_reason_valid',
       sql`(${table.kind} = 'receipt' AND ${table.reason} IS NULL) OR (${table.kind} <> 'receipt' AND ${table.reason} IS NOT NULL AND length(trim(${table.reason})) > 0)`,
+    ),
+  ],
+);
+
+// Private processed image payloads are read only through the authorized API.
+export const messagePhotos = pgTable(
+  'message_photos',
+  {
+    messageId: uuid('message_id')
+      .primaryKey()
+      .references(() => messages.id, { onDelete: 'cascade' }),
+    sourceDigest: varchar('source_digest', { length: 64 }).notNull(),
+    photoBase64: text('photo_base64').notNull(),
+  },
+  (table) => [
+    check(
+      'message_photo_size',
+      sql`length(${table.photoBase64}) BETWEEN 1 AND 2796204`,
     ),
   ],
 );

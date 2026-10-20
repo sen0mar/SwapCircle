@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+import sharp from 'sharp';
 // Real PostgreSQL and verified local sessions; only guarded synthetic fixtures.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -64,6 +66,7 @@ try {
     await request(app).get('/api/v1/profiles/me').set(auth(user)).expect(200);
   const direct = await start(alice, bob);
   const other = await start(alice, carol);
+
   const originalInput = input(
     direct,
     '  <script>plain text & preserved whitespace</script>  ',
@@ -312,6 +315,102 @@ try {
   const recovered = (await send(alice, failedInput).expect(200)).body;
   assert.equal(recovered.message_order, prior.last_message_order + 1);
   assert.equal(await quota(alice), 1);
+  // The listing proposal entry point sends one message with an optional private image.
+  const offerListing = randomUUID();
+  await migration.query(
+    "INSERT INTO public.listings (id,owner_id,title,description,condition) VALUES ($1,$2,'Synthetic bicycle','Offer photo test','good')",
+    [offerListing, bob.id],
+  );
+  const offer = {
+    listingId: offerListing,
+    body: 'I can offer a lamp.',
+    clientMessageId: randomUUID(),
+    photoBase64: (
+      await sharp({
+        create: { width: 24, height: 24, channels: 3, background: 'red' },
+      })
+        .png()
+        .toBuffer()
+    ).toString('base64'),
+  };
+  const propose = (value, instance = app) =>
+    request(instance)
+      .post('/api/v1/conversations/proposals')
+      .set(auth(alice))
+      .send(value);
+  const receipts = await Promise.all([propose(offer), propose(offer)]);
+  assert.deepEqual(
+    receipts.map((result) => result.status),
+    [200, 200],
+  );
+  const offerMessage = messageReceiptSchema.parse(receipts[0].body);
+  assert.equal(offerMessage.id, receipts[1].body.id);
+  assert.equal(offerMessage.has_photo, true);
+  assert.equal(offerMessage.conversation_id, direct);
+  assert.equal(
+    offerMessage.body,
+    'About “Synthetic bicycle”\n\nI can offer a lamp.',
+  );
+  const photoPath = `/api/v1/conversations/messages/${offerMessage.id}/photo`;
+  for (const member of [alice, bob]) {
+    const response = await request(app)
+      .get(photoPath)
+      .set(auth(member))
+      .expect(200);
+    assert.equal(response.headers['cache-control'], 'no-store');
+    const metadata = await sharp(
+      Buffer.from(response.body.dataUrl.split(',')[1], 'base64'),
+    ).metadata();
+    assert.equal(metadata.format, 'webp');
+    assert.equal(metadata.exif, undefined);
+  }
+  await request(app).get(photoPath).expect(401);
+  await request(app).get(photoPath).set(auth(carol)).expect(403);
+  const sdkRead = await alice.client.from('message_photos').select('*');
+  assert.ok(
+    sdkRead.error,
+    'Private images must not be accessible through the browser SDK',
+  );
+  await propose({ ...offer, photoBase64: undefined }).expect(409);
+  await propose({
+    ...offer,
+    clientMessageId: randomUUID(),
+    photoBase64: Buffer.from('invalid image').toString('base64'),
+  }).expect(415);
+  const offerCount = await migration.query(
+    'SELECT count(*)::int AS count FROM public.messages WHERE sender_id=$1 AND client_message_id=$2',
+    [alice.id, offer.clientMessageId],
+  );
+  assert.equal(offerCount.rows[0].count, 1);
+
+  class FailingPhotoRepository extends ConversationsRepository {
+    async insertMessage(client, actor, value, photo) {
+      await super.insertMessage(client, actor, value, photo);
+      throw new Error('Synthetic attachment rollback');
+    }
+  }
+  const failedPhotoApp = createApp({
+    allowedOrigins: [],
+    verifyToken: async () => alice.id,
+    conversations: new ConversationsService(
+      new FailingPhotoRepository(runtime),
+      new SafetyPermissions(),
+    ),
+  });
+  const failedOffer = { ...offer, clientMessageId: randomUUID() };
+  await propose(failedOffer, failedPhotoApp).expect(500);
+  const rolledBack = await migration.query(
+    'SELECT id FROM public.messages WHERE sender_id=$1 AND client_message_id=$2',
+    [alice.id, failedOffer.clientMessageId],
+  );
+  assert.equal(rolledBack.rowCount, 0);
+  const photoCount = await migration.query(
+    'SELECT count(*)::int AS count FROM public.message_photos p JOIN public.messages m ON m.id=p.message_id WHERE m.conversation_id=$1',
+    [direct],
+  );
+  assert.equal(photoCount.rows[0].count, 1);
+  await propose(failedOffer).expect(200);
+
   console.info(
     'Local messages: strict validation/auth, exact concurrent retries, cross-conversation/content conflicts, sender-wide deduplication, two-actor stable ordering, current memberships/restrictions/bidirectional blocks and racing block, active group isolation, persistent/retry/burst quotas, expiry and atomic failure rollback/recovery passed.',
   );

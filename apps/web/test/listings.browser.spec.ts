@@ -115,7 +115,7 @@ test('public cursor navigation, reload, owner profile, long text and accessible 
   await expect(page.getByRole('button', { name: 'Edit item' })).toHaveCount(0);
   await expect(
     page.getByRole('link', { name: 'Sign in to message', exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(
     page.getByRole('link', { name: 'Sign in to preview a trade' }),
   ).toBeVisible();

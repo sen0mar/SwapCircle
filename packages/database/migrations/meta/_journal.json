@@ -169,6 +169,13 @@
       "when": 1790963161744,
       "tag": "0023_naive_crusher_hogan",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792509242827,
+      "tag": "0024_gigantic_callisto",
+      "breakpoints": true
     }
   ]
 }

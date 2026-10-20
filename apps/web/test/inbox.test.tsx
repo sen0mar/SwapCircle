@@ -793,3 +793,25 @@ test('returning to conversations restores focus to the originating thread and pr
   );
   expect(screen.getByRole('heading', { name: 'Reader Bob' })).toHaveFocus();
 });
+
+test('offer photos load privately in history and recover from a failed read', async () => {
+  fixture();
+  let attempts = 0;
+  const offered = { ...message(32), has_photo: true };
+  server.use(
+    http.get('http://127.0.0.1:55439/rest/v1/messages', () =>
+      HttpResponse.json([offered]),
+    ),
+    http.get(`*/api/v1/conversations/messages/${offered.id}/photo`, () => {
+      attempts++;
+      return attempts === 1
+        ? new HttpResponse(null, { status: 503 })
+        : HttpResponse.json({ dataUrl: 'data:image/webp;base64,UklGRg==' });
+    }),
+  );
+  await screen.findByText('Photo could not be loaded.');
+  await userEvent.click(screen.getByRole('button', { name: 'Retry photo' }));
+  expect(
+    await screen.findByRole('img', { name: 'Photo of the offered trade item' }),
+  ).toHaveAttribute('src', 'data:image/webp;base64,UklGRg==');
+});

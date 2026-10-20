@@ -1,3 +1,4 @@
+import { createProposalMessageRouter } from './features/conversations/proposal-message.routes.js';
 import { requestLogging } from './observability/logger.js';
 import type { Logger } from 'pino';
 import type { HealthService } from './features/health/health.service.js';
@@ -101,6 +102,9 @@ export function createApp({
           ),
     }),
   );
+
+  if (conversations)
+    app.use('/api/v1', createProposalMessageRouter(verifyToken, conversations));
 
   app.use(express.json({ limit: '16kb' }));
   app.use(

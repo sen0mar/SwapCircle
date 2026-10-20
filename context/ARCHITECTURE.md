@@ -7,7 +7,7 @@
 SwapCircle is a community for exchanging belongings and optionally meeting socially.
 
 - **Trades involve two or more people**, with one or more items per person. Do not require three participants, automatic cycle matching, equal valuations, predefined wishlists, or membership in a closed community. Store participants and transfers as rows, not fixed user slots.
-- Profiles contain a biography, approximate location, and selectable interests. Listings contain photos, condition, description, and ownership. Messaging and negotiation may precede proposals.
+- Profiles contain a biography, approximate location, and selectable interests. Listings contain photos, condition, description, and ownership. Messaging and negotiation may precede proposals. The listing “Propose a trade” entry point now sends a direct message with one optional photo; it does not create formal trade terms. Existing formal proposals retain their revision and acceptance flows.
 - **Meet to swap** is always available. **Swap + coffee** appears only when the inviter and invitee share at least **two distinct interest IDs**, verified by the backend. “Coffee’s on me” is an optional invitation flag; payment happens in person.
 - For group trades, evaluate coffee eligibility per inviter/invitee pair. Eligible participants may meet socially without requiring everyone to share interests. Check eligibility when sending and accepting; later profile changes do not invalidate accepted plans.
 - Coffee requires separate consent. Declining or cancelling coffee never cancels the trade or penalizes the member.
@@ -185,6 +185,8 @@ Send messages through Express; read authorized history and receive events throug
 
 Create notifications transactionally with important domain changes. Update TanStack Query after events; never optimistically declare a trade confirmed.
 
+Trade-offer messages accept one optional JPEG/PNG/WebP photo (5 MB input). Express uses the existing bounded Sharp processor, strips metadata, and stores the processed WebP (at most 2 MB) in the private `message_photos` table, atomically with the message. This initial implementation keeps small attachments in PostgreSQL to avoid public media storage and orphaned uploads; only the authenticated Express photo endpoint may read them after checking current conversation access. Browser SDK roles have no attachment-table privileges. Retry keys bind to the message and source photo digest.
+
 Allow up to three listing photos. Enforce byte, pixel, and processing-concurrency limits; decode and re-encode with Sharp, strip metadata, and store processed files only. Published listing photos/avatars are intentionally public; private content must never use a public bucket. Deny browser storage writes. Keep uploads off Render’s persistent filesystem assumptions; clean orphaned objects after failed operations.
 
 ## 8. Development, deployment, and operations
@@ -207,7 +209,7 @@ Target **$0 within free allowances**, not unlimited availability. Render Free sl
 
 Before release, verify unauthorized reads/writes through both Express and direct Supabase access; forged identity fields; exactly-one versus two shared interests; independent coffee consent; private-to-group isolation; blocked contact; stale acceptances; concurrent reservations; duplicate retries; partial-handover disputes; reconnect recovery; and logout cache clearing. Cover direct and multi-person trades, migration replay, upload rejection, keyboard navigation, and automated accessibility checks.
 
-Deferred: payments, shipping, automatic cycle discovery, AI matching, video/chat attachments, Socket.IO, Redis/queues, presence indicators, and external venue/search services. Zustand, Turnstile, analytics, and email delivery are optional additions with an explicit need and cost review.
+Deferred: payments, shipping, automatic cycle discovery, AI matching, video and general chat attachments, Socket.IO, Redis/queues, presence indicators, and external venue/search services. Zustand, Turnstile, analytics, and email delivery are optional additions with an explicit need and cost review.
 
 ## References
 

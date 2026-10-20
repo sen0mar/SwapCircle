@@ -239,6 +239,7 @@ export const messageReadSchema = z.object({
   conversation_id: z.uuid(),
   sender_id: z.uuid(),
   body: z.string().min(1).max(5000),
+  has_photo: z.boolean().optional(),
   message_order: z.number().int().positive(),
   created_at: z.string().datetime({ offset: true }),
 });
@@ -735,3 +736,25 @@ export const passwordSignInSchema = z.strictObject({
 });
 
 export type PasswordSignIn = z.infer<typeof passwordSignInSchema>;
+
+export const offeredItemConditionSchema = listingConditionSchema;
+
+// A first contact about a listing; formal trade terms are agreed separately.
+export const tradeMessageSubmissionSchema = z.strictObject({
+  listingId: z.uuid(),
+  body: z.string().trim().min(1).max(4500),
+  condition: offeredItemConditionSchema.optional(),
+  clientMessageId: z.uuid(),
+  photoBase64: z
+    .string()
+    .max(6990508)
+    .regex(/^[A-Za-z0-9+/]*={0,2}$/)
+    .refine((value) => value.length % 4 === 0)
+    .optional(),
+});
+export type TradeMessageSubmission = z.infer<
+  typeof tradeMessageSubmissionSchema
+>;
+export const messagePhotoSchema = z.object({
+  dataUrl: z.string().startsWith('data:image/webp;base64,'),
+});

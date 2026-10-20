@@ -157,128 +157,83 @@ function mount(revision?: TradeDetail, detail = false) {
   return { user: userEvent.setup(), writes: () => writes, payloads, queries };
 }
 
-test('failed submission keeps the same operation key for retry', async () => {
-  const { user, writes, payloads } = mount();
-
-  await user.click(
-    await screen.findByRole('button', { name: 'Propose a trade' }),
-  );
-  await user.click(await screen.findByRole('checkbox', { name: 'Desk lamp' }));
-  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
-  await screen.findByRole('button', { name: 'Send proposal' });
-  await user.click(screen.getByRole('button', { name: 'Send proposal' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    'request could not be completed',
-  );
-  await user.click(screen.getByRole('button', { name: 'Send proposal' }));
-  expect(writes()).toBe(2);
-  expect(payloads[0]).toEqual(payloads[1]);
-});
-
-test('direct proposal explains missing offer and never submits when closed', async () => {
+test('new proposals contain only a message and optional photo and preserve drafts when closed', async () => {
   const { user, writes } = mount();
-
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   await user.click(
     await screen.findByRole('button', { name: 'Propose a trade' }),
-  );
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
-  expect(screen.getByRole('alert')).toHaveTextContent(
-    'Each person needs at least one offered item',
-  );
-  await user.click(await screen.findByRole('checkbox', { name: 'Desk lamp' }));
-  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
-
-  const summary = await screen.findByRole('list', { name: 'Trade transfers' });
-  expect(within(summary).getAllByRole('listitem')[0]).toHaveTextContent(
-    /Alex gives Bicycle to You/,
-  );
-  expect(within(summary).getAllByRole('listitem')[1]).toHaveTextContent(
-    /You gives Desk lamp to Alex/,
-  );
-  expect(screen.getByText(/Items are not reserved/)).toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Edit draft' }));
-  await user.click(
-    screen.getByRole('button', { name: 'Keep draft and close' }),
-  );
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(writes()).toBe(0);
-
-  await user.click(
-    await screen.findByRole('button', { name: 'Propose a trade' }),
-  );
-  expect(screen.getByRole('checkbox', { name: 'Desk lamp' })).toBeChecked();
-});
-
-test('four-person multi-item preview identifies every giver and recipient', async () => {
-  const { user, writes } = mount();
-
-  await user.click(
-    await screen.findByRole('button', { name: 'Propose a trade' }),
-  );
-  const add = await screen.findByRole('combobox', { name: 'Add a person' });
-  await user.selectOptions(add, ids.third);
-  await user.selectOptions(add, ids.fourth);
-  await user.click(await screen.findByRole('checkbox', { name: 'Desk lamp' }));
-  await user.click(screen.getByRole('checkbox', { name: 'Canvas bag' }));
-  await user.click(await screen.findByRole('checkbox', { name: 'Books' }));
-  await user.click(await screen.findByRole('checkbox', { name: 'Plant' }));
-  await user.selectOptions(
-    screen.getByRole('combobox', { name: 'Alex gives Bicycle to' }),
-    ids.third,
-  );
-  await user.selectOptions(
-    screen.getByRole('combobox', { name: 'Casey gives Books to' }),
-    ids.fourth,
-  );
-  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
-
-  const summary = await screen.findByRole('list', { name: 'Trade transfers' });
-  expect(within(summary).getAllByRole('listitem')[0]).toHaveTextContent(
-    /Alex gives Bicycle to Casey/,
-  );
-  expect(within(summary).getAllByRole('listitem')[3]).toHaveTextContent(
-    /Casey gives Books to Drew/,
-  );
-  expect(within(summary).getAllByRole('listitem')).toHaveLength(5);
-  expect(screen.getByText(/4 people/)).toBeInTheDocument();
-  expect(writes()).toBe(0);
-});
-
-test('self transfer and a newly unavailable item block the preview with clear feedback', async () => {
-  const { user, writes } = mount();
-
-  await user.click(
-    await screen.findByRole('button', { name: 'Propose a trade' }),
-  );
-  await user.click(await screen.findByRole('checkbox', { name: 'Desk lamp' }));
-  await user.selectOptions(
-    screen.getByRole('combobox', { name: 'Alex gives Bicycle to' }),
-    ids.owner,
-  );
-  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
-  expect(screen.getByRole('alert')).toHaveTextContent(
-    'Choose a different recipient',
-  );
-
-  await user.selectOptions(
-    screen.getByRole('combobox', { name: 'Alex gives Bicycle to' }),
-    ids.self,
-  );
-  server.use(
-    http.get(`http://127.0.0.1:3001/api/v1/listings/${ids.bicycle}`, () =>
-      HttpResponse.json({ ...items[0], availability: 'reserved' }),
-    ),
-  );
-  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Bicycle is unavailable',
   );
   expect(
-    screen.queryByRole('heading', { name: 'Review your proposal' }),
-  ).not.toBeInTheDocument();
+    screen.getByRole('combobox', { name: 'Item quality (optional)' }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Send proposal' })).toBeDisabled();
+  await user.type(
+    screen.getByRole('textbox', { name: 'Your message' }),
+    'I can offer a lamp.',
+  );
+  await user.click(screen.getByRole('button', { name: 'Close' }));
+  await user.click(screen.getByRole('button', { name: 'Propose a trade' }));
+  expect(screen.getByRole('textbox')).toHaveValue('I can offer a lamp.');
   expect(writes()).toBe(0);
+});
+
+test('failed message submission preserves its retry key and content', async () => {
+  const payloads: unknown[] = [];
+  server.use(
+    http.post('*/api/v1/conversations/proposals', async ({ request }) => {
+      payloads.push(await request.json());
+      return new HttpResponse(null, { status: 503 });
+    }),
+  );
+  const { user } = mount();
+  await user.click(
+    await screen.findByRole('button', { name: 'Propose a trade' }),
+  );
+  await user.type(screen.getByRole('textbox'), 'I can offer a lamp.');
+  await user.selectOptions(
+    screen.getByRole('combobox', { name: 'Item quality (optional)' }),
+    'good',
+  );
+  await user.click(screen.getByRole('button', { name: 'Send proposal' }));
+  await screen.findByRole('alert');
+  await user.click(screen.getByRole('button', { name: 'Send proposal' }));
+  await screen.findByRole('alert');
+  expect(payloads).toHaveLength(2);
+  expect(payloads[0]).toEqual(payloads[1]);
+  expect(payloads[0]).toMatchObject({
+    listingId: ids.bicycle,
+    body: 'I can offer a lamp.',
+    condition: 'good',
+  });
+  expect(screen.getByRole('textbox')).toHaveValue('I can offer a lamp.');
+});
+
+test('a successful message closes the proposal dialog', async () => {
+  server.use(
+    http.post('*/api/v1/conversations/proposals', async ({ request }) => {
+      const input = (await request.json()) as {
+        body: string;
+        clientMessageId: string;
+      };
+      return HttpResponse.json({
+        id: ids.lamp,
+        conversation_id: ids.bicycle,
+        sender_id: ids.self,
+        body: input.body,
+        client_message_id: input.clientMessageId,
+        has_photo: false,
+        message_order: 1,
+        created_at: items[0]!.createdAt,
+      });
+    }),
+  );
+  const { user } = mount();
+  await user.click(
+    await screen.findByRole('button', { name: 'Propose a trade' }),
+  );
+  await user.type(screen.getByRole('textbox'), 'I can offer a lamp.');
+  await user.click(screen.getByRole('button', { name: 'Send proposal' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
 function proposal(version = 1): TradeDetail {

@@ -18,7 +18,7 @@ const apiOrigin = 'http://127.0.0.1:4328';
 const fixture = await createDiscoveryFixture(origin);
 const server = fixture.app.listen(4328, '127.0.0.1');
 await new Promise((resolve) => server.once('listening', resolve));
-const [alice, bob, carol, dan] = fixture.users;
+const [alice, bob, , dan] = fixture.users;
 const output = new URL('../test-results/groups-local/', import.meta.url);
 let preview;
 let browser;
@@ -162,18 +162,25 @@ try {
     },
     'POST',
   );
-  await signIn(a, alice, `/listings/${items[1].id}`);
-  await a.getByRole('button', { name: 'Propose a trade' }).click();
-  await a
-    .getByRole('combobox', { name: 'Add a person' })
-    .selectOption(carol.id);
-  await a.getByRole('combobox', { name: 'Add a person' }).selectOption(dan.id);
-  for (const item of [items[0], items[2], items[3]])
-    await a.getByRole('checkbox', { name: item.title, exact: true }).check();
-  await a.getByRole('button', { name: 'Review proposal' }).click();
-  await a.getByRole('button', { name: 'Send proposal' }).click();
-  await expect(a).toHaveURL(/\/swaps\/[0-9a-f-]+$/);
-  const tradeId = a.url().split('/').pop();
+  // Group invitations apply to existing formal trades, independently of the message-first entry point.
+  const created = await api(
+    '/trades',
+    alice,
+    {
+      participantIds: fixture.users.map((user) => user.id),
+      transfers: items.map((item, index) => ({
+        listingId: item.id,
+        ownerId: fixture.users[index].id,
+        recipientId: fixture.users[(index + 1) % fixture.users.length].id,
+      })),
+      meetingMode: 'meet_to_swap',
+      operationKey: randomUUID(),
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    },
+    'POST',
+  );
+  const tradeId = created.id;
+  await signIn(a, alice, `/swaps/${tradeId}`);
   const trade = await api(`/trades/${tradeId}`, alice);
   const group = trade.groupConversationId;
   assert.ok(group && group !== dm.id);

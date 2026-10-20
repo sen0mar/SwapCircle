@@ -640,21 +640,178 @@
     border: 1px solid var(--border-default);
     border-radius: var(--radius-2xl);
   }
-  .proposal-dialog {
-    width: min(640px, calc(100% - 32px));
+  .trade-message-dialog {
+    width: min(480px, calc(100% - 32px));
   }
-  .proposal-content {
+  .trade-message-form {
     display: grid;
-    gap: 16px;
+    gap: 24px;
     min-width: 0;
   }
-  .proposal-content h3 {
-    padding-top: 8px;
+  .trade-message-field {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+  }
+  .trade-offer-section {
+    display: grid;
+    gap: 20px;
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    background: var(--bg-inset);
+  }
+  .trade-offer-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .trade-field-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    width: 100%;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .trade-field-optional {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+  .trade-quality-field {
+    padding-top: 20px;
+    border-top: 1px solid var(--border-default);
+  }
+  .trade-message-field > label {
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .trade-message-form textarea {
+    width: 100%;
+    min-height: 128px;
+    resize: vertical;
+    padding: 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    line-height: 1.6;
+  }
+  .trade-message-form textarea:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+  .trade-message-photo {
+    display: grid;
+    justify-items: start;
+    gap: 10px;
+    padding: 0;
+  }
+  .trade-message-photo .ui-button {
+    display: inline-flex;
+    gap: 8px;
+    min-height: 44px;
+  }
+  .trade-message-photo > p {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .trade-photo-preview {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 96px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    background: var(--bg-inset);
+  }
+  .trade-photo-preview img {
+    max-height: 200px;
+    max-width: 100%;
+    margin-inline: auto;
+    border-radius: 6px;
+    object-fit: contain;
+  }
+  .trade-photo-preview .ui-button {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    background: var(--bg-surface);
+  }
+  .trade-message-actions {
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 16px;
+  }
+  .trade-message-actions .ui-button {
+    width: 100%;
+    min-height: 44px;
+  }
+  .message-photo {
+    width: auto;
+    max-width: 100%;
+    max-height: 360px;
+    object-fit: contain;
+    border-radius: 8px;
+    margin-top: 8px;
+  }
+  .proposal-dialog {
+    width: min(640px, calc(100% - 32px));
+    padding-bottom: 0;
+  }
+  .proposal-title {
+    padding-right: 36px;
+    font-size: 24px;
+    letter-spacing: -0.025em;
+  }
+  .proposal-description {
+    color: var(--text-secondary);
+    max-width: 52ch;
+  }
+  .proposal-content,
+  .proposal-section {
+    display: grid;
+    gap: 20px;
+    min-width: 0;
+  }
+  .proposal-section + .proposal-section {
+    padding-top: 24px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .proposal-section-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .proposal-section-heading > span {
+    display: grid;
+    place-items: center;
+    flex: 0 0 32px;
+    height: 32px;
+    border-radius: var(--radius-lg);
+    background: var(--accent-primary-soft);
+    color: var(--accent-primary-text);
+    font-weight: 600;
+  }
+  .proposal-section-heading h3 {
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  .proposal-section-heading p,
+  .proposal-meeting p {
+    font-size: 14px;
+    color: var(--text-secondary);
   }
   .proposal-content label,
   .proposal-recipient {
     display: grid;
     gap: 8px;
+    min-width: 0;
   }
   .proposal-content select {
     min-width: 0;
@@ -662,52 +819,111 @@
     min-height: 44px;
     padding: 8px 12px;
     border: 1px solid var(--border-strong);
-    border-radius: calc(infinity * 1px);
+    border-radius: var(--radius-md);
     background: var(--bg-surface);
     color: var(--text-primary);
   }
+  .proposal-items-grid,
   .proposal-member-items,
-  .proposal-participants,
   .proposal-summary {
     display: grid;
-    gap: 10px;
+    gap: 12px;
+    min-width: 0;
+  }
+  .proposal-member-card {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
   }
   .proposal-member-items {
     padding: 16px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
+  }
+  .proposal-member-items h3 {
+    font-size: 15px;
+    font-weight: 600;
   }
   .proposal-content .proposal-choice {
     display: flex;
     align-items: center;
-    min-height: 44px;
+    gap: 12px;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+  }
+  .proposal-choice:has(input:checked) {
+    background: var(--accent-primary-soft);
+    border-color: var(--accent-primary-text);
+  }
+  .proposal-choice:has(input:focus-visible) {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
   }
   .proposal-choice input {
+    flex-shrink: 0;
     width: 20px;
     height: 20px;
-    margin-right: 12px;
     accent-color: var(--accent-primary);
   }
-  .proposal-participants,
-  .proposal-summary {
-    padding-left: 20px;
+  .proposal-recipient {
+    padding: 16px;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-inset);
+    font-size: 14px;
+  }
+  .proposal-participants {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
   }
   .proposal-participants li {
-    padding-block: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 4px 12px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    background: var(--bg-subtle);
+    overflow-wrap: anywhere;
+    min-width: 0;
   }
-  .proposal-participants button {
-    margin-left: 12px;
+  .proposal-summary {
+    list-style: none;
+    padding: 0;
   }
-  .proposal-summary li {
-    line-height: 1.55;
+  .proposal-summary li,
+  .proposal-meeting {
+    padding: 16px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .proposal-meeting {
+    background: var(--bg-subtle);
+  }
+  .proposal-meeting p + p {
+    margin-top: 8px;
   }
   .proposal-actions {
+    position: sticky;
+    bottom: 0;
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
+    padding-block: 16px;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-subtle);
   }
   .proposal-actions .ui-button {
     flex: 1 1 180px;
+    min-height: 44px;
   }
   .ui-sheet {
     inset: 0 0 0 auto;

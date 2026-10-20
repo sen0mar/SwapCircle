@@ -4,7 +4,6 @@ import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
 import { SafetyActions } from '../safety/SafetyActions';
-import { MessageAction } from '../inbox/MessageAction';
 import { useListing, useListingOwner } from './useListings';
 import { ProposalComposer } from './ProposalComposer';
 import {
@@ -149,7 +148,6 @@ export function ListingPage() {
                   <Link to="/shelf">My Shelf</Link>
                 </div>
               )}
-              <MessageAction userId={item.ownerId} />
               {session && owner.data && (
                 <ProposalComposer
                   key={item.id}

@@ -26,7 +26,7 @@ async function main() {
   // New/destructive migrations require a separate review and explicit digest update.
   assert.equal(
     digest,
-    'a3b4e7945b9ce81257aa83344e2b7b77af0a243031e21396ef73a356122bd29d',
+    '1f1703d9a9434146bf23141b8d0b1db51d4e10fa9059d1e7306058bc267a98df',
   );
   assert.equal(process.env.HOSTED_REVIEWED_MIGRATION_SHA256, digest);
   const pool = new Pool({

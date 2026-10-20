@@ -148,7 +148,7 @@ export class ConversationsRepository {
 
   async retryMessage(client: PoolClient, actor: string, key: string) {
     const result = await client.query<MessageReceipt>(
-      `SELECT id,conversation_id,sender_id,body,client_message_id,message_order,
+      `SELECT id,conversation_id,sender_id,body,client_message_id,has_photo,message_order,
        to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
        FROM public.messages WHERE sender_id=$1 AND client_message_id=$2`,
       [actor, key],
@@ -160,14 +160,57 @@ export class ConversationsRepository {
     client: PoolClient,
     actor: string,
     input: MessageSubmission,
+    photo?: { sourceDigest: string; photoBase64: string },
   ) {
     // The existing trigger allocates the position while holding the conversation
     // row until commit; neither timestamps nor sequences determine history order.
-    await client.query(
-      'INSERT INTO public.messages (conversation_id,sender_id,body,client_message_id) VALUES ($1,$2,$3,$4)',
-      [input.conversation_id, actor, input.body, input.client_message_id],
+    const inserted = await client.query<{ id: string }>(
+      'INSERT INTO public.messages (conversation_id,sender_id,body,client_message_id,has_photo) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+      [
+        input.conversation_id,
+        actor,
+        input.body,
+        input.client_message_id,
+        !!photo,
+      ],
     );
+    if (photo) {
+      await client.query(
+        'INSERT INTO public.message_photos (message_id,source_digest,photo_base64) VALUES ($1,$2,$3)',
+        [inserted.rows[0]!.id, photo.sourceDigest, photo.photoBase64],
+      );
+    }
     return (await this.retryMessage(client, actor, input.client_message_id))!;
+  }
+
+  async proposalListing(id: string) {
+    const result = await this.pool.query<{
+      owner_id: string;
+      title: string;
+      availability: string;
+    }>('SELECT owner_id,title,availability FROM public.listings WHERE id=$1', [
+      id,
+    ]);
+    return result.rows[0];
+  }
+
+  async photo(client: PoolClient, messageId: string) {
+    const result = await client.query<{
+      photo_base64: string;
+      source_digest: string;
+    }>(
+      'SELECT photo_base64,source_digest FROM public.message_photos WHERE message_id=$1',
+      [messageId],
+    );
+    return result.rows[0];
+  }
+
+  async messageConversation(client: PoolClient, messageId: string) {
+    const result = await client.query<{ conversation_id: string }>(
+      'SELECT conversation_id FROM public.messages WHERE id=$1',
+      [messageId],
+    );
+    return result.rows[0]?.conversation_id;
   }
 
   async memberExists(client: PoolClient, user: string) {

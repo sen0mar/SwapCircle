@@ -104,72 +104,100 @@ async function setup(page: import('@playwright/test').Page) {
   return () => writes;
 }
 
-test('mobile direct and group proposals preserve readable terms before sending', async ({
+test('message-first proposals support an optional photo, draft recovery and accessible layouts', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 360, height: 800 });
   const writes = await setup(page);
+  await expect(
+    page.getByRole('button', { name: 'Message', exact: true }),
+  ).toHaveCount(0);
+  let payload:
+    | { photoBase64?: string; condition?: string; clientMessageId: string }
+    | undefined;
+  let previousKey: string | undefined;
+  let attempts = 0;
+  await page.route('**/api/v1/conversations/proposals', async (route) => {
+    payload = route.request().postDataJSON();
+    attempts++;
+    if (previousKey) expect(payload!.clientMessageId).toBe(previousKey);
+    previousKey = payload!.clientMessageId;
+    return route.fulfill({ status: 503 });
+  });
   await page.getByRole('button', { name: 'Propose a trade' }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('checkbox', { name: 'Desk lamp' }).check();
-  await page.getByRole('button', { name: 'Review proposal' }).click();
-  await expect(
-    page.getByRole('list', { name: 'Trade transfers' }).getByRole('listitem'),
-  ).toHaveCount(2);
-  await page.screenshot({ path: 'test-results/proposal-direct-mobile.png' });
-  await page.getByRole('button', { name: 'Edit draft' }).click();
-  const add = page.getByRole('combobox', { name: 'Add a person' });
-  await add.selectOption(ids.third);
-  await add.selectOption(ids.fourth);
-  await page.getByRole('checkbox', { name: 'Canvas bag' }).check();
-  await page.getByRole('checkbox', { name: 'Books' }).check();
-  await page.getByRole('checkbox', { name: 'Plant' }).check();
-  await page
-    .getByRole('combobox', { name: 'Alex gives Bicycle to' })
-    .selectOption(ids.third);
-  await page
-    .getByRole('combobox', { name: 'Casey gives Books to' })
-    .selectOption(ids.fourth);
-  await page.screenshot({
-    path: 'test-results/proposal-group-edit-mobile.png',
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('checkbox')).toHaveCount(0);
+  await expect(dialog.getByText('Message Alex about Bicycle.')).toHaveCount(0);
+  const offer = dialog.getByRole('region', {
+    name: 'The item you’re offering',
   });
-  await page
-    .getByRole('button', { name: 'Review proposal' })
-    .scrollIntoViewIfNeeded();
-  await page.screenshot({
-    path: 'test-results/proposal-group-edit-mobile-bottom.png',
-  });
-  await page.getByRole('button', { name: 'Review proposal' }).click();
+  await expect(offer.getByRole('combobox')).toBeVisible();
   await expect(
-    page.getByRole('list', { name: 'Trade transfers' }).getByRole('listitem'),
-  ).toHaveCount(5);
-  await expect(page.getByText('4 people')).toBeVisible();
-  for (const width of [360, 768, 800, 1280, 1600]) {
-    await page.setViewportSize({ width, height: 900 });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-    if (width === 360 || width === 1280)
+    offer.getByRole('button', { name: 'Add a photo of your item' }),
+  ).toBeVisible();
+  const quality = dialog.getByRole('combobox', {
+    name: 'Item quality (optional)',
+  });
+  await expect(quality.getByRole('option')).toHaveText([
+    'Select item quality',
+    'Like new',
+    'Good',
+    'Fair',
+    'Poor',
+  ]);
+  await quality.selectOption('poor');
+  await expect(
+    dialog.getByRole('button', { name: 'Add a photo of your item' }),
+  ).toBeVisible();
+  const message = dialog.getByRole('textbox', { name: 'Your message' });
+  await expect(message).toBeFocused();
+  await expect(
+    dialog.getByRole('button', { name: 'Send proposal' }),
+  ).toBeDisabled();
+  await message.fill('Hi Alex! Would you like my desk lamp?');
+  await page.locator('#trade-photo').setInputFiles({
+    name: 'lamp.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  });
+  await expect(dialog.getByRole('img')).toBeVisible();
+  for (const theme of ['light', 'dark']) {
+    // Close/reopen also exercises focus restoration and draft preservation.
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Propose a trade' }),
+    ).toBeFocused();
+    await page.getByLabel('Theme').selectOption(theme);
+    await page.getByRole('button', { name: 'Propose a trade' }).click();
+    for (const width of [360, 768, 1280, 1600]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      await expect(dialog).toBeVisible();
+      expect(
+        (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
+          .violations,
+      ).toEqual([]);
       await page.screenshot({
-        path: `test-results/proposal-group-${width}.png`,
+        path: `test-results/trade-message-${theme}-${width}.png`,
       });
+    }
   }
-  await page.getByRole('button', { name: 'Edit draft' }).click();
-  await page.getByRole('button', { name: 'Keep draft and close' }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.getByLabel('Theme').selectOption('dark');
-  await page.setViewportSize({ width: 360, height: 900 });
-  await page.getByRole('button', { name: 'Propose a trade' }).click();
-  await page.getByRole('button', { name: 'Review proposal' }).click();
-  await expect(
-    page.getByRole('list', { name: 'Trade transfers' }).getByRole('listitem'),
-  ).toHaveCount(5);
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await page.screenshot({
-    path: 'test-results/proposal-group-dark-mobile.png',
-  });
+  await expect(message).toHaveValue('Hi Alex! Would you like my desk lamp?');
+  await dialog.getByRole('button', { name: 'Send proposal' }).click();
+  await expect(dialog.getByRole('alert')).toBeVisible();
+  expect(payload!.photoBase64).toBeTruthy();
+  expect(payload!.condition).toBe('poor');
+  await dialog.getByRole('button', { name: 'Send proposal' }).click();
+  await expect.poll(() => attempts).toBe(2);
+  await expect(dialog.getByRole('alert')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Remove photo' }).click();
+  await expect(dialog.getByRole('img')).toHaveCount(0);
   expect(writes()).toBe(0);
 });

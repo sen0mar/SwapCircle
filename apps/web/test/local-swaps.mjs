@@ -164,12 +164,38 @@ try {
     alicePage.getByRole('button', { name: 'Propose a trade' }),
   ).toBeVisible();
   await alicePage.getByRole('button', { name: 'Propose a trade' }).click();
-  await alicePage.getByRole('checkbox', { name: aliceItem.title }).check();
-  await alicePage.getByRole('button', { name: 'Review proposal' }).click();
-  await expect(alicePage.getByText(/Items are not reserved/)).toBeVisible();
+  await alicePage
+    .getByRole('textbox', { name: 'Your message' })
+    .fill('I can offer my desk lamp.');
+  await alicePage
+    .getByRole('combobox', { name: 'Item quality (optional)' })
+    .selectOption('good');
   await alicePage.getByRole('button', { name: 'Send proposal' }).click();
-  await expect(alicePage).toHaveURL(/\/swaps\/[0-9a-f-]+$/);
-  const tradeId = alicePage.url().split('/').pop();
+  await expect(alicePage).toHaveURL(/\/inbox\/[0-9a-f-]+$/);
+  await expect(
+    alicePage
+      .getByRole('region', { name: 'Message history' })
+      .getByText('Offered item quality: Good', { exact: false }),
+  ).toBeVisible();
+
+  // Existing formal trades remain supported; create fixture terms through Express.
+  const created = await api(
+    '/trades',
+    alice,
+    {
+      participantIds: [alice.id, bob.id],
+      transfers: [
+        { listingId: aliceItem.id, ownerId: alice.id, recipientId: bob.id },
+        { listingId: bobItem.id, ownerId: bob.id, recipientId: alice.id },
+      ],
+      meetingMode: 'meet_to_swap',
+      operationKey: randomUUID(),
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    },
+    'POST',
+  );
+  const tradeId = created.id;
+  await alicePage.goto(`${origin}/swaps/${tradeId}`);
   await expect(
     alicePage.getByRole('heading', { name: 'You give', exact: true }),
   ).toBeVisible();

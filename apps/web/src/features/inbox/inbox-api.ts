@@ -14,7 +14,7 @@ export const conversationPageSize = 20;
 const conversationColumns =
   'id,type,direct_user_low,direct_user_high,created_at';
 const messageColumns =
-  'id,conversation_id,sender_id,body,client_message_id,message_order,created_at';
+  'id,conversation_id,sender_id,body,client_message_id,has_photo,message_order,created_at';
 
 export class ConversationDenied extends Error {}
 
