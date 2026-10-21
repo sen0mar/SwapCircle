@@ -1,6 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { messagePhotoSchema } from '@swapcircle/contracts';
-import { useAuth } from '../auth/AuthProvider';
+import {
+  MessagePhoto,
+  MessageTime,
+  ProposalMessageCard,
+} from './ProposalMessageCard';
 import { Fragment, useEffect, useLayoutEffect, useRef } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
@@ -14,48 +16,6 @@ import { GroupInvitation } from '../groups/GroupInvitation';
 import { useGroup } from '../groups/useGroup';
 import { UnreadBadge } from './UnreadBadge';
 import { useComposer } from './MessageComposerProvider';
-
-function MessagePhoto({ id }: { id: string }) {
-  const { request, session } = useAuth();
-  const photo = useQuery({
-    queryKey: ['private', session?.user.id, 'message-photo', id],
-    queryFn: ({ signal }) =>
-      request(
-        `/api/v1/conversations/messages/${id}/photo`,
-        messagePhotoSchema,
-        { signal },
-      ),
-    retry: false,
-  });
-
-  if (photo.isPending) return <p role="status">Loading photo…</p>;
-  if (photo.isError)
-    return (
-      <div>
-        <p role="alert">Photo could not be loaded.</p>
-        <Button onClick={() => void photo.refetch()}>Retry photo</Button>
-      </div>
-    );
-
-  return (
-    <img
-      className="message-photo"
-      src={photo.data.dataUrl}
-      alt="Photo of the offered trade item"
-    />
-  );
-}
-
-function MessageTime({ value }: { value: string }) {
-  return (
-    <time dateTime={value}>
-      {new Date(value).toLocaleString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit',
-      })}
-    </time>
-  );
-}
 
 export function InboxPage() {
   const { id } = useParams();
@@ -174,7 +134,9 @@ function ConversationList({ selected }: { selected: string | undefined }) {
                           )}
                         </span>
                         <span className="inbox-preview">
-                          {latest?.body ?? 'No messages yet'}
+                          {latest?.proposal
+                            ? `Trade proposal · ${latest.proposal.listingTitle}`
+                            : (latest?.body ?? 'No messages yet')}
                         </span>
                       </span>
                       <UnreadBadge count={unreadCount} />
@@ -433,11 +395,17 @@ function Thread({
                         message.sender_id === userId ? 'message-own' : ''
                       }
                     >
-                      <div className="message-bubble">
-                        <p>{message.body}</p>
-                        {message.has_photo && <MessagePhoto id={message.id} />}
-                        <MessageTime value={message.created_at} />
-                      </div>
+                      {message.proposal ? (
+                        <ProposalMessageCard message={message} />
+                      ) : (
+                        <div className="message-bubble">
+                          <p>{message.body}</p>
+                          {message.has_photo && (
+                            <MessagePhoto id={message.id} />
+                          )}
+                          <MessageTime value={message.created_at} />
+                        </div>
+                      )}
                     </li>
                   </Fragment>
                 ))}

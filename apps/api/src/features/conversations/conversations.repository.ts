@@ -3,6 +3,7 @@ import type {
   GroupMembershipStatus,
   MessageReceipt,
   MessageSubmission,
+  MessageProposal,
 } from '@swapcircle/contracts';
 
 export class ConversationsRepository {
@@ -148,7 +149,7 @@ export class ConversationsRepository {
 
   async retryMessage(client: PoolClient, actor: string, key: string) {
     const result = await client.query<MessageReceipt>(
-      `SELECT id,conversation_id,sender_id,body,client_message_id,has_photo,message_order,
+      `SELECT id,conversation_id,sender_id,body,client_message_id,has_photo,proposal,message_order,
        to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
        FROM public.messages WHERE sender_id=$1 AND client_message_id=$2`,
       [actor, key],
@@ -161,17 +162,19 @@ export class ConversationsRepository {
     actor: string,
     input: MessageSubmission,
     photo?: { sourceDigest: string; photoBase64: string },
+    proposal?: MessageProposal,
   ) {
     // The existing trigger allocates the position while holding the conversation
     // row until commit; neither timestamps nor sequences determine history order.
     const inserted = await client.query<{ id: string }>(
-      'INSERT INTO public.messages (conversation_id,sender_id,body,client_message_id,has_photo) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+      'INSERT INTO public.messages (conversation_id,sender_id,body,client_message_id,has_photo,proposal) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
       [
         input.conversation_id,
         actor,
         input.body,
         input.client_message_id,
         !!photo,
+        proposal ? JSON.stringify(proposal) : null,
       ],
     );
     if (photo) {
@@ -211,6 +214,108 @@ export class ConversationsRepository {
       [messageId],
     );
     return result.rows[0]?.conversation_id;
+  }
+
+  async proposalMessage(client: PoolClient, id: string) {
+    const result = await client.query<MessageReceipt>(
+      `SELECT id,conversation_id,sender_id,body,client_message_id,has_photo,proposal,message_order,
+      to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at
+      FROM public.messages WHERE id=$1 AND proposal IS NOT NULL`,
+      [id],
+    );
+    return result.rows[0];
+  }
+
+  async proposalDecision(client: PoolClient, messageId: string) {
+    const result = await client.query<{
+      id: string;
+      decision: 'accepted' | 'refused';
+      respondedAt: string;
+    }>(
+      `SELECT id,decision,to_char(responded_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "respondedAt"
+       FROM public.message_proposal_responses WHERE message_id=$1`,
+      [messageId],
+    );
+    return result.rows[0];
+  }
+
+  async insertProposalDecision(
+    client: PoolClient,
+    actor: string,
+    messageId: string,
+    decision: 'accepted' | 'refused',
+  ) {
+    await client.query(
+      'INSERT INTO public.message_proposal_responses (message_id,actor_id,decision) VALUES ($1,$2,$3)',
+      [messageId, actor, decision],
+    );
+    return (await this.proposalDecision(client, messageId))!;
+  }
+
+  async proposalTarget(client: PoolClient, listingId: string) {
+    const result = await client.query<{
+      owner_id: string;
+      availability: string;
+      title: string;
+      updated_at: Date;
+    }>(
+      'SELECT owner_id,availability,title,updated_at FROM public.listings WHERE id=$1 FOR SHARE',
+      [listingId],
+    );
+    return result.rows[0];
+  }
+
+  async acceptedProposals(
+    client: PoolClient,
+    actor: string,
+    input: {
+      limit: number;
+      before?: string | undefined;
+      beforeId?: string | undefined;
+    },
+  ) {
+    const result = await client.query<{
+      id: string;
+      respondedAt: string;
+      recipientId: string;
+      senderName: string;
+      recipientName: string;
+      message: MessageReceipt;
+    }>(
+      `
+      SELECT r.id,to_char(r.responded_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "respondedAt",
+        r.actor_id AS "recipientId",sender.display_name AS "senderName",recipient.display_name AS "recipientName",
+        jsonb_build_object('id',m.id,'conversation_id',m.conversation_id,'sender_id',m.sender_id,'body',m.body,
+          'client_message_id',m.client_message_id,'has_photo',m.has_photo,'proposal',m.proposal,'message_order',m.message_order,
+          'created_at',to_char(m.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) AS message
+      FROM public.message_proposal_responses r JOIN public.messages m ON m.id=r.message_id
+      JOIN public.conversation_members cm ON cm.conversation_id=m.conversation_id AND cm.user_id=$1 AND cm.active
+      JOIN public.profiles sender ON sender.id=m.sender_id JOIN public.profiles recipient ON recipient.id=r.actor_id
+      WHERE r.decision='accepted' AND (m.sender_id=$1 OR r.actor_id=$1)
+        AND ($2::timestamptz IS NULL OR (r.responded_at,r.id)<($2::timestamptz,$3::uuid))
+      ORDER BY r.responded_at DESC,r.id DESC LIMIT $4`,
+      [actor, input.before ?? null, input.beforeId ?? null, input.limit + 1],
+    );
+    const items = result.rows.slice(0, input.limit);
+    const last = items.at(-1);
+    return {
+      items: items.map((row) => ({
+        message: row.message,
+        senderName: row.senderName,
+        recipientName: row.recipientName,
+        response: {
+          messageId: row.message.id,
+          conversationId: row.message.conversation_id,
+          recipientId: row.recipientId,
+          status: 'accepted',
+          respondedAt: row.respondedAt,
+        },
+      })),
+      nextCursor:
+        result.rows.length > input.limit && last
+          ? { respondedAt: last.respondedAt, id: last.id }
+          : null,
+    };
   }
 
   async memberExists(client: PoolClient, user: string) {

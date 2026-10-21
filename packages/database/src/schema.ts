@@ -357,6 +357,7 @@ export const messages = pgTable(
     body: varchar('body', { length: 5000 }).notNull(),
     clientMessageId: uuid('client_message_id').notNull(),
     hasPhoto: boolean('has_photo').notNull().default(false),
+    proposal: jsonb('proposal'),
     messageOrder: integer('message_order').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -438,7 +439,7 @@ export const notifications = pgTable(
       .where(sql`${table.readAt} IS NULL`),
     check(
       'notification_resource_valid',
-      sql`(${table.eventType} IN ('trade_invitation', 'trade_status', 'trade_revision') AND ${table.resourceType} = 'trade') OR (${table.eventType} IN ('group_invitation', 'group_membership') AND ${table.resourceType} = 'conversation') OR (${table.eventType} IN ('coffee_invitation', 'coffee_response') AND ${table.resourceType} = 'coffee_invitation') OR (${table.eventType} = 'meeting_change' AND ${table.resourceType} = 'meetup')`,
+      sql`(${table.eventType} IN ('trade_invitation', 'trade_status', 'trade_revision') AND ${table.resourceType} = 'trade') OR (${table.eventType} IN ('group_invitation', 'group_membership', 'proposal_response') AND ${table.resourceType} = 'conversation') OR (${table.eventType} IN ('coffee_invitation', 'coffee_response') AND ${table.resourceType} = 'coffee_invitation') OR (${table.eventType} = 'meeting_change' AND ${table.resourceType} = 'meetup')`,
     ),
   ],
 );
@@ -907,5 +908,33 @@ export const messagePhotos = pgTable(
       'message_photo_size',
       sql`length(${table.photoBase64}) BETWEEN 1 AND 2796204`,
     ),
+  ],
+);
+
+// One terminal, immutable decision per message-based offer. These agreements
+// retain unlisted offer details and are separate from reserved/versioned trades.
+export const messageProposalResponses = pgTable(
+  'message_proposal_responses',
+  {
+    id: uuid('id').notNull().defaultRandom().unique(),
+    messageId: uuid('message_id')
+      .primaryKey()
+      .references(() => messages.id, { onDelete: 'cascade' }),
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => profiles.id),
+    decision: varchar('decision', { length: 16 }).notNull(),
+    respondedAt: timestamp('responded_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      'message_proposal_decision_valid',
+      sql`${table.decision} IN ('accepted','refused')`,
+    ),
+    index('accepted_message_proposals_page_idx')
+      .on(table.respondedAt, table.id)
+      .where(sql`${table.decision} = 'accepted'`),
   ],
 );

@@ -199,7 +199,7 @@ jobs:
           DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
           DATABASE_CA_CERT_PATH: ${{ runner.temp }}/supabase-ca.crt
           HOSTED_AUTHORIZATION: configure-approved-project
-          HOSTED_REVIEWED_MIGRATION_SHA256: 1f1703d9a9434146bf23141b8d0b1db51d4e10fa9059d1e7306058bc267a98df
+          HOSTED_REVIEWED_MIGRATION_SHA256: 65f1595c19a181dcd0c2f4e76ed7bfde4f0c205afe81587accb7f595f6e8fa54
           SUPABASE_URL: https://tpanyqfgmbpsiejqjocd.supabase.co
           FRONTEND_URL: https://swapcircle.pages.dev
         run: |

@@ -346,6 +346,18 @@ try {
   const offerMessage = messageReceiptSchema.parse(receipts[0].body);
   assert.equal(offerMessage.id, receipts[1].body.id);
   assert.equal(offerMessage.has_photo, true);
+  assert.deepEqual(offerMessage.proposal, {
+    listingId: offerListing,
+    listingTitle: 'Synthetic bicycle',
+    message: offer.body,
+  });
+  const recipientHistory = await bob.client
+    .from('messages')
+    .select('proposal')
+    .eq('id', offerMessage.id)
+    .single();
+  assert.equal(recipientHistory.error, null);
+  assert.deepEqual(recipientHistory.data.proposal, offerMessage.proposal);
   assert.equal(offerMessage.conversation_id, direct);
   assert.equal(
     offerMessage.body,
@@ -384,8 +396,8 @@ try {
   assert.equal(offerCount.rows[0].count, 1);
 
   class FailingPhotoRepository extends ConversationsRepository {
-    async insertMessage(client, actor, value, photo) {
-      await super.insertMessage(client, actor, value, photo);
+    async insertMessage(client, actor, value, photo, proposal) {
+      await super.insertMessage(client, actor, value, photo, proposal);
       throw new Error('Synthetic attachment rollback');
     }
   }
@@ -410,6 +422,218 @@ try {
   );
   assert.equal(photoCount.rows[0].count, 1);
   await propose(failedOffer).expect(200);
+
+  const proposalPath = (id) => `/api/v1/conversations/messages/${id}/proposal`;
+  const respondProposal = (user, id, action, instance = app) =>
+    request(instance).put(proposalPath(id)).set(auth(user)).send({ action });
+  await request(app).get(proposalPath(offerMessage.id)).expect(401);
+  await request(app)
+    .get(proposalPath(offerMessage.id))
+    .set(auth(carol))
+    .expect(404);
+  const pending = (
+    await request(app)
+      .get(proposalPath(offerMessage.id))
+      .set(auth(bob))
+      .expect(200)
+  ).body;
+  assert.equal(pending.status, 'pending');
+  assert.equal(pending.recipientId, bob.id);
+  await respondProposal(alice, offerMessage.id, 'accept').expect(403);
+  await request(app)
+    .put(proposalPath(offerMessage.id))
+    .set(auth(bob))
+    .send({ action: 'accept', actorId: alice.id })
+    .expect(400);
+  const accepted = await Promise.all([
+    respondProposal(bob, offerMessage.id, 'accept'),
+    respondProposal(bob, offerMessage.id, 'accept'),
+  ]);
+  assert.deepEqual(
+    accepted.map((result) => result.status),
+    [200, 200],
+  );
+  assert.deepEqual(accepted[0].body, accepted[1].body);
+  assert.equal(accepted[0].body.status, 'accepted');
+  await respondProposal(bob, offerMessage.id, 'refuse').expect(409);
+  for (const user of [alice, bob]) {
+    const page = (
+      await request(app)
+        .get('/api/v1/conversations/proposals/accepted')
+        .set(auth(user))
+        .expect(200)
+    ).body;
+    assert.equal(page.items.length, 1);
+    assert.equal(page.items[0].message.id, offerMessage.id);
+    assert.equal(page.items[0].response.status, 'accepted');
+  }
+  assert.equal(
+    (
+      await request(app)
+        .get('/api/v1/conversations/proposals/accepted')
+        .set(auth(carol))
+        .expect(200)
+    ).body.items.length,
+    0,
+  );
+  const notificationCount = await migration.query(
+    "SELECT count(*)::int AS count FROM public.notifications WHERE recipient_id=$1 AND event_type='proposal_response'",
+    [alice.id],
+  );
+  assert.equal(notificationCount.rows[0].count, 1);
+  const deniedSdk = await bob.client
+    .from('message_proposal_responses')
+    .select('*');
+  assert.ok(deniedSdk.error);
+
+  const refuseMessage = (
+    await propose({
+      ...offer,
+      clientMessageId: randomUUID(),
+      photoBase64: undefined,
+    }).expect(200)
+  ).body;
+  await migration.query(
+    'INSERT INTO public.blocks (blocker_id,blocked_id) VALUES ($1,$2)',
+    [alice.id, bob.id],
+  );
+  await respondProposal(bob, refuseMessage.id, 'accept').expect(403);
+  await migration.query(
+    'DELETE FROM public.blocks WHERE blocker_id=$1 AND blocked_id=$2',
+    [alice.id, bob.id],
+  );
+  await respondProposal(bob, refuseMessage.id, 'refuse').expect(200);
+  await respondProposal(bob, refuseMessage.id, 'refuse').expect(200);
+  await respondProposal(bob, refuseMessage.id, 'accept').expect(409);
+
+  const racedMessage = (
+    await propose({
+      ...offer,
+      clientMessageId: randomUUID(),
+      photoBase64: undefined,
+    }).expect(200)
+  ).body;
+  const raced = await Promise.all([
+    respondProposal(bob, racedMessage.id, 'accept'),
+    respondProposal(bob, racedMessage.id, 'refuse'),
+  ]);
+  assert.deepEqual(raced.map((result) => result.status).sort(), [200, 409]);
+  const racedSaved = (
+    await request(app)
+      .get(proposalPath(racedMessage.id))
+      .set(auth(alice))
+      .expect(200)
+  ).body;
+  assert.equal(
+    racedSaved.status,
+    raced.find((result) => result.status === 200).body.status,
+  );
+
+  const failureMessage = (
+    await propose({
+      ...offer,
+      clientMessageId: randomUUID(),
+      photoBase64: undefined,
+    }).expect(200)
+  ).body;
+  class FailedResponseRepository extends ConversationsRepository {
+    async transaction(work) {
+      return super.transaction(async (client) => {
+        await work(client);
+        throw new Error('Synthetic response rollback after notification');
+      });
+    }
+  }
+  const failedResponseApp = createApp({
+    allowedOrigins: [],
+    verifyToken: async () => bob.id,
+    conversations: new ConversationsService(
+      new FailedResponseRepository(runtime),
+      new SafetyPermissions(),
+    ),
+  });
+  const beforeFailure = (
+    await migration.query(
+      "SELECT count(*)::int AS count FROM public.notifications WHERE recipient_id=$1 AND event_type='proposal_response'",
+      [alice.id],
+    )
+  ).rows[0].count;
+  await respondProposal(
+    bob,
+    failureMessage.id,
+    'accept',
+    failedResponseApp,
+  ).expect(500);
+  assert.equal(
+    (
+      await request(app)
+        .get(proposalPath(failureMessage.id))
+        .set(auth(bob))
+        .expect(200)
+    ).body.status,
+    'pending',
+  );
+  assert.equal(
+    (
+      await migration.query(
+        "SELECT count(*)::int AS count FROM public.notifications WHERE recipient_id=$1 AND event_type='proposal_response'",
+        [alice.id],
+      )
+    ).rows[0].count,
+    beforeFailure,
+  );
+  await respondProposal(bob, failureMessage.id, 'accept').expect(200);
+
+  const staleMessage = (
+    await propose({
+      ...offer,
+      clientMessageId: randomUUID(),
+      photoBase64: undefined,
+    }).expect(200)
+  ).body;
+  await migration.query(
+    'UPDATE public.listings SET updated_at=clock_timestamp(),revision=revision+1 WHERE id=$1',
+    [offerListing],
+  );
+  await respondProposal(bob, staleMessage.id, 'accept').expect(409);
+  await respondProposal(bob, staleMessage.id, 'refuse').expect(200);
+  const unavailableMessage = (
+    await propose({
+      ...offer,
+      clientMessageId: randomUUID(),
+      photoBase64: undefined,
+    }).expect(200)
+  ).body;
+  await migration.query(
+    "UPDATE public.listings SET availability='withdrawn' WHERE id=$1",
+    [offerListing],
+  );
+  await respondProposal(bob, unavailableMessage.id, 'accept').expect(409);
+  await respondProposal(bob, offerMessage.id, 'accept').expect(200);
+  const firstPage = (
+    await request(app)
+      .get('/api/v1/conversations/proposals/accepted?limit=1')
+      .set(auth(alice))
+      .expect(200)
+  ).body;
+  assert.equal(firstPage.items.length, 1);
+  assert.ok(firstPage.nextCursor);
+  const nextPage = (
+    await request(app)
+      .get('/api/v1/conversations/proposals/accepted')
+      .query({
+        limit: 1,
+        before: firstPage.nextCursor.respondedAt,
+        beforeId: firstPage.nextCursor.id,
+      })
+      .set(auth(alice))
+      .expect(200)
+  ).body;
+  assert.equal(nextPage.items.length, 1);
+  assert.notEqual(firstPage.items[0].message.id, nextPage.items[0].message.id);
+  console.info(
+    'Message proposal decisions: recipient authorization, exact retries, accept/refuse races, blocked contact, stale/unavailable items, atomic decision/notification rollback, private reads and accepted pages for both participants passed.',
+  );
 
   console.info(
     'Local messages: strict validation/auth, exact concurrent retries, cross-conversation/content conflicts, sender-wide deduplication, two-actor stable ordering, current memberships/restrictions/bidirectional blocks and racing block, active group isolation, persistent/retry/burst quotas, expiry and atomic failure rollback/recovery passed.',

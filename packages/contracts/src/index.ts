@@ -233,6 +233,14 @@ export const conversationReadSchema = z.object({
   direct_user_high: z.uuid().nullable(),
   created_at: z.string().datetime({ offset: true }),
 });
+export const messageProposalSchema = z.strictObject({
+  listingId: z.uuid(),
+  listingTitle: z.string().min(1).max(120),
+  message: z.string().min(1).max(4500),
+  condition: listingConditionSchema.optional(),
+});
+export type MessageProposal = z.infer<typeof messageProposalSchema>;
+
 export const messageReadSchema = z.object({
   id: z.uuid(),
   client_message_id: z.uuid(),
@@ -240,6 +248,7 @@ export const messageReadSchema = z.object({
   sender_id: z.uuid(),
   body: z.string().min(1).max(5000),
   has_photo: z.boolean().optional(),
+  proposal: messageProposalSchema.nullable().optional(),
   message_order: z.number().int().positive(),
   created_at: z.string().datetime({ offset: true }),
 });
@@ -280,6 +289,7 @@ export const notificationEventTypeSchema = z.enum([
   'trade_revision',
   'group_invitation',
   'group_membership',
+  'proposal_response',
   'coffee_invitation',
   'coffee_response',
   'meeting_change',
@@ -305,6 +315,7 @@ export const notificationCreationSchema = z
       trade_revision: 'trade',
       group_invitation: 'conversation',
       group_membership: 'conversation',
+      proposal_response: 'conversation',
       coffee_invitation: 'coffee_invitation',
       coffee_response: 'coffee_invitation',
       meeting_change: 'meetup',
@@ -758,3 +769,40 @@ export type TradeMessageSubmission = z.infer<
 export const messagePhotoSchema = z.object({
   dataUrl: z.string().startsWith('data:image/webp;base64,'),
 });
+
+export const messageProposalResponseSchema = z.strictObject({
+  action: z.enum(['accept', 'refuse']),
+});
+export const messageProposalStateSchema = z.object({
+  messageId: z.uuid(),
+  conversationId: z.uuid(),
+  recipientId: z.uuid(),
+  status: z.enum(['pending', 'accepted', 'refused']),
+  respondedAt: z.iso.datetime({ offset: true }).nullable(),
+});
+export type MessageProposalState = z.infer<typeof messageProposalStateSchema>;
+export const acceptedProposalQuerySchema = z
+  .strictObject({
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+    before: z.iso.datetime({ offset: true }).optional(),
+    beforeId: z.uuid().optional(),
+  })
+  .refine((value) => Boolean(value.before) === Boolean(value.beforeId));
+export const acceptedProposalPageSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        message: messageReadSchema,
+        response: messageProposalStateSchema.extend({
+          status: z.literal('accepted'),
+        }),
+        senderName: z.string(),
+        recipientName: z.string(),
+      }),
+    )
+    .max(50),
+  nextCursor: z
+    .object({ respondedAt: z.iso.datetime({ offset: true }), id: z.uuid() })
+    .nullable(),
+});
+export type AcceptedProposalPage = z.infer<typeof acceptedProposalPageSchema>;

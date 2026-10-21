@@ -1,3 +1,12 @@
+import type { PoolClient } from 'pg';
+import {
+  messageProposalSchema,
+  messageProposalStateSchema,
+  acceptedProposalPageSchema,
+} from '@swapcircle/contracts';
+import { lockProposalBoundary } from '../trades/proposal-boundary.js';
+import { isDeepStrictEqual } from 'node:util';
+import type { MessageProposal } from '@swapcircle/contracts';
 import { createHash } from 'node:crypto';
 import { processPhoto, PhotoError } from '../photos/photos.service.js';
 import type { TradeMessageSubmission } from '@swapcircle/contracts';
@@ -139,6 +148,7 @@ export class ConversationsService {
     actor: string,
     input: MessageSubmission,
     photo?: { sourceDigest: string; photoBase64: string },
+    proposal?: MessageProposal,
   ) {
     return this.repository.transaction(async (client) => {
       // Identity is immutable. Read it without a row lock so every path takes
@@ -196,6 +206,13 @@ export class ConversationsService {
           'Use a new message reference for different content or conversation.',
         );
 
+      if (previous?.proposal && !isDeepStrictEqual(previous.proposal, proposal))
+        throw new SafetyError(
+          409,
+          'MESSAGE_RETRY_CONFLICT',
+          'Use a new message reference for different proposal details.',
+        );
+
       if (previous && (previous.has_photo || photo)) {
         const savedPhoto = await this.repository.photo(client, previous.id);
         if (savedPhoto?.source_digest !== photo?.sourceDigest)
@@ -211,7 +228,13 @@ export class ConversationsService {
       await this.permissions.consume(client, actor, 'message');
       return (
         previous ??
-        (await this.repository.insertMessage(client, actor, input, photo))
+        (await this.repository.insertMessage(
+          client,
+          actor,
+          input,
+          photo,
+          proposal,
+        ))
       );
     });
   }
@@ -268,7 +291,197 @@ export class ConversationsService {
         client_message_id: input.clientMessageId,
       },
       photo,
+      {
+        listingId: input.listingId,
+        listingTitle: listing.title,
+        message: input.body,
+        ...(input.condition ? { condition: input.condition } : {}),
+      },
     );
+  }
+
+  private async proposalContext(
+    client: PoolClient,
+    actor: string,
+    messageId: string,
+  ) {
+    const message = await this.repository.proposalMessage(client, messageId);
+    const conversation =
+      message &&
+      (await this.repository.identity(client, message.conversation_id));
+    if (
+      !message ||
+      !conversation ||
+      conversation.type !== 'direct' ||
+      ![conversation.direct_user_low, conversation.direct_user_high].includes(
+        actor,
+      )
+    )
+      throw new SafetyError(
+        404,
+        'PROPOSAL_UNAVAILABLE',
+        'This proposal is unavailable.',
+      );
+    const proposal = messageProposalSchema.parse(message.proposal);
+    const recipientId =
+      message.sender_id === conversation.direct_user_low
+        ? conversation.direct_user_high!
+        : conversation.direct_user_low!;
+    return { message, proposal, recipientId };
+  }
+
+  async proposalState(actor: string, messageId: string) {
+    return this.repository.transaction(async (client) => {
+      await this.permissions.lockPair(client, actor, actor);
+      await this.permissions.assertUnrestricted(client, [actor]);
+      const { message, recipientId } = await this.proposalContext(
+        client,
+        actor,
+        messageId,
+      );
+      if (
+        !(await this.repository.lockReader(
+          client,
+          actor,
+          message.conversation_id,
+        ))
+      )
+        throw new SafetyError(
+          403,
+          'PROPOSAL_UNAVAILABLE',
+          'This proposal is unavailable.',
+        );
+      const previous = await this.repository.proposalDecision(
+        client,
+        messageId,
+      );
+      return messageProposalStateSchema.parse({
+        messageId,
+        conversationId: message.conversation_id,
+        recipientId,
+        status: previous?.decision ?? 'pending',
+        respondedAt: previous?.respondedAt ?? null,
+      });
+    });
+  }
+
+  async respondToProposal(
+    actor: string,
+    messageId: string,
+    action: 'accept' | 'refuse',
+  ) {
+    return this.repository.transaction(async (client) => {
+      await lockProposalBoundary(client);
+      const { message, proposal, recipientId } = await this.proposalContext(
+        client,
+        actor,
+        messageId,
+      );
+      if (actor !== recipientId)
+        throw new SafetyError(
+          403,
+          'RECIPIENT_ONLY',
+          'Only the recipient can respond to this proposal.',
+        );
+      await this.permissions.assertContactAllowed(
+        client,
+        message.sender_id,
+        recipientId,
+      );
+      const previous = await this.repository.proposalDecision(
+        client,
+        messageId,
+      );
+      const target =
+        !previous && action === 'accept'
+          ? await this.repository.proposalTarget(client, proposal.listingId)
+          : undefined;
+      const members = await this.repository.activeMembers(
+        client,
+        message.conversation_id,
+      );
+      if (
+        members.length !== 2 ||
+        !members.includes(actor) ||
+        !members.includes(message.sender_id)
+      )
+        throw new SafetyError(
+          403,
+          'PROPOSAL_UNAVAILABLE',
+          'This proposal is unavailable.',
+        );
+      const decision = action === 'accept' ? 'accepted' : 'refused';
+      if (previous && previous.decision !== decision)
+        throw new SafetyError(
+          409,
+          'PROPOSAL_ALREADY_RESPONDED',
+          'This proposal has already been answered.',
+        );
+      await this.permissions.consume(client, actor, 'trade');
+      if (
+        !previous &&
+        action === 'accept' &&
+        (!target ||
+          target.owner_id !== actor ||
+          target.availability !== 'available')
+      )
+        throw new SafetyError(
+          409,
+          'LISTING_UNAVAILABLE',
+          'The requested item is no longer available.',
+        );
+      if (
+        !previous &&
+        action === 'accept' &&
+        target &&
+        target.updated_at.getTime() > Date.parse(message.created_at)
+      )
+        throw new SafetyError(
+          409,
+          'PROPOSAL_ITEM_CHANGED',
+          'The requested item changed after this proposal was sent. Ask for a new proposal.',
+        );
+      const saved =
+        previous ??
+        (await this.repository.insertProposalDecision(
+          client,
+          actor,
+          messageId,
+          decision,
+        ));
+      if (!previous)
+        await createNotification(client, {
+          recipient_id: message.sender_id,
+          domain_event_id: saved.id,
+          event_type: 'proposal_response',
+          resource_type: 'conversation',
+          resource_id: message.conversation_id,
+        });
+      return messageProposalStateSchema.parse({
+        messageId,
+        conversationId: message.conversation_id,
+        recipientId,
+        status: saved.decision,
+        respondedAt: saved.respondedAt,
+      });
+    });
+  }
+
+  async acceptedProposals(
+    actor: string,
+    input: {
+      limit: number;
+      before?: string | undefined;
+      beforeId?: string | undefined;
+    },
+  ) {
+    return this.repository.transaction(async (client) => {
+      await this.permissions.lockPair(client, actor, actor);
+      await this.permissions.assertUnrestricted(client, [actor]);
+      return acceptedProposalPageSchema.parse(
+        await this.repository.acceptedProposals(client, actor, input),
+      );
+    });
   }
 
   async readPhoto(actor: string, messageId: string) {

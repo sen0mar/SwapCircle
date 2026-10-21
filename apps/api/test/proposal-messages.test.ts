@@ -1,3 +1,4 @@
+import type { MessageProposal } from '@swapcircle/contracts';
 import { randomUUID } from 'node:crypto';
 import { test, expect, vi } from 'vitest';
 import request from 'supertest';
@@ -14,7 +15,13 @@ const messageId = randomUUID();
 
 function fixture() {
   let saved:
-    | { id: string; conversation_id: string; body: string; has_photo: boolean }
+    | {
+        id: string;
+        conversation_id: string;
+        body: string;
+        has_photo: boolean;
+        proposal?: MessageProposal;
+      }
     | undefined;
   let photo: { photo_base64: string; source_digest: string } | undefined;
   const repository = {
@@ -34,12 +41,13 @@ function fixture() {
     })),
     activeMembers: vi.fn(async () => [actor, owner]),
     retryMessage: vi.fn(async () => saved),
-    insertMessage: vi.fn(async (_client, _actor, input, image) => {
+    insertMessage: vi.fn(async (_client, _actor, input, image, proposal) => {
       saved = {
         id: messageId,
         conversation_id: input.conversation_id,
         body: input.body,
         has_photo: !!image,
+        proposal,
       };
       if (image)
         photo = {
@@ -187,4 +195,29 @@ test('offered item quality is included in the saved message and bound to retries
     condition: 'poor',
   });
   expect(poor.body).toContain('Offered item quality: Poor');
+});
+
+test('proposal snapshots are saved with the message and cannot be forged through ordinary sends', async () => {
+  const { service, app } = fixture();
+  const payload = { ...input(), condition: 'fair' as const };
+  const receipt = await service.sendProposal(actor, payload);
+  expect(receipt.proposal).toEqual({
+    listingId: payload.listingId,
+    listingTitle: 'Bicycle',
+    message: payload.body,
+    condition: 'fair',
+  });
+  await expect(
+    service.sendProposal(actor, { ...payload, listingId: randomUUID() }),
+  ).rejects.toMatchObject({ code: 'MESSAGE_RETRY_CONFLICT' });
+  await request(app)
+    .post('/api/v1/conversations/messages')
+    .set('Authorization', 'Bearer synthetic')
+    .send({
+      conversation_id: conversationId,
+      body: 'Ordinary message',
+      client_message_id: randomUUID(),
+      proposal: receipt.proposal,
+    })
+    .expect(400);
 });

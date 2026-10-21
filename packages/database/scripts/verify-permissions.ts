@@ -29,6 +29,10 @@ const runtimeRules: Record<string, [string, string[]]> = {
   meetups: ['runtime_meetups', ['SELECT', 'INSERT', 'UPDATE']],
   messages: ['runtime_messages', ['SELECT', 'INSERT']],
   message_photos: ['runtime_message_photos', ['SELECT', 'INSERT']],
+  message_proposal_responses: [
+    'runtime_message_proposal_responses',
+    ['SELECT', 'INSERT'],
+  ],
   notifications: ['runtime_notifications', ['SELECT', 'INSERT']],
   profile_interests: [
     'runtime_profile_interests',

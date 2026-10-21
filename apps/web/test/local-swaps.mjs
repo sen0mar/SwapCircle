@@ -172,10 +172,42 @@ try {
     .selectOption('good');
   await alicePage.getByRole('button', { name: 'Send proposal' }).click();
   await expect(alicePage).toHaveURL(/\/inbox\/[0-9a-f-]+$/);
+  const proposalCard = alicePage.getByRole('article', {
+    name: 'Trade proposal',
+  });
+  await expect(proposalCard.getByText('Good', { exact: true })).toBeVisible();
+  await expect(
+    proposalCard.getByText('I can offer my desk lamp.'),
+  ).toBeVisible();
+
+  const proposalConversation = new URL(alicePage.url()).pathname;
+  await signIn(bobPage, bob, proposalConversation);
+  const receivedProposal = bobPage.getByRole('article', {
+    name: 'Trade proposal',
+  });
+  await receivedProposal
+    .getByRole('button', { name: 'Accept proposal' })
+    .click();
+  await expect(
+    receivedProposal.getByText('Accepted', { exact: true }),
+  ).toBeVisible();
+  await receivedProposal
+    .getByRole('link', { name: 'View in My Swaps' })
+    .click();
+  await expect(
+    bobPage
+      .getByRole('region', { name: 'Accepted swaps' })
+      .getByText(bobItem.title, { exact: true }),
+  ).toBeVisible();
+  await bobPage.reload();
+  await expect(
+    bobPage.getByRole('region', { name: 'Accepted swaps' }),
+  ).toBeVisible();
+  await alicePage.goto(`${origin}/swaps`);
   await expect(
     alicePage
-      .getByRole('region', { name: 'Message history' })
-      .getByText('Offered item quality: Good', { exact: false }),
+      .getByRole('region', { name: 'Accepted swaps' })
+      .getByText(bobItem.title, { exact: true }),
   ).toBeVisible();
 
   // Existing formal trades remain supported; create fixture terms through Express.
@@ -217,7 +249,7 @@ try {
     fullPage: true,
   });
 
-  await signIn(bobPage, bob, '/swaps');
+  await bobPage.goto(`${origin}/swaps`);
   await expect(bobPage.getByRole('link', { name: /^View swap/ })).toBeVisible();
   await bobPage.reload();
   await expect(bobPage.getByRole('link', { name: /^View swap/ })).toBeVisible();

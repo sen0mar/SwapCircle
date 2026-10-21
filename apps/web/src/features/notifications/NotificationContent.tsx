@@ -13,6 +13,7 @@ const titles: Record<NotificationRead['event_type'], string> = {
   trade_revision: 'Trade terms changed',
   group_invitation: 'Group invitation',
   group_membership: 'Group membership changed',
+  proposal_response: 'Trade proposal response',
   coffee_invitation: 'Coffee invitation',
   coffee_response: 'Coffee response',
   meeting_change: 'Meeting changed',

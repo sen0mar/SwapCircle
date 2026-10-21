@@ -1,0 +1,1 @@
+ALTER TABLE "messages" ADD COLUMN "proposal" jsonb;

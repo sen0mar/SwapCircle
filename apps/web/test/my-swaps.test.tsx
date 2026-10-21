@@ -11,6 +11,11 @@ vi.mock('../src/features/browse/listing-photos', () => ({
   ListingImage: ({ title }: { title: string }) => <span>Photo: {title}</span>,
 }));
 vi.mock('../src/features/trades/useTrades', () => ({
+  useAcceptedProposals: () => ({
+    isPending: false,
+    isError: false,
+    data: { pages: [{ items: [], nextCursor: null }] },
+  }),
   useMyTrades: () => ({
     isPending: false,
     isError: false,
@@ -80,3 +85,67 @@ test('identifies items, transfer direction, group swaps and completed status', (
     screen.getByRole('link', { name: /View swap: Film camera/ }),
   ).toHaveAttribute('href', '/swaps/swap');
 });
+
+test.each(['self', 'recipient'])(
+  'accepted swaps show the agreed items in the correct direction for %s',
+  async (userId) => {
+    const { AcceptedSwapCard } =
+      await import('../src/features/trades/AcceptedSwapCard');
+    const { within } = await import('@testing-library/react');
+    const { container } = render(
+      <MemoryRouter>
+        <AcceptedSwapCard
+          userId={userId}
+          item={{
+            message: {
+              id: 'message',
+              client_message_id: 'client-message',
+              message_order: 1,
+              conversation_id: 'conversation',
+              sender_id: 'self',
+              body: 'A small lamp',
+              created_at: '2026-10-01T00:00:00Z',
+              has_photo: false,
+              proposal: {
+                listingId: 'keyboard',
+                listingTitle: 'Desktop keyboard',
+                message: 'A small lamp',
+                condition: 'good',
+              },
+            },
+            response: {
+              status: 'accepted',
+              messageId: 'message',
+              conversationId: 'conversation',
+              recipientId: 'recipient',
+              respondedAt: '2026-10-01T00:01:00Z',
+            },
+            senderName: 'Alice',
+            recipientName: 'Bob',
+          }}
+        />
+      </MemoryRouter>,
+    );
+    const card = within(container);
+    expect(
+      card.getByRole('heading', { name: 'Item swap' }),
+    ).toBeInTheDocument();
+    expect(card.getByText('Accepted')).toBeInTheDocument();
+    expect(card.queryByText('Trade proposal')).not.toBeInTheDocument();
+    const items = card.getAllByRole('listitem');
+    expect(
+      within(items[0]!).getByText(
+        userId === 'self' ? 'You receive' : 'You give',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(items[1]!).getByText(
+        userId === 'self' ? 'You give' : 'You receive',
+      ),
+    ).toBeInTheDocument();
+    expect(card.getByText('Good')).toBeInTheDocument();
+    expect(
+      card.getByRole('link', { name: 'Open swap conversation' }),
+    ).toHaveAttribute('href', '/inbox/conversation');
+  },
+);

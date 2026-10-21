@@ -232,7 +232,7 @@ Reuse the shell, tokens, spacing, and card treatment. Keep behavior inside featu
 
 - Primary: flat semantic fill, readable on-brand text, 8px radius, no glow. One dominant action per form.
 - Secondary: surface/transparent fill, visible border, regular text. Destructive actions require an explicit label and confirmation where appropriate.
-- Active navigation: underline plus readable brand text; do not rely on color alone.
+- Active navigation: stronger font weight plus readable brand text; do not rely on color alone. Keep text free of underlines throughout the app, including hover states.
 - Focus: 2px `ring-focus` with a 2px surface offset. Never remove keyboard focus styling.
 - Transitions: 120–180ms for color/opacity; up to 220ms for drawer movement. No bounce, parallax, pulsing controls, or luminous shimmer. Honor reduced-motion preferences.
 

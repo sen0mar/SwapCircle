@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from '@playwright/test';
 import { signInFixture } from './auth-fixture';
 
@@ -190,4 +191,224 @@ test('Message starts an Express DM and reports contact denial without navigating
   );
   await expect(page.getByText('Private internal details')).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/members/${bob}$`));
+});
+
+test('received and sent proposals appear as complete cards in both themes and narrow layouts', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const full = {
+    id: '30000000-0000-4000-8000-000000000011',
+    conversation_id: id,
+    sender_id: bob,
+    body: 'Compatibility text',
+    client_message_id: '40000000-0000-4000-8000-000000000011',
+    message_order: 11,
+    created_at: '2026-09-28T10:00:00Z',
+    has_photo: true,
+    proposal: {
+      listingId: denied,
+      listingTitle: 'Compact desktop keyboard',
+      message:
+        'Would you swap for my desk lamp?\nIt works well and comes with its original shade.',
+      condition: 'good',
+    },
+  };
+  await page.route('**/api/v1/profiles/me', (route) =>
+    route.fulfill({ json: profile(alice, true) }),
+  );
+  await page.route('**/api/v1/members/*', (route) =>
+    route.fulfill({ json: profile(bob) }),
+  );
+  await page.route('**/api/v1/conversations/*/unread', (route) =>
+    route.fulfill({ json: { lastViewedOrder: 0, unreadCount: 0 } }),
+  );
+  await page.route('**/api/v1/conversations/read', (route) =>
+    route.fulfill({ json: { lastViewedOrder: 13, unreadCount: 0 } }),
+  );
+  await page.route('**/rest/v1/conversations?*', (route) =>
+    route.fulfill({
+      json: new URL(route.request().url()).searchParams.has('id')
+        ? conversation
+        : [conversation],
+    }),
+  );
+  await page.route('**/rest/v1/messages?*', (route) =>
+    route.fulfill({
+      json: [
+        full,
+        {
+          ...full,
+          id: '30000000-0000-4000-8000-000000000012',
+          client_message_id: '40000000-0000-4000-8000-000000000012',
+          message_order: 12,
+          has_photo: false,
+          proposal: {
+            listingId: denied,
+            listingTitle: 'Compact desktop keyboard',
+            message: 'I could also offer a book.',
+          },
+        },
+        {
+          ...full,
+          id: '30000000-0000-4000-8000-000000000013',
+          client_message_id: '40000000-0000-4000-8000-000000000013',
+          message_order: 13,
+          sender_id: alice,
+          has_photo: false,
+          proposal: {
+            ...full.proposal,
+            message: 'Here is my offer in return.',
+            condition: 'fair',
+          },
+        },
+      ],
+    }),
+  );
+  const decisions: Record<string, 'pending' | 'accepted' | 'refused'> = {};
+  const responseState = (messageId: string) => ({
+    messageId,
+    conversationId: id,
+    recipientId: messageId.endsWith('13') ? bob : alice,
+    status: decisions[messageId] ?? 'pending',
+    respondedAt: decisions[messageId] ? '2026-09-28T10:02:00Z' : null,
+  });
+  await page.route(
+    '**/api/v1/conversations/messages/*/proposal',
+    async (route) => {
+      const messageId = new URL(route.request().url()).pathname
+        .split('/')
+        .at(-2)!;
+      if (route.request().method() === 'PUT') {
+        const { action } = route.request().postDataJSON();
+        decisions[messageId] = action === 'accept' ? 'accepted' : 'refused';
+      }
+      return route.fulfill({ json: responseState(messageId) });
+    },
+  );
+  await page.route('**/api/v1/trades?*', (route) =>
+    route.fulfill({ json: { items: [], nextAfter: null } }),
+  );
+  await page.route('**/api/v1/conversations/proposals/accepted?*', (route) =>
+    route.fulfill({
+      json: {
+        items:
+          decisions[full.id] === 'accepted'
+            ? [
+                {
+                  message: full,
+                  response: responseState(full.id),
+                  senderName: 'Inbox Bob',
+                  recipientName: 'Inbox Alice',
+                },
+              ]
+            : [],
+        nextCursor: null,
+      },
+    }),
+  );
+  let photoAttempts = 0;
+  await page.route('**/api/v1/conversations/messages/*/photo', (route) => {
+    photoAttempts++;
+    return photoAttempts === 1
+      ? route.fulfill({ status: 503 })
+      : route.fulfill({
+          json: {
+            dataUrl:
+              'data:image/webp;base64,UklGRhYBAABXRUJQVlA4IAoBAACwHACdASqQASwBPm02mUmkIqKhICgAgA2JaW7hd2EbQAnsA99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D32ych77ZOQ99snIe+2TkPfbJyHvtk5D1gAP7/2gX/Ox6Vv0HxXwAAAAAAAAAAAAAAAAAAAA==',
+          },
+        });
+  });
+  await signInFixture(page, `/inbox/${id}`);
+  const cards = page.getByRole('article', { name: 'Trade proposal' });
+  await expect(cards).toHaveCount(3);
+  const incoming = cards.filter({
+    hasText: 'Would you swap for my desk lamp?',
+  });
+  await expect(incoming.getByText('Good', { exact: true })).toBeVisible();
+  await expect(incoming.getByRole('alert')).toHaveText(
+    'Photo could not be loaded.',
+  );
+  await incoming.getByRole('button', { name: 'Retry photo' }).click();
+  await expect(incoming.getByRole('img')).toBeVisible();
+  await expect(incoming.getByRole('link')).toHaveAttribute(
+    'href',
+    `/listings/${denied}`,
+  );
+  await expect(
+    cards
+      .filter({ hasText: 'I could also offer a book.' })
+      .getByText('Offered item quality'),
+  ).toHaveCount(0);
+  await expect(page.locator('.message-own').getByRole('article')).toHaveCount(
+    1,
+  );
+  await expect(
+    page
+      .locator('.message-own')
+      .getByRole('button', { name: 'Accept proposal' }),
+  ).toHaveCount(0);
+  await page.reload();
+  await expect(cards).toHaveCount(3);
+  for (const theme of ['light', 'dark']) {
+    await page.getByLabel('Theme').selectOption(theme);
+    for (const width of [360, 768, 1280, 1600]) {
+      await page.setViewportSize({ width, height: 900 });
+      await incoming.scrollIntoViewIfNeeded();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+      await page.screenshot({
+        path: `test-results/proposal-card-${theme}-${width}.png`,
+      });
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%';
+  });
+  await incoming.scrollIntoViewIfNeeded();
+  await incoming.getByRole('link').focus();
+  await expect(incoming.getByRole('link')).toBeFocused();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '100%';
+  });
+  const refused = cards.filter({ hasText: 'I could also offer a book.' });
+  await refused.getByRole('button', { name: 'Refuse proposal' }).click();
+  await expect(refused.getByText('Refused', { exact: true })).toBeVisible();
+  await expect(
+    refused.getByRole('button', { name: 'Accept proposal' }),
+  ).toHaveCount(0);
+  await incoming.getByRole('button', { name: 'Accept proposal' }).click();
+  await expect(incoming.getByText('Accepted', { exact: true })).toBeVisible();
+  await incoming.getByRole('link', { name: 'View in My Swaps' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Accepted swaps' }),
+  ).toBeVisible();
+  await expect(cards).toHaveCount(0);
+  await expect(
+    page
+      .getByRole('region', { name: 'Accepted swaps' })
+      .getByText('Good', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: 'Accepted swaps' })
+      .getByRole('link', { name: 'Open swap conversation' }),
+  ).toHaveAttribute('href', `/inbox/${id}`);
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Accepted swaps' }),
+  ).toBeVisible();
+  await expect(cards).toHaveCount(0);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

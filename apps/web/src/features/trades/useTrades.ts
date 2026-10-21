@@ -1,4 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  acceptedProposalPageSchema,
+  type AcceptedProposalPage,
+} from '@swapcircle/contracts';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type {
   ProposalCreation,
   ProposalRevision,
@@ -147,5 +156,30 @@ export function useTradeProblem(id: string) {
         ),
       ]);
     },
+  });
+}
+
+export function useAcceptedProposals() {
+  const { session, request } = useAuth();
+
+  return useInfiniteQuery({
+    queryKey: ['private', session?.user.id, 'accepted-proposals'],
+    initialPageParam: null as AcceptedProposalPage['nextCursor'],
+    queryFn: ({ pageParam, signal }) => {
+      const params = new URLSearchParams();
+      if (pageParam) {
+        params.set('before', pageParam.respondedAt);
+        params.set('beforeId', pageParam.id);
+      }
+      return request(
+        `/api/v1/conversations/proposals/accepted?${params}`,
+        acceptedProposalPageSchema,
+        { signal },
+      );
+    },
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    enabled: !!session,
+    retry: false,
+    refetchInterval: 15000,
   });
 }

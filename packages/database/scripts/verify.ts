@@ -117,7 +117,7 @@ export async function verify(
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      25,
+      27,
     );
 
     const publication = await pool.query<{ tablename: string }>(
@@ -155,6 +155,7 @@ export async function verify(
       'conversation_reads',
       'messages',
       'message_photos',
+      'message_proposal_responses',
       'notifications',
       'trades',
       'trade_versions',

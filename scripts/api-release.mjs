@@ -12,7 +12,7 @@ export const buildCommand =
   'corepack pnpm install --frozen-lockfile && corepack pnpm --filter @swapcircle/api... build';
 export const startCommand = 'node scripts/start-api.mjs';
 export const reviewedMigrationDigest =
-  '1f1703d9a9434146bf23141b8d0b1db51d4e10fa9059d1e7306058bc267a98df';
+  '65f1595c19a181dcd0c2f4e76ed7bfde4f0c205afe81587accb7f595f6e8fa54';
 
 export function releaseRevision(environment) {
   assert.match(environment.RELEASE_REVISION ?? '', /^[a-f0-9]{40}$/);

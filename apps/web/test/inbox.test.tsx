@@ -13,6 +13,7 @@ import { http, HttpResponse, delay } from 'msw';
 import { server } from './setup';
 import { apiRequest } from '../src/lib/api-client';
 import { MessageComposerProvider } from '../src/features/inbox/MessageComposerProvider';
+import { MySwapsPage } from '../src/features/trades/MySwapsPage';
 import { InboxPage } from '../src/features/inbox/InboxPage';
 import { authorizeRead } from '../src/features/inbox/inbox-api';
 import { safeDestination } from '../src/features/auth/safe-destination';
@@ -119,6 +120,7 @@ function fixture() {
           <Routes>
             <Route path="/inbox/:id" element={<InboxPage />} />
             <Route path="/inbox" element={<InboxPage />} />
+            <Route path="/swaps" element={<MySwapsPage />} />
           </Routes>
         </MemoryRouter>
       </MessageComposerProvider>
@@ -814,4 +816,239 @@ test('offer photos load privately in history and recover from a failed read', as
   expect(
     await screen.findByRole('img', { name: 'Photo of the offered trade item' }),
   ).toHaveAttribute('src', 'data:image/webp;base64,UklGRg==');
+});
+
+test('received proposals keep their message, private photo and quality in one distinct card', async () => {
+  fixture();
+  const offered = {
+    ...message(32),
+    has_photo: true,
+    proposal: {
+      listingId: empty,
+      listingTitle: 'Compact keyboard',
+      message: '<script>My offered lamp</script>\nWorks well.',
+      condition: 'good',
+    },
+  };
+  server.use(
+    http.get('http://127.0.0.1:55439/rest/v1/messages', () =>
+      HttpResponse.json([offered]),
+    ),
+    http.get(`*/api/v1/conversations/messages/${offered.id}/photo`, () =>
+      HttpResponse.json({ dataUrl: 'data:image/webp;base64,UklGRg==' }),
+    ),
+  );
+  const card = await screen.findByRole('article', { name: 'Trade proposal' });
+  expect(card).toHaveTextContent('<script>My offered lamp</script>');
+  expect(card).toHaveTextContent('Offered item quality');
+  expect(card).toHaveTextContent('Good');
+  expect(card.querySelector('a')).toHaveAttribute('href', `/listings/${empty}`);
+  expect(
+    await screen.findByRole('img', { name: 'Photo of the offered trade item' }),
+  ).toBeVisible();
+  expect(card.querySelector('img')).not.toBeNull();
+  expect(card.querySelector('script')).toBeNull();
+});
+
+test('proposals without optional details still render a card, while ordinary text never becomes one', async () => {
+  fixture();
+  server.use(
+    http.get('http://127.0.0.1:55439/rest/v1/messages', () =>
+      HttpResponse.json([
+        {
+          ...message(32),
+          proposal: {
+            listingId: empty,
+            listingTitle: 'Keyboard',
+            message: 'Would you trade for my lamp?',
+          },
+        },
+        {
+          ...message(31),
+          body: 'About “Keyboard”\n\nOffered item quality: Good\n\nPlain text',
+          proposal: null,
+        },
+      ]),
+    ),
+  );
+  const card = await screen.findByRole('article', { name: 'Trade proposal' });
+  expect(card).toHaveTextContent('Would you trade for my lamp?');
+  expect(card).not.toHaveTextContent('Offered item quality');
+  expect(card.querySelector('img')).toBeNull();
+  expect(
+    screen.getAllByRole('article', { name: 'Trade proposal' }),
+  ).toHaveLength(1);
+  expect(screen.getByText(/Plain text/)).toBeInTheDocument();
+});
+
+test('recipient retries a failed response and sees the accepted proposal in My Swaps', async () => {
+  fixture();
+  const offered = {
+    ...message(32),
+    proposal: {
+      listingId: empty,
+      listingTitle: 'Keyboard',
+      message: 'I can offer a lamp.',
+      condition: 'good',
+    },
+  };
+  let accepted = false;
+  let attempts = 0;
+  const state = () => ({
+    messageId: offered.id,
+    conversationId: thread,
+    recipientId: alice,
+    status: accepted ? 'accepted' : 'pending',
+    respondedAt: accepted ? date : null,
+  });
+  server.use(
+    http.get('http://127.0.0.1:55439/rest/v1/messages', () =>
+      HttpResponse.json([offered]),
+    ),
+    http.get(`*/api/v1/conversations/messages/${offered.id}/proposal`, () =>
+      HttpResponse.json(state()),
+    ),
+    http.put(
+      `*/api/v1/conversations/messages/${offered.id}/proposal`,
+      async ({ request }) => {
+        expect(await request.json()).toEqual({ action: 'accept' });
+        attempts++;
+        await delay(100);
+        if (attempts === 1) return new HttpResponse(null, { status: 503 });
+        accepted = true;
+        return HttpResponse.json(state());
+      },
+    ),
+    http.get(`*/api/v1/listings/${empty}/photos`, () => HttpResponse.json([])),
+    http.get('*/api/v1/trades/mine', () =>
+      HttpResponse.json({ items: [], nextAfter: null }),
+    ),
+    http.get('*/api/v1/conversations/proposals/accepted', () =>
+      HttpResponse.json({
+        items: accepted
+          ? [
+              {
+                message: offered,
+                response: state(),
+                senderName: 'Bob',
+                recipientName: 'Alice',
+              },
+            ]
+          : [],
+        nextCursor: null,
+      }),
+    ),
+  );
+  const user = userEvent.setup();
+  await user.click(
+    await screen.findByRole('button', { name: 'Accept proposal' }),
+  );
+  expect(screen.getByRole('button', { name: 'Accepting…' })).toBeDisabled();
+  expect(
+    screen.getByRole('button', { name: 'Refuse proposal' }),
+  ).toBeDisabled();
+  await screen.findByRole('alert');
+  expect(
+    screen.queryByRole('link', { name: 'View in My Swaps' }),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Accept proposal' }));
+  await user.click(
+    await screen.findByRole('link', { name: 'View in My Swaps' }),
+  );
+  await screen.findByRole('heading', { name: 'Accepted swaps' });
+  expect(
+    screen.getByRole('region', { name: 'Accepted swaps' }),
+  ).toHaveTextContent('I can offer a lamp.');
+  expect(screen.getByText('With Bob')).toBeVisible();
+  expect(screen.getByText('Accepted', { exact: true })).toBeVisible();
+  expect(screen.queryByText('No swaps yet')).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'Open swap conversation' }),
+  ).toHaveAttribute('href', `/inbox/${thread}`);
+  expect(attempts).toBe(2);
+});
+
+test('a recipient can refuse a proposal and the sender never gets response buttons', async () => {
+  fixture();
+  const offered = {
+    ...message(32),
+    proposal: {
+      listingId: empty,
+      listingTitle: 'Keyboard',
+      message: 'Offer to refuse.',
+    },
+  };
+  let refused = false;
+  server.use(
+    http.get('http://127.0.0.1:55439/rest/v1/messages', () =>
+      HttpResponse.json([offered]),
+    ),
+    http.get(`*/api/v1/conversations/messages/${offered.id}/proposal`, () =>
+      HttpResponse.json({
+        messageId: offered.id,
+        conversationId: thread,
+        recipientId: alice,
+        status: refused ? 'refused' : 'pending',
+        respondedAt: refused ? date : null,
+      }),
+    ),
+    http.put(
+      `*/api/v1/conversations/messages/${offered.id}/proposal`,
+      async ({ request }) => {
+        expect(await request.json()).toEqual({ action: 'refuse' });
+        refused = true;
+        return HttpResponse.json({
+          messageId: offered.id,
+          conversationId: thread,
+          recipientId: alice,
+          status: 'refused',
+          respondedAt: date,
+        });
+      },
+    ),
+  );
+  await userEvent.click(
+    await screen.findByRole('button', { name: 'Refuse proposal' }),
+  );
+  await screen.findByText('Refused', { exact: true });
+  expect(
+    screen.queryByRole('button', { name: 'Accept proposal' }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('link', { name: 'View in My Swaps' }),
+  ).not.toBeInTheDocument();
+});
+
+test('the proposal sender only sees its pending response state', async () => {
+  fixture();
+  const offered = {
+    ...message(32),
+    sender_id: alice,
+    proposal: {
+      listingId: empty,
+      listingTitle: 'Keyboard',
+      message: 'My outgoing proposal.',
+    },
+  };
+  server.use(
+    http.get('http://127.0.0.1:55439/rest/v1/messages', () =>
+      HttpResponse.json([offered]),
+    ),
+    http.get(`*/api/v1/conversations/messages/${offered.id}/proposal`, () =>
+      HttpResponse.json({
+        messageId: offered.id,
+        conversationId: thread,
+        recipientId: bob,
+        status: 'pending',
+        respondedAt: null,
+      }),
+    ),
+  );
+  await screen.findByText('Awaiting a response');
+  expect(
+    screen.queryByRole('button', { name: 'Accept proposal' }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Refuse proposal' }),
+  ).not.toBeInTheDocument();
 });

@@ -1,3 +1,4 @@
+import { AcceptedSwapCard } from './AcceptedSwapCard';
 import { ArrowRight, ArrowRightLeft, Users, Package } from 'lucide-react';
 import type { z } from 'zod';
 import type { tradeSummarySchema } from '@swapcircle/contracts';
@@ -6,7 +7,7 @@ import { ListingImage, useListingPhotos } from '../browse/listing-photos';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
-import { useMyTrades } from './useTrades';
+import { useAcceptedProposals, useMyTrades } from './useTrades';
 import { lifecycleSummary } from './lifecycle-copy';
 
 type ItemPreview = z.infer<typeof tradeSummarySchema>['itemPreviews'][number];
@@ -48,10 +49,47 @@ export function MySwapsPage() {
   const [params] = useSearchParams();
   const after = params.get('after') ?? '';
   const trades = useMyTrades(after);
+  const accepted = useAcceptedProposals();
+  const acceptedItems =
+    accepted.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
     <section className="swaps-page" aria-label="My Swaps">
       <h1 className="sr-only">My Swaps</h1>
+      {accepted.isPending && <p role="status">Loading accepted swaps…</p>}
+      {accepted.isError && (
+        <div className="panel route-panel">
+          <p role="alert">Accepted swaps could not be loaded.</p>
+          <Button onClick={() => void accepted.refetch()}>
+            Retry accepted swaps
+          </Button>
+        </div>
+      )}
+      {acceptedItems.length > 0 && (
+        <section
+          className="accepted-proposal-swaps"
+          aria-labelledby="accepted-swaps-heading"
+        >
+          <h2 id="accepted-swaps-heading">Accepted swaps</h2>
+          <div className="swaps-grid">
+            {acceptedItems.map((item) => (
+              <AcceptedSwapCard
+                key={item.message.id}
+                item={item}
+                userId={session?.user.id}
+              />
+            ))}
+          </div>
+          {accepted.hasNextPage && (
+            <Button
+              disabled={accepted.isFetchingNextPage}
+              onClick={() => void accepted.fetchNextPage()}
+            >
+              {accepted.isFetchingNextPage ? 'Loading…' : 'More accepted swaps'}
+            </Button>
+          )}
+        </section>
+      )}
       {trades.isPending ? (
         <p role="status">Loading your swaps…</p>
       ) : trades.isError ? (
@@ -60,11 +98,15 @@ export function MySwapsPage() {
           <Button onClick={() => void trades.refetch()}>Retry</Button>
         </div>
       ) : trades.data.items.length === 0 ? (
-        <div className="panel route-panel">
-          <h2>No swaps yet</h2>
-          <p>Propose a trade from an available item in Browse.</p>
-          <Link to="/browse">Browse items</Link>
-        </div>
+        accepted.isPending ||
+        accepted.isError ||
+        acceptedItems.length > 0 ? null : (
+          <div className="panel route-panel">
+            <h2>No swaps yet</h2>
+            <p>Propose a trade from an available item in Browse.</p>
+            <Link to="/browse">Browse items</Link>
+          </div>
+        )
       ) : (
         <>
           <div className="swaps-grid">
