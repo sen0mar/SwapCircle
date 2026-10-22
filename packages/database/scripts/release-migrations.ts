@@ -22,11 +22,12 @@ async function main() {
     .update(migrations.map((m) => m.hash).join('\n'))
     .digest('hex');
 
-  // Routine releases are limited to the independently reviewed compatible history.
-  // New/destructive migrations require a separate review and explicit digest update.
+  // Releases are limited to the explicitly reviewed migration history. The
+  // two-person schema removal still refuses legacy data until separately archived
+  // and retired; approving its digest does not bypass that data-preservation gate.
   assert.equal(
     digest,
-    '65f1595c19a181dcd0c2f4e76ed7bfde4f0c205afe81587accb7f595f6e8fa54',
+    '361ffb5d4c748e5e67f19e6d07dcff4d0c551b8a7ee65a120d41c14cd21fdde8',
   );
   assert.equal(process.env.HOSTED_REVIEWED_MIGRATION_SHA256, digest);
   const pool = new Pool({
@@ -61,7 +62,7 @@ async function main() {
 
     assert.equal(applied.length, migrations.length);
     verifiedHistoryPrefix(applied, migrations);
-    console.log('Reviewed compatible Drizzle history verified and applied.');
+    console.log('Reviewed Drizzle history verified and applied.');
   } finally {
     await pool.end();
   }

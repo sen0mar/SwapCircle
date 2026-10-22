@@ -193,13 +193,13 @@ jobs:
       - name: Require successful checks on this exact trusted revision
         run: node scripts/api-release.mjs checks
       - run: pnpm install --frozen-lockfile
-      - name: Verify and apply reviewed compatible migrations
+      - name: Verify and apply reviewed migrations
         env:
           MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
           DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
           DATABASE_CA_CERT_PATH: ${{ runner.temp }}/supabase-ca.crt
           HOSTED_AUTHORIZATION: configure-approved-project
-          HOSTED_REVIEWED_MIGRATION_SHA256: 65f1595c19a181dcd0c2f4e76ed7bfde4f0c205afe81587accb7f595f6e8fa54
+          HOSTED_REVIEWED_MIGRATION_SHA256: 361ffb5d4c748e5e67f19e6d07dcff4d0c551b8a7ee65a120d41c14cd21fdde8
           SUPABASE_URL: https://tpanyqfgmbpsiejqjocd.supabase.co
           FRONTEND_URL: https://swapcircle.pages.dev
         run: |
