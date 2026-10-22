@@ -1,13 +1,13 @@
 # SwapCircle Architecture
 
-**Status:** Implementation blueprint · **Updated:** 2026-10-21
+**Status:** Implementation blueprint · **Updated:** 2026-10-22
 
 ## 1. Product rules
 
 SwapCircle is a community for exchanging belongings and optionally meeting socially.
 
 - **Trades involve exactly two distinct people**, with one or more items per person. The pair is fixed at creation; changing either person requires a new proposal. Every transfer goes to the other person. Do not require equal valuations, predefined wishlists, or membership in a closed community. Retain participant rows for individual version-specific acceptances.
-- Profiles contain a biography, approximate location, and selectable interests. Listings contain photos, condition, description, and ownership. Messaging and negotiation may precede proposals. The listing “Propose a trade” entry point now sends a direct message with one optional photo; it does not create formal trade terms. Existing formal proposals retain their revision and acceptance flows.
+- Profiles contain a biography, approximate location, and selectable interests. Listings contain photos, condition, description, and ownership. Messaging and negotiation may precede proposals. The listing “Propose a trade” entry point creates versioned two-person trade terms after both sides’ items are selected and reviewed, then opens the swap details. Each person must separately accept the exact version before confirmation and item reservation. Previously saved Inbox proposals remain accessible as message history and do not count as acceptance of trade terms.
 - **Meet to swap** is always available. **Swap + coffee** appears only when the inviter and invitee share at least **two distinct interest IDs**, verified by the backend. “Coffee’s on me” is an optional invitation flag; payment happens in person.
 - Check coffee eligibility when sending and accepting; later profile changes do not invalidate accepted plans.
 - Coffee requires separate consent. Declining or cancelling coffee never cancels the trade or penalizes the member.

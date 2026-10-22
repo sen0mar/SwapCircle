@@ -29,7 +29,9 @@ Guest access uses the same form and Supabase SDK lifecycle in development and pr
 - **Notifications:** domain-generated read/unread notifications link to real two-person swap, coffee, and meeting records.
 - **Profile, account and settings:** the normal signed-in experience. Sign out and use another local demo user's form credentials to check account isolation.
 
-New proposals expire 28 days after the initial seed; meetings are set seven days after it in Europe/Paris. Rerunning does not refresh dates or undo user interactions. Completed and disputed swaps are historical demonstrations, not real exchanges.
+To test a fresh swap, use two separate browser profiles signed in as different demo users. From an available listing owned by the other person, choose **Propose a trade**, select at least one available item from each person, then **Review proposal** → **Send proposal**. The app opens the new swap details. The other person can find it in **My Swaps** or their notification. Both people must choose **Review current terms** → **Accept version …**; items stay available after the first acceptance and become reserved only when the swap is confirmed. New proposals created through this form expire after seven days. Use the private hosted credentials file for production accounts; local credentials are separate.
+
+Seeded proposals expire 28 days after the initial seed; meetings are set seven days after it in Europe/Paris. Rerunning does not refresh dates or undo user interactions. Completed and disputed swaps are historical demonstrations, not real exchanges.
 
 ## Resuming and preserving data
 

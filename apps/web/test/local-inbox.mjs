@@ -78,7 +78,7 @@ try {
       },
       'PUT',
     );
-  const item = await api(
+  await api(
     '/listings',
     bob,
     {
@@ -346,18 +346,7 @@ try {
   );
   await page.reload();
   await expect(page.getByLabel('Message draft')).toHaveValue('');
-  // Listing proposals and member discovery use the same DM without shared interests/trades.
-  await page.goto(`${origin}/listings/${item.id}`);
-  await page
-    .getByRole('button', { name: 'Propose a trade', exact: true })
-    .click();
-  await page
-    .getByRole('textbox', { name: 'Your message' })
-    .fill('I can offer a book in exchange.');
-  await page
-    .getByRole('button', { name: 'Send proposal', exact: true })
-    .click();
-  await expect(page).toHaveURL(`${origin}/inbox/${direct.id}`);
+  // Member discovery uses the same DM without shared interests or a swap.
   // A unique filter keeps Bob discoverable when the local stack has demo members.
   // Alice retains no interests, so this still tests messaging without a shared one.
   await fixture.migration.query(
@@ -513,7 +502,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    'Local inbox: production build, three real isolated sessions, canonical profile/listing/discovery DM entry without interests/trades, same-browser identity cleanup, bounded tied list cursors and keyboard scrolling, 65 ordered plain-text messages, older-history scroll anchor, empty/denied/revoked/unavailable recovery, unsent drafts, stable reloads and signed-out deep links passed. Light/Dark desktop/mobile, keyboard and axe checks at 360/768/800/1280/1600px passed. Synthetic data cleaned up.',
+    'Local inbox: production build, three real isolated sessions, canonical profile/discovery DM entry without interests/trades, same-browser identity cleanup, bounded tied list cursors and keyboard scrolling, 65 ordered plain-text messages, older-history scroll anchor, empty/denied/revoked/unavailable recovery, unsent drafts, stable reloads and signed-out deep links passed. Light/Dark desktop/mobile, keyboard and axe checks at 360/768/800/1280/1600px passed. Synthetic data cleaned up.',
   );
 } finally {
   if (browser) await browser.close();

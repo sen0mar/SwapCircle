@@ -104,67 +104,27 @@ async function setup(page: import('@playwright/test').Page) {
   return () => writes;
 }
 
-test('message-first proposals support an optional photo, draft recovery and accessible layouts', async ({
+test('two-person proposals preserve drafts, retry terms and support accessible layouts', async ({
   page,
 }) => {
-  const writes = await setup(page);
-  await expect(
-    page.getByRole('button', { name: 'Message', exact: true }),
-  ).toHaveCount(0);
-  let payload:
-    | { photoBase64?: string; condition?: string; clientMessageId: string }
-    | undefined;
-  let previousKey: string | undefined;
+  await setup(page);
+  let previousPayload: unknown;
   let attempts = 0;
-  await page.route('**/api/v1/conversations/proposals', async (route) => {
-    payload = route.request().postDataJSON();
+  await page.route('**/api/v1/trades', async (route) => {
+    const payload = route.request().postDataJSON();
     attempts++;
-    if (previousKey) expect(payload!.clientMessageId).toBe(previousKey);
-    previousKey = payload!.clientMessageId;
+    if (previousPayload) expect(payload).toEqual(previousPayload);
+    previousPayload = payload;
+    expect(payload.participantIds).toEqual([ids.self, ids.owner]);
+    expect(payload.transfers).toHaveLength(2);
     return route.fulfill({ status: 503 });
   });
   await page.getByRole('button', { name: 'Propose a trade' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('checkbox')).toHaveCount(0);
-  await expect(dialog.getByText('Message Alex about Bicycle.')).toHaveCount(0);
-  const offer = dialog.getByRole('region', {
-    name: 'The item you’re offering',
-  });
-  await expect(offer.getByRole('combobox')).toBeVisible();
-  await expect(
-    offer.getByRole('button', { name: 'Add a photo of your item' }),
-  ).toBeVisible();
-  const quality = dialog.getByRole('combobox', {
-    name: 'Item quality (optional)',
-  });
-  await expect(quality.getByRole('option')).toHaveText([
-    'Select item quality',
-    'Like new',
-    'Good',
-    'Fair',
-    'Poor',
-  ]);
-  await quality.selectOption('poor');
-  await expect(
-    dialog.getByRole('button', { name: 'Add a photo of your item' }),
-  ).toBeVisible();
-  const message = dialog.getByRole('textbox', { name: 'Your message' });
-  await expect(message).toBeFocused();
-  await expect(
-    dialog.getByRole('button', { name: 'Send proposal' }),
-  ).toBeDisabled();
-  await message.fill('Hi Alex! Would you like my desk lamp?');
-  await page.locator('#trade-photo').setInputFiles({
-    name: 'lamp.png',
-    mimeType: 'image/png',
-    buffer: Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
-      'base64',
-    ),
-  });
-  await expect(dialog.getByRole('img')).toBeVisible();
+  await expect(dialog.getByRole('checkbox', { name: 'Bicycle' })).toBeChecked();
+  await dialog.getByRole('checkbox', { name: 'Desk lamp' }).check();
+  await expect(dialog.getByRole('checkbox', { name: 'Books' })).toHaveCount(0);
   for (const theme of ['light', 'dark']) {
-    // Close/reopen also exercises focus restoration and draft preservation.
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
     await expect(
@@ -172,6 +132,9 @@ test('message-first proposals support an optional photo, draft recovery and acce
     ).toBeFocused();
     await page.getByLabel('Theme').selectOption(theme);
     await page.getByRole('button', { name: 'Propose a trade' }).click();
+    await expect(
+      dialog.getByRole('checkbox', { name: 'Desk lamp' }),
+    ).toBeChecked();
     for (const width of [360, 768, 1280, 1600]) {
       await page.setViewportSize({ width, height: 900 });
       expect(
@@ -179,25 +142,19 @@ test('message-first proposals support an optional photo, draft recovery and acce
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
-      await expect(dialog).toBeVisible();
       expect(
         (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
           .violations,
       ).toEqual([]);
-      await page.screenshot({
-        path: `test-results/trade-message-${theme}-${width}.png`,
-      });
     }
   }
-  await expect(message).toHaveValue('Hi Alex! Would you like my desk lamp?');
+  await dialog.getByRole('button', { name: 'Review proposal' }).click();
+  await expect(
+    dialog.getByRole('list', { name: 'Trade transfers' }),
+  ).toContainText('Desk lamp');
   await dialog.getByRole('button', { name: 'Send proposal' }).click();
   await expect(dialog.getByRole('alert')).toBeVisible();
-  expect(payload!.photoBase64).toBeTruthy();
-  expect(payload!.condition).toBe('poor');
   await dialog.getByRole('button', { name: 'Send proposal' }).click();
   await expect.poll(() => attempts).toBe(2);
   await expect(dialog.getByRole('alert')).toBeVisible();
-  await dialog.getByRole('button', { name: 'Remove photo' }).click();
-  await expect(dialog.getByRole('img')).toHaveCount(0);
-  expect(writes()).toBe(0);
 });

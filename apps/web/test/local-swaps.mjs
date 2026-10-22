@@ -164,70 +164,12 @@ try {
     alicePage.getByRole('button', { name: 'Propose a trade' }),
   ).toBeVisible();
   await alicePage.getByRole('button', { name: 'Propose a trade' }).click();
-  await alicePage
-    .getByRole('textbox', { name: 'Your message' })
-    .fill('I can offer my desk lamp.');
-  await alicePage
-    .getByRole('combobox', { name: 'Item quality (optional)' })
-    .selectOption('good');
+  await alicePage.getByRole('checkbox', { name: aliceItem.title }).check();
+  await alicePage.getByRole('button', { name: 'Review proposal' }).click();
   await alicePage.getByRole('button', { name: 'Send proposal' }).click();
-  await expect(alicePage).toHaveURL(/\/inbox\/[0-9a-f-]+$/);
-  const proposalCard = alicePage.getByRole('article', {
-    name: 'Trade proposal',
-  });
-  await expect(proposalCard.getByText('Good', { exact: true })).toBeVisible();
-  await expect(
-    proposalCard.getByText('I can offer my desk lamp.'),
-  ).toBeVisible();
-
-  const proposalConversation = new URL(alicePage.url()).pathname;
-  await signIn(bobPage, bob, proposalConversation);
-  const receivedProposal = bobPage.getByRole('article', {
-    name: 'Trade proposal',
-  });
-  await receivedProposal
-    .getByRole('button', { name: 'Accept proposal' })
-    .click();
-  await expect(
-    receivedProposal.getByText('Accepted', { exact: true }),
-  ).toBeVisible();
-  await receivedProposal
-    .getByRole('link', { name: 'View in My Swaps' })
-    .click();
-  await expect(
-    bobPage
-      .getByRole('region', { name: 'Accepted swaps' })
-      .getByText(bobItem.title, { exact: true }),
-  ).toBeVisible();
-  await bobPage.reload();
-  await expect(
-    bobPage.getByRole('region', { name: 'Accepted swaps' }),
-  ).toBeVisible();
-  await alicePage.goto(`${origin}/swaps`);
-  await expect(
-    alicePage
-      .getByRole('region', { name: 'Accepted swaps' })
-      .getByText(bobItem.title, { exact: true }),
-  ).toBeVisible();
-
-  // Existing formal trades remain supported; create fixture terms through Express.
-  const created = await api(
-    '/trades',
-    alice,
-    {
-      participantIds: [alice.id, bob.id],
-      transfers: [
-        { listingId: aliceItem.id, ownerId: alice.id, recipientId: bob.id },
-        { listingId: bobItem.id, ownerId: bob.id, recipientId: alice.id },
-      ],
-      meetingMode: 'meet_to_swap',
-      operationKey: randomUUID(),
-      expiresAt: new Date(Date.now() + 86400000).toISOString(),
-    },
-    'POST',
-  );
-  const tradeId = created.id;
-  await alicePage.goto(`${origin}/swaps/${tradeId}`);
+  await expect(alicePage).toHaveURL(/\/swaps\/[0-9a-f-]+$/);
+  const tradeId = new URL(alicePage.url()).pathname.split('/').at(-1);
+  await signIn(bobPage, bob, '/swaps');
   await expect(
     alicePage.getByRole('heading', { name: 'You give', exact: true }),
   ).toBeVisible();
@@ -295,14 +237,35 @@ try {
   ).toBeVisible();
   assert.equal((await api('/trades/mine', stranger)).items.length, 0);
 
-  await fixture.migration.query(
-    "UPDATE public.listings SET availability='withdrawn' WHERE id=$1",
-    [aliceItem.id],
-  );
-  await bobPage.reload();
+  // Both people must accept the exact terms before either item is reserved.
+  await alicePage.goto(`${origin}/swaps/${tradeId}`);
+  await alicePage.getByRole('button', { name: 'Review current terms' }).click();
+  await alicePage.getByRole('button', { name: 'Accept version 1' }).click();
   await expect(
-    bobPage.getByText(/An item is no longer available/),
+    alicePage.getByText(
+      'Your acceptance is saved. Waiting for the other person.',
+    ),
   ).toBeVisible();
+  const pendingListings = await api(`/listings/${aliceItem.id}`, alice);
+  assert.equal(pendingListings.availability, 'available');
+  await bobPage.reload();
+  await bobPage.getByRole('button', { name: 'Review current terms' }).click();
+  await bobPage.getByRole('button', { name: 'Accept version 1' }).click();
+  await expect(bobPage.getByRole('status', { name: 'Swap status' })).toHaveText(
+    'Confirmed',
+  );
+  await alicePage.reload();
+  await expect(
+    alicePage.getByRole('status', { name: 'Swap status' }),
+  ).toHaveText('Confirmed');
+  const confirmed = await api(`/trades/${tradeId}`, alice);
+  assert.equal(confirmed.participantCount, 2);
+  assert.ok(
+    confirmed.participants.every((person) => person.acceptedVersion === 1),
+  );
+  assert.ok(
+    confirmed.items.every((item) => item.currentAvailability === 'reserved'),
+  );
 
   for (const [name, page] of [
     ['alice', alicePage],
@@ -334,7 +297,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.info(
-    'Local swap submission, notification, both lists, private access, withdrawn state, themes and accessibility passed.',
+    'Local swap submission, notification, both lists, private access, two-person confirmation, reservations, themes and accessibility passed.',
   );
 } finally {
   if (browser) await browser.close();
