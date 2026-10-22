@@ -25,7 +25,7 @@ for (const value of [
   assert.equal(target.port, '55432');
   assert.equal(target.pathname, '/postgres');
 }
-await testTwoPersonDatabase(async (database) => {
+await testTwoPersonDatabase(async (database, phase) => {
   const runtime = new Pool({
     ...databaseConfig(process.env.DATABASE_URL),
     database,
@@ -210,7 +210,7 @@ await testTwoPersonDatabase(async (database) => {
       .send({})
       .expect(404);
     console.info(
-      'Disposable API: fixed-pair revisions, stale acceptance, retry safety, reservation race/rollback, unanimous completion and direct-message isolation passed.',
+      `Disposable API (${phase}): fixed-pair revisions, stale acceptance, retry safety, reservation race/rollback, unanimous completion and direct-message isolation passed.`,
     );
   } finally {
     await Promise.all([runtime.end(), migration.end()]);

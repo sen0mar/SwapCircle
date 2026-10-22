@@ -10,6 +10,9 @@ import { hostedTarget } from './hosted-target.ts';
 import { verifiedHistoryPrefix } from './release-history.ts';
 
 async function main() {
+  const mode = process.argv[2] ?? 'apply';
+  assert.ok(['preflight', 'apply'].includes(mode));
+  assert.ok(process.argv.length <= 3);
   assert.equal(
     process.env.DATABASE_URL,
     undefined,
@@ -53,6 +56,22 @@ async function main() {
     ).rows;
 
     verifiedHistoryPrefix(history, migrations);
+    if (mode === 'preflight') {
+      // Exercise every pending statement, including the legacy-data refusal,
+      // without committing schema changes before the compatible API is live.
+      await pool.query('BEGIN');
+      try {
+        for (const migration of migrations.slice(history.length))
+          for (const statement of migration.sql) await pool.query(statement);
+      } finally {
+        await pool.query('ROLLBACK');
+      }
+      console.log(
+        'Reviewed migration preflight passed; no schema changes committed.',
+      );
+      return;
+    }
+
     await migrate(drizzle(pool), { migrationsFolder: folder });
     const applied = (
       await pool.query(

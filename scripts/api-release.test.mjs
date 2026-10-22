@@ -197,12 +197,21 @@ test('release configuration keeps global serialization and secrets isolated from
   assert.ok(!ci.includes('secrets: inherit'));
 
   const migration = release.slice(
-    release.indexOf('      - name: Verify and apply'),
+    release.indexOf('      - name: Verify reviewed migration preflight'),
     release.indexOf('      - name: Deploy and verify'),
   );
   const deploy = release.slice(
     release.indexOf('      - name: Deploy and verify'),
+    release.indexOf('      - name: Apply reviewed migrations'),
   );
+  const apply = release.slice(
+    release.indexOf('      - name: Apply reviewed migrations'),
+    release.indexOf('      - name: Build browser-only assets'),
+  );
+  assert.match(migration, /release-migrations\.ts preflight/);
+  assert.match(apply, /release-migrations\.ts apply/);
+  assert.match(apply, /secrets\.MIGRATION_DATABASE_URL/);
+  assert.ok(!apply.includes('secrets.RENDER_API_KEY'));
 
   assert.match(migration, /secrets\.MIGRATION_DATABASE_URL/);
   assert.match(migration, /secrets\.DATABASE_CA_CERT/);

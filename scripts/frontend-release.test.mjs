@@ -135,8 +135,9 @@ test('full release keeps readiness, build, private maps, audit, upload and deplo
   const release = ci.slice(ci.indexOf('  api-release:\n'));
   const phases = [
     'api-release.mjs checks',
-    'release-migrations.ts',
+    'release-migrations.ts preflight',
     'api-release.mjs deploy',
+    'release-migrations.ts apply',
     'frontend-release.mjs build',
     'sentry-source-maps.mjs',
     'frontend-release.mjs audit',

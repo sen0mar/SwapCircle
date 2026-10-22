@@ -193,7 +193,7 @@ jobs:
       - name: Require successful checks on this exact trusted revision
         run: node scripts/api-release.mjs checks
       - run: pnpm install --frozen-lockfile
-      - name: Verify and apply reviewed migrations
+      - name: Verify reviewed migration preflight
         env:
           MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
           DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
@@ -206,13 +206,27 @@ jobs:
           umask 077
           printf '%s' "$DATABASE_CA_CERT" > "$DATABASE_CA_CERT_PATH"
           trap 'rm -f "$DATABASE_CA_CERT_PATH"' EXIT
-          pnpm --filter @swapcircle/database exec node scripts/release-migrations.ts
+          pnpm --filter @swapcircle/database exec node scripts/release-migrations.ts preflight
       - name: Deploy and verify the intended healthy API build
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ vars.RENDER_SERVICE_ID }}
           RENDER_API_URL: ${{ vars.RENDER_API_URL }}
         run: node scripts/api-release.mjs deploy
+      - name: Apply reviewed migrations after compatible API is ready
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+          DATABASE_CA_CERT: ${{ secrets.DATABASE_CA_CERT }}
+          DATABASE_CA_CERT_PATH: ${{ runner.temp }}/supabase-ca.crt
+          HOSTED_AUTHORIZATION: configure-approved-project
+          HOSTED_REVIEWED_MIGRATION_SHA256: 361ffb5d4c748e5e67f19e6d07dcff4d0c551b8a7ee65a120d41c14cd21fdde8
+          SUPABASE_URL: https://tpanyqfgmbpsiejqjocd.supabase.co
+          FRONTEND_URL: https://swapcircle.pages.dev
+        run: |
+          umask 077
+          printf '%s' "$DATABASE_CA_CERT" > "$DATABASE_CA_CERT_PATH"
+          trap 'rm -f "$DATABASE_CA_CERT_PATH"' EXIT
+          pnpm --filter @swapcircle/database exec node scripts/release-migrations.ts apply
       - name: Build browser-only assets and private API maps
         if: inputs.frontend_release_revision != ''
         run: |

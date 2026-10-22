@@ -46,7 +46,10 @@ const [alice, bob, carol, trade, version] = Array.from({ length: 5 }, () =>
 );
 
 export async function testTwoPersonDatabase(
-  verify?: (database: string) => Promise<void>,
+  verify?: (
+    database: string,
+    phase: 'before-migration' | 'after-migration',
+  ) => Promise<void>,
 ) {
   try {
     docker(['createdb', '-U', 'supabase_admin', database]);
@@ -115,6 +118,7 @@ export async function testTwoPersonDatabase(
       't',
     );
     sql("DELETE FROM public.conversations WHERE type='group';");
+    await verify?.(database, 'before-migration');
     sql(`BEGIN;\n${migration}\nCOMMIT;`);
     assert.equal(
       sql(
@@ -170,7 +174,7 @@ export async function testTwoPersonDatabase(
       ).trim(),
       '2',
     );
-    await verify?.(database);
+    await verify?.(database, 'after-migration');
     console.info(
       'Disposable local database: guarded migration, removed structures, two fixed participants and immutable version pair passed.',
     );
