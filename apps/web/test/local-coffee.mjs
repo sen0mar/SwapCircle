@@ -42,7 +42,7 @@ const api = async (path, user, body, method = 'GET') => {
   return response.json();
 };
 
-const signIn = async (page, user, destination) => {
+const signIn = async (page, user, destination, participant = true) => {
   await page.route(
     `${fixture.publicAuth.url}/auth/v1/authorize?*`,
     async (route) => {
@@ -68,6 +68,13 @@ const signIn = async (page, user, destination) => {
   ).toBeVisible();
   await page.goto(`${origin}${destination}`);
   await expect(page).toHaveURL(`${origin}${destination}`);
+  if (!participant) {
+    await expect(
+      page.getByText('This swap cannot be found or you do not have access.'),
+    ).toBeVisible();
+    await expect(page.locator('summary')).toHaveCount(0);
+    return;
+  }
   await page
     .locator('summary')
     .filter({ hasText: /^Swap \+ coffee$/ })
@@ -181,7 +188,7 @@ try {
 
   await signIn(alicePage, alice, `/swaps/${direct.id}`);
   await signIn(bobPage, bob, `/swaps/${direct.id}`);
-  await signIn(carolPage, stranger, `/swaps/${direct.id}`);
+  await signIn(carolPage, stranger, `/swaps/${direct.id}`, false);
   const review = async (page) => {
     await page.getByRole('button', { name: 'Review current terms' }).click();
     await expect(
@@ -422,6 +429,10 @@ try {
   await refreshPair(alicePage, 'Coffee Bob');
   await expect(
     aliceBob.getByRole('button', { name: 'Cancel coffee' }),
+  ).toHaveCount(0);
+  await expect(coffee(alicePage)).toContainText('Coffee cancelled');
+  await expect(
+    aliceBob.getByRole('button', { name: 'Refresh coffee with Coffee Bob' }),
   ).toBeEnabled();
   assert.deepEqual(errors, []);
   console.info(
