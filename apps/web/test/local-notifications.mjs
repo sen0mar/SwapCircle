@@ -115,11 +115,17 @@ try {
     },
     'POST',
   );
+  const notificationConversation = await api(
+    '/conversations/direct',
+    alice,
+    { userId: stranger.id },
+    'POST',
+  );
   const conversation = await seed(
     alice,
     'proposal_response',
     'conversation',
-    direct.id,
+    notificationConversation.id,
   );
   const deferred = await seed(alice);
   const missing = await seed(alice, 'proposal_response', 'conversation');
