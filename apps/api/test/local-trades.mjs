@@ -12,8 +12,8 @@ const app = fixture.app;
 const auth = (user) => ({ Authorization: `Bearer ${user.token}` });
 const listingIds = new Map();
 
-async function seed(size) {
-  const members = fixture.users.slice(0, size);
+async function seed(peer) {
+  const members = [alice, peer];
   const tradeId = randomUUID();
   const versionId = randomUUID();
   const db = await fixture.migration.connect();
@@ -35,7 +35,7 @@ async function seed(size) {
       [versionId, tradeId, alice.id, members.map((member) => member.id)],
     );
     for (const [index, owner] of members.entries()) {
-      const recipient = members[(index + 1) % size];
+      const recipient = members[(index + 1) % members.length];
       for (const listingId of listingIds.get(owner.id))
         await db.query(
           `INSERT INTO public.trade_items
@@ -77,7 +77,7 @@ try {
   }
 
   const proposals = [];
-  for (const size of [2, 2, 2]) proposals.push(await seed(size));
+  for (const peer of fixture.users.slice(1)) proposals.push(await seed(peer));
 
   for (const { tradeId, members } of proposals) {
     for (const user of members) {
@@ -217,7 +217,7 @@ try {
   );
 
   console.log(
-    'Trade reads, multi-member transfers, outsider denial, references, RLS, and append-only events passed.',
+    'Trade reads, two-person transfers, outsider denial, references, RLS, and append-only events passed.',
   );
 } finally {
   await fixture.cleanup();

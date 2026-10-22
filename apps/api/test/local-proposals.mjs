@@ -164,6 +164,13 @@ try {
 
   await post(alice, make([alice, bob, carol])).expect(400);
 
+  const notificationsBeforeFailure = (
+    await migration.query(
+      'SELECT count(*)::int AS count FROM public.notifications WHERE recipient_id=$1 AND resource_type=$2',
+      [bob.id, 'trade'],
+    )
+  ).rows[0].count;
+
   await migration.query(`CREATE FUNCTION public.synthetic_proposal_notification_failure() RETURNS trigger
     LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic notification failure'; END $$`);
   await migration.query(`CREATE TRIGGER synthetic_proposal_notification_failure BEFORE INSERT ON public.notifications
@@ -192,7 +199,7 @@ try {
         [bob.id, 'trade'],
       )
     ).rows[0].count,
-    2,
+    notificationsBeforeFailure,
   );
   await post(alice, failed).expect(201);
 
