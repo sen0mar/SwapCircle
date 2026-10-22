@@ -115,9 +115,7 @@ export function MySwapsPage() {
                 <div className="swap-card-header">
                   <div className="swap-card-label">
                     <ArrowRightLeft size={20} aria-hidden="true" />
-                    <h2>
-                      {trade.participantCount > 2 ? 'Group swap' : 'Item swap'}
-                    </h2>
+                    <h2>Item swap</h2>
                   </div>
                   <span className={`swap-status swap-status-${trade.status}`}>
                     {trade.status.charAt(0).toUpperCase() +

@@ -228,9 +228,9 @@ export const directConversationReceiptSchema = z.object({
 // Authorized Supabase read projections; do not include private profile fields.
 export const conversationReadSchema = z.object({
   id: z.uuid(),
-  type: z.enum(['direct', 'group']),
-  direct_user_low: z.uuid().nullable(),
-  direct_user_high: z.uuid().nullable(),
+  type: z.literal('direct'),
+  direct_user_low: z.uuid(),
+  direct_user_high: z.uuid(),
   created_at: z.string().datetime({ offset: true }),
 });
 export const messageProposalSchema = z.strictObject({
@@ -287,8 +287,6 @@ export const notificationEventTypeSchema = z.enum([
   'trade_invitation',
   'trade_status',
   'trade_revision',
-  'group_invitation',
-  'group_membership',
   'proposal_response',
   'coffee_invitation',
   'coffee_response',
@@ -313,8 +311,6 @@ export const notificationCreationSchema = z
       trade_invitation: 'trade',
       trade_status: 'trade',
       trade_revision: 'trade',
-      group_invitation: 'conversation',
-      group_membership: 'conversation',
       proposal_response: 'conversation',
       coffee_invitation: 'coffee_invitation',
       coffee_response: 'coffee_invitation',
@@ -375,7 +371,7 @@ export const tradeInvitationStatusSchema = z.enum([
 ]);
 export const proposalDraftSchema = z
   .strictObject({
-    participantIds: z.array(z.uuid()).min(2),
+    participantIds: z.array(z.uuid()).length(2),
     transfers: z.array(
       z.strictObject({
         listingId: z.uuid(),
@@ -483,7 +479,7 @@ export const tradeSummarySchema = z.object({
   expiresAt: z.iso.datetime({ offset: true }),
   createdAt: z.iso.datetime({ offset: true }),
   updatedAt: z.iso.datetime({ offset: true }),
-  participantCount: z.number().int().min(2),
+  participantCount: z.literal(2),
   itemCount: z.number().int().min(1),
   hasUnavailableItems: z.boolean(),
   itemPreviews: z
@@ -546,52 +542,22 @@ export const tradeEventSchema = z.object({
 export const tradeDetailSchema = tradeSummarySchema
   .omit({ itemPreviews: true })
   .extend({
-    participants: z.array(tradeParticipantSchema),
+    participants: z.array(tradeParticipantSchema).length(2),
     items: z.array(tradeItemSchema),
     events: z.array(tradeEventSchema),
-    groupConversationId: z.uuid().nullable().default(null),
   });
 
 export const tradeVersionSchema = z.object({
   tradeId: z.uuid(),
   version: z.number().int().positive(),
-  participantIds: z.array(z.uuid()).min(2),
+  participantIds: z.array(z.uuid()).length(2),
   expiresAt: z.iso.datetime({ offset: true }),
   createdBy: z.uuid(),
   createdAt: z.iso.datetime({ offset: true }),
   items: z.array(tradeItemSchema),
 });
 
-// Chat consent is independent of version-specific trade acceptance.
-export const groupMembershipResponseSchema = z.strictObject({});
-export const groupMembershipParamsSchema = z.strictObject({ id: z.uuid() });
-export const groupMembershipStatusSchema = z.enum([
-  'pending',
-  'accepted',
-  'declined',
-  'left',
-]);
-export const groupMembershipReceiptSchema = z.object({
-  conversationId: z.uuid(),
-  status: groupMembershipStatusSchema,
-  active: z.boolean(),
-});
-export type GroupMembershipStatus = z.infer<typeof groupMembershipStatusSchema>;
-
-export const groupInvitationSchema = z.object({
-  conversationId: z.uuid(),
-  tradeId: z.uuid(),
-  status: groupMembershipStatusSchema,
-  active: z.boolean(),
-  members: z.array(
-    z.object({
-      userId: z.uuid(),
-      displayName: z.string(),
-      status: groupMembershipStatusSchema,
-      active: z.boolean(),
-    }),
-  ),
-});
+export const messageIdParamsSchema = z.strictObject({ id: z.uuid() });
 
 // Coffee consent belongs to an explicit pair, independently of trade consent.
 export const coffeeSendSchema = z.strictObject({

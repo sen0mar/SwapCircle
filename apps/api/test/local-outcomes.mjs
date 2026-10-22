@@ -12,7 +12,7 @@ const fixture = await createDiscoveryFixture();
 const {
   migration,
   runtime,
-  users: [alice, bob, carol, outsider],
+  users: [alice, bob, , outsider],
 } = fixture;
 // This long isolated concurrency suite uses a larger injected fixture burst budget.
 // Production rate limits and the dedicated safety suite stay unchanged.
@@ -189,30 +189,6 @@ try {
   await problem(proposed.id, bob, randomUUID(), {
     reason: 'x'.repeat(2001),
   }).expect(400);
-  const group = await make([alice, bob, carol]);
-  await receipt(group.id, carol).expect(409);
-  const revisedTransfers = group.terms.transfers
-    .slice(0, 2)
-    .map((item, index) => ({
-      ...item,
-      recipientId: [bob.id, alice.id][index],
-    }));
-  await request(app)
-    .put(`/api/v1/trades/${group.id}`)
-    .set(auth(alice))
-    .send({
-      ...group.terms,
-      participantIds: [alice.id, bob.id],
-      transfers: revisedTransfers,
-      expectedVersion: 1,
-    })
-    .expect(200);
-  await receipt(group.id, carol, randomUUID(), { expectedVersion: 2 }).expect(
-    404,
-  );
-  await problem(group.id, carol, randomUUID(), { expectedVersion: 2 }).expect(
-    404,
-  );
   const restricted = await confirm();
   await migration.query(
     "INSERT INTO public.account_restrictions (user_id,reason) VALUES ($1,'synthetic')",
@@ -226,11 +202,8 @@ try {
   );
   assert.equal(await count('trade_outcome_operations', restricted.id), 0);
 
-  // Direct and group completion requires exactly the frozen participant set.
-  for (const members of [
-    [alice, bob],
-    [alice, bob, carol],
-  ]) {
+  // Swap completion requires exactly the frozen participant set.
+  for (const members of [[alice, bob]]) {
     const trade = await confirm(members);
     const key = randomUUID();
     const results = await Promise.all([
@@ -306,94 +279,6 @@ try {
       'OPERATION_CONFLICT',
     );
   }
-  // Group-chat consent remains independent through handover: a left member and
-  // a pending invitee retain frozen trade permissions, but no group history/send.
-  for (const outcome of ['receipt', 'problem']) {
-    const trade = await make([alice, bob, carol]);
-    const groupId = (await detail(trade.id)).groupConversationId;
-    const savedMessage = (
-      await request(app)
-        .post('/api/v1/conversations/messages')
-        .set(auth(alice))
-        .send({
-          conversation_id: groupId,
-          client_message_id: randomUUID(),
-          body: 'Synthetic private group history',
-        })
-        .expect(200)
-    ).body;
-    const ownerHistory = await alice.client
-      .from('messages')
-      .select('id')
-      .eq('conversation_id', groupId)
-      .retry(false);
-    assert.equal(ownerHistory.error, null);
-    assert.deepEqual(
-      ownerHistory.data.map((row) => row.id),
-      [savedMessage.id],
-    );
-
-    await request(app)
-      .put(`/api/v1/conversations/${groupId}/invitation/accept`)
-      .set(auth(bob))
-      .expect(200);
-    await request(app)
-      .put(`/api/v1/conversations/${groupId}/leave`)
-      .set(auth(bob))
-      .expect(200);
-    for (const member of [alice, bob, carol])
-      await accept(trade.id, member).expect(200);
-    await receipt(trade.id, bob).expect(200);
-    if (outcome === 'receipt') {
-      await receipt(trade.id, carol).expect(200);
-      await receipt(trade.id, alice).expect(200);
-      assert.equal(await status(trade.id), 'completed');
-    } else {
-      await problem(trade.id, carol).expect(200);
-      assert.equal(await status(trade.id), 'disputed');
-    }
-    for (const member of [bob, carol, outsider]) {
-      const history = await member.client
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', groupId)
-        .retry(false);
-      assert.equal(history.error, null);
-      assert.deepEqual(history.data, []);
-      await request(app)
-        .post('/api/v1/conversations/messages')
-        .set(auth(member))
-        .send({
-          conversation_id: groupId,
-          client_message_id: randomUUID(),
-          body: 'Synthetic forbidden send',
-        })
-        .expect(403);
-      const inbox = await member.client
-        .from('notifications')
-        .select('*')
-        .eq('resource_id', trade.id)
-        .retry(false);
-      assert.equal(inbox.error, null);
-      assert.ok(inbox.data.every((row) => row.recipient_id === member.id));
-      assert.ok(
-        !JSON.stringify(inbox.data).includes('Synthetic private evidence'),
-      );
-      if (member === outsider) assert.deepEqual(inbox.data, []);
-      else assert.ok(inbox.data.length > 0);
-    }
-    assert.deepEqual(
-      (
-        await migration.query(
-          'SELECT status FROM public.conversation_members WHERE conversation_id=$1 AND user_id=ANY($2::uuid[]) ORDER BY status',
-          [groupId, [bob.id, carol.id]],
-        )
-      ).rows.map((row) => row.status),
-      ['left', 'pending'],
-    );
-    assert.equal(await active(trade.id), 3);
-  }
-
   // Recorded private problems and partial handovers preserve evidence and reservations.
   for (const kind of ['problem', 'partial_handover']) {
     const trade = await confirm();
@@ -627,7 +512,7 @@ try {
     );
   }
   console.log(
-    'Trade outcomes: authenticated per-participant receipts, unanimous atomic completion, private retry-safe disputes, left/pending group members retain trade outcomes with explicit chat/notification isolation, retained reservations, cancellation/handover concurrency, notification rollback and direct grants/RLS denial passed.',
+    'Trade outcomes: authenticated per-participant receipts, unanimous atomic completion, private retry-safe disputes, retained reservations, cancellation/handover concurrency, notification rollback and direct grants/RLS denial passed.',
   );
 } finally {
   await migration.query(

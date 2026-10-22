@@ -90,18 +90,16 @@ test('message submission rejects invalid content, references and forged identity
   }
 });
 
-test('group responses authenticate and reject forged identities and malformed references before persistence', async () => {
+test('removed membership endpoints are unavailable', async () => {
   for (const action of ['invitation/accept', 'invitation/decline', 'leave']) {
-    const path = `/api/v1/conversations/${randomUUID()}/${action}`;
-    await request(app).put(path).expect(401);
     await request(app)
-      .put(path)
+      .put(`/api/v1/conversations/${randomUUID()}/${action}`)
       .set('Authorization', 'Bearer synthetic')
-      .send({ userId: actor })
-      .expect(400);
-    await request(app)
-      .put(`/api/v1/conversations/invalid/${action}`)
-      .set('Authorization', 'Bearer synthetic')
-      .expect(400);
+      .send({})
+      .expect(404);
   }
+  await request(app)
+    .get(`/api/v1/conversations/${randomUUID()}/invitation`)
+    .set('Authorization', 'Bearer synthetic')
+    .expect(404);
 });

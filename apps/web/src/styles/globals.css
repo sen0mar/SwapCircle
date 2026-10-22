@@ -1904,16 +1904,6 @@
   font-size: 1rem;
 }
 
-.conversation-group-badge {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-pill);
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-  line-height: 1.5;
-}
-
 .inbox-preview {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2295,21 +2285,6 @@
   min-height: 44px;
   color: var(--accent-primary-text);
   text-decoration: none;
-}
-
-.group-thread-membership {
-  margin-block: 12px;
-}
-
-.group-thread-membership summary {
-  min-height: 44px;
-  padding-block: 12px;
-  cursor: pointer;
-}
-
-.group-thread-membership summary:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
 }
 
 .trade-acceptance,
@@ -2849,11 +2824,6 @@ select.native-select-control {
   font-size: 13px;
   color: var(--text-muted);
   text-transform: capitalize;
-}
-.swap-group-items {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border-subtle);
 }
 .swap-disclosure {
   padding: 0 20px;

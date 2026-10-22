@@ -39,7 +39,6 @@ vi.mock('../src/features/trades/useTrades', () => ({
       participantCount: 2,
       itemCount: 1,
       expiresAt: '2026-11-01T00:00:00Z',
-      groupConversationId: null,
       participants: [
         {
           userId: 'self',

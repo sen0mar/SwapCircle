@@ -11,7 +11,7 @@ const fixture = await createDiscoveryFixture();
 const {
   migration,
   runtime,
-  users: [alice, bob, carol, outsider],
+  users: [alice, bob, , outsider],
 } = fixture;
 // This long isolated concurrency suite uses a larger injected fixture burst budget.
 // Production rate limits and the dedicated safety suite stay unchanged.
@@ -238,18 +238,13 @@ try {
     [bob.id],
   );
 
-  // Competing direct/group proposals share one listing. Every other item must
+  // Competing two-person proposals share one listing. Every other item must
   // remain available on the losing proposal; final consent itself rolls back.
-  for (const groups of [false, true, 'both']) {
-    const first = await make(groups ? [alice, bob, carol] : [alice, bob]);
-    const second = await make(
-      groups === 'both' ? [alice, bob, carol] : [alice, bob],
-      first.terms.transfers[0].listingId,
-    );
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const first = await make();
+    const second = await make([alice, bob], first.terms.transfers[0].listingId);
     await accept(first.id).expect(200);
-    if (groups) await accept(first.id, carol).expect(200);
     await accept(second.id).expect(200);
-    if (groups === 'both') await accept(second.id, carol).expect(200);
     const race = await Promise.all([
       accept(first.id, bob),
       accept(second.id, bob),
@@ -276,82 +271,15 @@ try {
     await accept(loser.id, bob).expect(409);
   }
 
-  const rollback = await make([alice, bob, carol]);
-  const chatId = (await detail(rollback.id)).groupConversationId;
+  const rollback = await make();
   await accept(rollback.id).expect(200);
-  await accept(rollback.id, bob).expect(200);
-  const membershipBefore = (
-    await migration.query(
-      'SELECT user_id,status,active FROM public.conversation_members WHERE conversation_id=$1 ORDER BY user_id',
-      [chatId],
-    )
-  ).rows;
   const retryKey = randomUUID();
   await failure(true);
-  await accept(rollback.id, carol, retryKey).expect(500);
+  await accept(rollback.id, bob, retryKey).expect(500);
   await failure(false);
-  await pristine(rollback.id, 2);
-  assert.equal(
-    (
-      await migration.query(
-        'SELECT count(*)::int AS n FROM public.trade_acceptance_operations WHERE actor_id=$1 AND operation_key=$2',
-        [carol.id, retryKey],
-      )
-    ).rows[0].n,
-    0,
-  );
-  for (const transfer of rollback.terms.transfers)
-    assert.equal(
-      (
-        await migration.query(
-          'SELECT availability FROM public.listings WHERE id=$1',
-          [transfer.listingId],
-        )
-      ).rows[0].availability,
-      'available',
-    );
-  await accept(rollback.id, carol, retryKey).expect(200);
-  await confirmed(rollback.id, 3, 3);
-  assert.deepEqual(
-    (
-      await migration.query(
-        'SELECT user_id,status,active FROM public.conversation_members WHERE conversation_id=$1 ORDER BY user_id',
-        [chatId],
-      )
-    ).rows,
-    membershipBefore,
-  );
-
-  // Chat consent, decline and leave do not create trade consent; acceptance also
-  // remains possible for an active trade participant with declined/left chat.
-  const chat = await make([alice, bob, carol]);
-  const conversation = (await detail(chat.id)).groupConversationId;
-  await request(app)
-    .put(`/api/v1/conversations/${conversation}/invitation/accept`)
-    .set(auth(bob))
-    .expect(200);
-  await request(app)
-    .put(`/api/v1/conversations/${conversation}/leave`)
-    .set(auth(bob))
-    .expect(200);
-  await request(app)
-    .put(`/api/v1/conversations/${conversation}/invitation/decline`)
-    .set(auth(carol))
-    .expect(200);
-  await pristine(chat.id);
-  await accept(chat.id).expect(200);
-  await accept(chat.id, bob).expect(200);
-  await accept(chat.id, carol).expect(200);
-  await confirmed(chat.id, 3, 3);
-  assert.deepEqual(
-    (
-      await migration.query(
-        'SELECT status FROM public.conversation_members WHERE conversation_id=$1 AND user_id=ANY($2::uuid[]) ORDER BY status',
-        [conversation, [bob.id, carol.id]],
-      )
-    ).rows.map((r) => r.status),
-    ['declined', 'left'],
-  );
+  await pristine(rollback.id, 1);
+  await accept(rollback.id, bob, retryKey).expect(200);
+  await confirmed(rollback.id, 2, 2);
 
   for (const kind of [
     'expired',
@@ -359,12 +287,8 @@ try {
     'restricted',
     'unavailable',
     'snapshot',
-    'membership',
-    'removed',
   ]) {
-    const proposal = await make(
-      kind === 'removed' ? [alice, bob, carol] : [alice, bob],
-    );
+    const proposal = await make();
     if (kind === 'expired')
       await migration.query(
         "UPDATE public.trades SET created_at=now()-interval '2 days',expires_at=now()-interval '1 day' WHERE id=$1",
@@ -390,30 +314,9 @@ try {
         "UPDATE public.listings SET title='Changed without revision' WHERE id=$1",
         [proposal.terms.transfers[0].listingId],
       );
-    if (kind === 'membership')
-      await migration.query(
-        'UPDATE public.trade_participants SET active=false WHERE trade_id=$1 AND user_id=$2',
-        [proposal.id, bob.id],
-      );
-    if (kind === 'removed') {
-      await request(app)
-        .put(`/api/v1/trades/${proposal.id}`)
-        .set(auth(alice))
-        .send({
-          ...proposal.terms,
-          expectedVersion: 1,
-          participantIds: [alice.id, bob.id],
-          transfers: proposal.terms.transfers.slice(0, 2).map((t, i) => ({
-            ...t,
-            recipientId: i === 0 ? bob.id : alice.id,
-          })),
-        })
-        .expect(200);
-      await accept(proposal.id, carol).expect(404);
-    } else
-      await accept(proposal.id).expect(
-        ['blocked', 'restricted'].includes(kind) ? 403 : 409,
-      );
+    await accept(proposal.id).expect(
+      ['blocked', 'restricted'].includes(kind) ? 403 : 409,
+    );
     assert.equal(await count('trade_acceptances', proposal.id), 0);
     assert.equal(await count('item_reservations', proposal.id), 0);
     if (kind === 'blocked')
@@ -475,18 +378,17 @@ try {
   );
   await accept(edited.id, bob, randomUUID(), 1).expect(409);
 
-  const together = await make([alice, bob, carol]);
+  const together = await make();
   const simultaneousActors = await Promise.all([
     accept(together.id),
     accept(together.id, bob),
-    accept(together.id, carol),
   ]);
   assert.ok(simultaneousActors.every((r) => r.status === 200));
   assert.equal(
     simultaneousActors.filter((r) => r.body.status === 'confirmed').length,
     1,
   );
-  await confirmed(together.id, 3, 3);
+  await confirmed(together.id, 2, 2);
 
   const finalRevision = await make();
   await accept(finalRevision.id).expect(200);
@@ -715,7 +617,7 @@ try {
   }
 
   console.log(
-    'Atomic acceptance: direct/group races, exact consent, retries, rollback, snapshots, chat independence, immutable history and RLS passed.',
+    'Atomic acceptance: two-person races, exact consent, retries, rollback, snapshots, direct chat, immutable history and RLS passed.',
   );
 } finally {
   await failure(false);

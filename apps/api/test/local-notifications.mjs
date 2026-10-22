@@ -76,7 +76,7 @@ try {
   const second = await seed(input(alice, 'trade_revision'));
   const untouched = await seed(input(alice, 'trade_status'));
   for (const [type, resource] of [
-    ['group_invitation', 'conversation'],
+    ['proposal_response', 'conversation'],
     ['coffee_invitation', 'coffee_invitation'],
     ['coffee_response', 'coffee_invitation'],
     ['meeting_change', 'meetup'],

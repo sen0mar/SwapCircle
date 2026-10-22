@@ -236,26 +236,6 @@ try {
     .set(auth(bob))
     .expect(204);
 
-  const group = (
-    await migration.query(
-      "INSERT INTO public.conversations (type) VALUES ('group') RETURNING id",
-    )
-  ).rows[0].id;
-  await migration.query(
-    'INSERT INTO public.conversation_members (conversation_id,user_id,active) VALUES ($1,$2,true),($1,$3,true),($1,$4,false)',
-    [group, alice.id, carol.id, dan.id],
-  );
-  await request(app)
-    .put('/api/v1/safety/blocks')
-    .set(auth(alice))
-    .send({ userId: carol.id })
-    .expect(204);
-  await send(alice, input(group)).expect(200);
-  await send(carol, input(group)).expect(200);
-  await send(dan, input(group)).expect(403);
-  await send(bob, input(group)).expect(403);
-  assert.equal((await snapshot(group)).count, 2);
-
   await clearQuota(alice);
   const limited = fixture.makeApp({ ...developmentLimits, allowance: 1 });
   const limitedInput = input(direct);
@@ -636,7 +616,7 @@ try {
   );
 
   console.info(
-    'Local messages: strict validation/auth, exact concurrent retries, cross-conversation/content conflicts, sender-wide deduplication, two-actor stable ordering, current memberships/restrictions/bidirectional blocks and racing block, active group isolation, persistent/retry/burst quotas, expiry and atomic failure rollback/recovery passed.',
+    'Local messages: strict validation/auth, exact concurrent retries, cross-conversation/content conflicts, sender-wide deduplication, two-actor stable ordering, current memberships/restrictions/bidirectional blocks and racing block, persistent/retry/burst quotas, expiry and atomic failure rollback/recovery passed.',
   );
 } finally {
   await fixture.cleanup();

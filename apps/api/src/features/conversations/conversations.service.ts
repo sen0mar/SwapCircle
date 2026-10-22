@@ -10,10 +10,8 @@ import type { MessageProposal } from '@swapcircle/contracts';
 import { createHash } from 'node:crypto';
 import { processPhoto, PhotoError } from '../photos/photos.service.js';
 import type { TradeMessageSubmission } from '@swapcircle/contracts';
-import { groupInvitationSchema } from '@swapcircle/contracts';
 import { createNotification } from '../notifications/notifications.repository.js';
 import type {
-  GroupMembershipStatus,
   MessageSubmission,
   ConversationReadUpdate,
 } from '@swapcircle/contracts';
@@ -28,89 +26,6 @@ export class ConversationsService {
     private readonly repository: ConversationsRepository,
     private readonly permissions = new SafetyPermissions(),
   ) {}
-
-  async groupInvitation(actor: string, id: string) {
-    return this.repository.transaction(async (client) => {
-      await this.permissions.assertUnrestricted(client, [actor]);
-      const invitation = await this.repository.groupInvitation(
-        client,
-        actor,
-        id,
-      );
-      if (!invitation)
-        throw new SafetyError(
-          403,
-          'CONVERSATION_UNAVAILABLE',
-          'This conversation is unavailable.',
-        );
-
-      return groupInvitationSchema.parse(invitation);
-    });
-  }
-
-  async respondGroup(
-    actor: string,
-    id: string,
-    status: Exclude<GroupMembershipStatus, 'pending'>,
-  ) {
-    return this.repository.transaction(async (client) => {
-      await this.permissions.lockPair(client, actor, actor);
-      await this.permissions.assertUnrestricted(client, [actor]);
-      const membership = await this.repository.groupMembership(
-        client,
-        actor,
-        id,
-      );
-
-      if (!membership)
-        throw new SafetyError(
-          403,
-          'CONVERSATION_UNAVAILABLE',
-          'This conversation is unavailable.',
-        );
-
-      // An exact repeat returns the committed result without another event or
-      // notification. A decline/leave is terminal; this API cannot edit terms or
-      // remove a trade participant, nor resurrect a withdrawn chat invitation.
-      if (membership.status === status)
-        return { conversationId: id, ...membership };
-
-      if (!(
-        (membership.status === 'pending' && status !== 'left') ||
-        (membership.status === 'accepted' &&
-          membership.active &&
-          status === 'left')
-      ))
-        throw new SafetyError(
-          409,
-          'MEMBERSHIP_CONFLICT',
-          'This invitation has already changed.',
-        );
-
-      await this.permissions.consume(client, actor, 'conversation');
-      const eventId = await this.repository.respondGroup(
-        client,
-        actor,
-        id,
-        status,
-      );
-      const recipients = new Set([
-        actor,
-        ...(await this.repository.activeMembers(client, id)),
-      ]);
-
-      for (const recipientId of recipients)
-        await createNotification(client, {
-          recipient_id: recipientId,
-          domain_event_id: eventId,
-          event_type: 'group_membership',
-          resource_type: 'conversation',
-          resource_id: id,
-        });
-
-      return { conversationId: id, status, active: status === 'accepted' };
-    });
-  }
 
   async unread(actor: string, id: string, message?: string) {
     return this.repository.transaction(async (client) => {
@@ -165,25 +80,17 @@ export class ConversationsService {
           'This conversation is unavailable.',
         );
 
-      if (conversation.type === 'direct') {
-        const other =
-          actor === conversation.direct_user_low
-            ? conversation.direct_user_high!
-            : conversation.direct_user_low!;
-        await this.permissions.assertContactAllowed(client, actor, other);
-      } else {
-        await this.permissions.lockPair(client, actor, actor);
-        await this.permissions.assertUnrestricted(client, [actor]);
-      }
+      const other =
+        actor === conversation.direct_user_low
+          ? conversation.direct_user_high
+          : conversation.direct_user_low;
+      await this.permissions.assertContactAllowed(client, actor, other);
 
       const members = await this.repository.activeMembers(
         client,
         input.conversation_id,
       );
-      if (
-        !members.includes(actor) ||
-        (conversation.type === 'direct' && members.length !== 2)
-      )
+      if (!members.includes(actor) || members.length !== 2)
         throw new SafetyError(
           403,
           'CONVERSATION_UNAVAILABLE',

@@ -8,10 +8,6 @@ const runtimeRules: Record<string, [string, string[]]> = {
   blocks: ['runtime_blocks', ['SELECT', 'INSERT', 'DELETE']],
   coffee_invitations: ['runtime_coffee', ['SELECT', 'INSERT', 'UPDATE']],
   conversation_members: ['runtime_memberships', ['SELECT', 'INSERT']],
-  conversation_membership_events: [
-    'runtime_membership_events',
-    ['SELECT', 'INSERT'],
-  ],
   conversation_reads: ['runtime_read_progress', ['SELECT', 'INSERT', 'UPDATE']],
   conversations: ['runtime_conversations', ['SELECT', 'INSERT']],
   interests: ['runtime_interests', ['SELECT']],

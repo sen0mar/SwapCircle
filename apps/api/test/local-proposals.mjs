@@ -147,7 +147,7 @@ try {
     'INSERT INTO public.blocks (blocker_id,blocked_id) VALUES ($1,$2)',
     [carol.id, alice.id],
   );
-  assert.equal((await post(alice, make([alice, bob, carol]))).status, 403);
+  assert.equal((await post(alice, make([alice, carol]))).status, 403);
   await migration.query(
     'DELETE FROM public.blocks WHERE blocker_id=$1 AND blocked_id=$2',
     [carol.id, alice.id],
@@ -156,24 +156,13 @@ try {
     'INSERT INTO public.account_restrictions (user_id,reason) VALUES ($1,$2)',
     [carol.id, 'synthetic test'],
   );
-  assert.equal((await post(alice, make([alice, bob, carol]))).status, 403);
+  assert.equal((await post(alice, make([alice, carol]))).status, 403);
   await migration.query(
     'DELETE FROM public.account_restrictions WHERE user_id=$1',
     [carol.id],
   );
 
-  const group = make([alice, bob, carol]);
-  const result = await post(alice, group).expect(201);
-  assert.equal(await rows('trade_items', result.body.id), 3);
-  assert.equal(
-    (
-      await migration.query(
-        "SELECT count(*)::int AS count FROM public.notifications WHERE resource_type='trade' AND resource_id=$1",
-        [result.body.id],
-      )
-    ).rows[0].count,
-    2,
-  );
+  await post(alice, make([alice, bob, carol])).expect(400);
 
   await migration.query(`CREATE FUNCTION public.synthetic_proposal_notification_failure() RETURNS trigger
     LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic notification failure'; END $$`);

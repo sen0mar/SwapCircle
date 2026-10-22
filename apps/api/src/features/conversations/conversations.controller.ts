@@ -1,7 +1,5 @@
 import type { Request, Response } from 'express';
 import {
-  groupMembershipParamsSchema,
-  groupMembershipResponseSchema,
   directConversationStartSchema,
   messageSubmissionSchema,
   conversationReadUpdateSchema,
@@ -10,34 +8,7 @@ import type { AuthenticatedLocals } from '../../middleware/authenticate.js';
 import type { ConversationsService } from './conversations.service.js';
 
 export function createConversationsController(service: ConversationsService) {
-  const respondGroup =
-    (status: 'accepted' | 'declined' | 'left') =>
-    async (
-      request: Request,
-      response: Response<unknown, AuthenticatedLocals>,
-    ) => {
-      const { id } = groupMembershipParamsSchema.parse(request.params);
-      // This action has no client-supplied identity or ownership fields.
-      groupMembershipResponseSchema.parse(request.body ?? {});
-
-      response.json(
-        await service.respondGroup(response.locals.identity.userId, id, status),
-      );
-    };
-
   return {
-    groupInvitation: async (
-      request: Request,
-      response: Response<unknown, AuthenticatedLocals>,
-    ) => {
-      const { id } = groupMembershipParamsSchema.parse(request.params);
-      response.json(
-        await service.groupInvitation(response.locals.identity.userId, id),
-      );
-    },
-    acceptGroup: respondGroup('accepted'),
-    declineGroup: respondGroup('declined'),
-    leaveGroup: respondGroup('left'),
     unread: async (
       request: Request,
       response: Response<unknown, AuthenticatedLocals>,

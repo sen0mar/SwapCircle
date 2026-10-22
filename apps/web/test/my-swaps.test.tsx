@@ -25,7 +25,7 @@ vi.mock('../src/features/trades/useTrades', () => ({
         {
           id: 'swap',
           status: 'completed',
-          participantCount: 3,
+          participantCount: 2,
           itemCount: 5,
           expiresAt: '2026-10-01T00:00:00Z',
           hasUnavailableItems: false,
@@ -50,9 +50,9 @@ vi.mock('../src/features/trades/useTrades', () => ({
               listingId: 'lamp',
               title: 'Desk lamp',
               ownerId: 'bob',
-              recipientId: 'sam',
+              recipientId: 'self',
               ownerName: 'Bob',
-              recipientName: 'Sam',
+              recipientName: 'Me',
             },
           ],
         },
@@ -61,21 +61,21 @@ vi.mock('../src/features/trades/useTrades', () => ({
   }),
 }));
 
-test('identifies items, transfer direction, group swaps and completed status', () => {
+test('identifies items, transfer direction, two-person swaps and completed status', () => {
   render(
     <MemoryRouter>
       <MySwapsPage />
     </MemoryRouter>,
   );
   expect(
-    screen.getByRole('heading', { name: 'Group swap' }),
+    screen.getByRole('heading', { name: 'Item swap' }),
   ).toBeInTheDocument();
   expect(
     screen.getByRole('heading', { name: 'Film camera' }),
   ).toBeInTheDocument();
   expect(screen.getByText('You give')).toBeInTheDocument();
-  expect(screen.getByText('You receive')).toBeInTheDocument();
-  expect(screen.getByText('Bob → Sam')).toBeInTheDocument();
+  expect(screen.getAllByText('You receive')).toHaveLength(2);
+  expect(screen.getAllByText('Bob → you')).toHaveLength(2);
   expect(screen.getByText('Completed', { exact: true })).toBeInTheDocument();
   expect(
     screen.getByText('+2 more items · View the full swap'),

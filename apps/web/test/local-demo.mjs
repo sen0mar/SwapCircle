@@ -61,18 +61,7 @@ try {
       requestFailures.push(response.status());
   });
   await page.goto(`${origin}/`);
-  await expect(page.locator('.listing-photo').first()).toBeVisible();
-  await expect
-    .poll(() =>
-      page
-        .locator('.listing-photo')
-        .evaluateAll(
-          (images) =>
-            images.filter((image) => image.complete && image.naturalWidth > 0)
-              .length,
-        ),
-    )
-    .toBeGreaterThanOrEqual(4);
+  await expect(page.locator('.listing-card').first()).toBeVisible();
   await page.screenshot({
     path: new URL('home-light.png', output).pathname,
     fullPage: true,
@@ -90,8 +79,20 @@ try {
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.getByLabel('Theme').selectOption('light');
   stage = 'browse';
-  await page.goto(`${origin}/browse`);
+  // Other preserved local listings can precede the demo in the public catalogue.
+  await page.goto(`${origin}/browse?owner=${ready.guestId}`);
   await expect(page.locator('.listing-photo').first()).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator('.listing-photo')
+        .evaluateAll(
+          (images) =>
+            images.filter((image) => image.complete && image.naturalWidth > 0)
+              .length,
+        ),
+    )
+    .toBeGreaterThanOrEqual(4);
   await page.screenshot({
     path: new URL('browse-light.png', output).pathname,
     fullPage: true,
@@ -139,25 +140,25 @@ try {
   for (const key of [
     'confirmed-plants',
     'completed-books',
-    'group-weekend',
+    'weekend',
     'disputed-bicycle',
   ]) {
     await page.goto(`${origin}/swaps/${id(`trade/${key}`)}`);
     await expect(
-      page.getByRole('region', { name: 'Swap lifecycle' }),
+      page.getByRole('region', { name: 'Items in this swap' }),
     ).toBeVisible();
+    if (key === 'completed-books' || key === 'disputed-bicycle')
+      await expect(
+        page.getByRole('region', { name: 'Swap lifecycle' }),
+      ).toHaveCount(0);
   }
   stage = 'inbox';
   await page.goto(`${origin}/inbox`);
-  await expect(page.locator('.conversation-list > li')).toHaveCount(7);
+  await expect
+    .poll(() => page.locator('.conversation-list > li').count())
+    .toBeGreaterThanOrEqual(5);
   await page.locator('.conversation-list a').first().click();
   await expect(page.getByRole('textbox', { name: /message/i })).toBeVisible();
-  stage = 'group-invitation';
-  const invitation = state.steps['trade/group-invitation'].result.id;
-  await page.goto(`${origin}/swaps/${invitation}`);
-  await expect(
-    page.getByRole('button', { name: /join.*chat|accept.*invitation/i }),
-  ).toBeVisible();
   stage = 'notifications';
   await page.getByRole('button', { name: /Open notifications/ }).click();
   await expect(page.locator('.notification-list > li').first()).toBeVisible();
@@ -196,7 +197,7 @@ try {
   ).toHaveCount(0);
   assert.deepEqual(requestFailures, []);
   console.info(
-    'Local demo browser passed: public catalogue/images, guest SDK session/reload, shelf, nine swaps, seven conversations, group invitation, notifications, editor/profile/settings, logout, second-account form isolation, and responsive sign-in axe checks.',
+    'Local demo browser passed: public catalogue/images, guest SDK session/reload, shelf, nine swaps, seeded direct conversations, notifications, editor/profile/settings, logout, second-account form isolation, and responsive sign-in axe checks.',
   );
 } catch (error) {
   // Never output screenshot/page text, passwords, session data or private records.

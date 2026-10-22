@@ -77,7 +77,7 @@ try {
   }
 
   const proposals = [];
-  for (const size of [2, 3, 4]) proposals.push(await seed(size));
+  for (const size of [2, 2, 2]) proposals.push(await seed(size));
 
   for (const { tradeId, members } of proposals) {
     for (const user of members) {

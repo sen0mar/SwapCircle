@@ -1,4 +1,3 @@
-import { Select } from '../../components/ui/select';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -21,7 +20,6 @@ import {
   DialogTitle,
 } from '../../components/ui/dialog';
 import { getListing, getListings } from './listing-api';
-import { getMembers } from '../home/discovery-api';
 import { getCurrentProfile } from '../account/profile-api';
 import { useAuth } from '../auth/AuthProvider';
 import { useCreateTrade, useReviseTrade } from '../trades/useTrades';
@@ -153,7 +151,6 @@ export function ProposalTermsEditor({
   const [checking, setChecking] = useState(false);
   const [pendingCreation, setPendingCreation] =
     useState<ProposalCreation | null>(null);
-  const [membersCursor, setMembersCursor] = useState('');
   const [draft, setDraft] = useState<ProposalDraft>({
     participantIds: revision
       ? revision.participants.map((person) => person.userId)
@@ -187,18 +184,6 @@ export function ProposalTermsEditor({
   const me = useQuery({
     queryKey: ['private', selfId, 'profile'],
     queryFn: ({ signal }) => getCurrentProfile(request, signal),
-    enabled: open && !!selfId,
-    retry: false,
-  });
-  const members = useQuery({
-    queryKey: ['proposal-members', membersCursor],
-    queryFn: ({ signal }) =>
-      getMembers(
-        { limit: 50, cursor: membersCursor || undefined },
-        false,
-        request,
-        signal,
-      ),
     enabled: open && !!selfId,
     retry: false,
   });
@@ -559,7 +544,7 @@ export function ProposalTermsEditor({
               <p>
                 {revision
                   ? 'Every participant must agree to the revised version. The saved expiry is kept. Items are not reserved.'
-                  : 'Invitations will be sent to the other participants. This proposal expires in seven days. Items are not reserved.'}
+                  : 'An invitation will be sent to the other person. This proposal expires in seven days. Items are not reserved.'}
               </p>
               <div className="proposal-actions">
                 <Button disabled={saving} onClick={() => setReview(false)}>
@@ -593,95 +578,17 @@ export function ProposalTermsEditor({
                   <span aria-hidden="true">1</span>
                   <div>
                     <h3 id="proposal-people">Who’s swapping?</h3>
-                    <p>Choose everyone who will give or receive an item.</p>
+                    <p>
+                      A swap is between you and one other person. The
+                      participants stay fixed.
+                    </p>
                   </div>
                 </div>
                 <ul className="proposal-participants">
                   {draft.participantIds.map((id) => (
-                    <li key={id}>
-                      {displayName(id)}
-                      {id !== selfId && (revision || id !== item!.ownerId) && (
-                        <Button
-                          aria-label={`Remove ${displayName(id)}`}
-                          onClick={() => {
-                            setDraft((current) => ({
-                              ...current,
-                              participantIds: current.participantIds.filter(
-                                (person) => person !== id,
-                              ),
-                              transfers: current.transfers
-                                .filter((transfer) => transfer.ownerId !== id)
-                                .map((transfer) =>
-                                  transfer.recipientId === id
-                                    ? { ...transfer, recipientId: selfId }
-                                    : transfer,
-                                ),
-                            }));
-                            setError(null);
-                          }}
-                        >
-                          Remove
-                        </Button>
-                      )}
-                    </li>
+                    <li key={id}>{displayName(id)}</li>
                   ))}
                 </ul>
-                {members.isPending && <p role="status">Loading members…</p>}
-                {members.isError && (
-                  <p role="alert">
-                    Members could not be loaded.{' '}
-                    <Button onClick={() => void members.refetch()}>
-                      Retry members
-                    </Button>
-                  </p>
-                )}
-                {members.data && (
-                  <label>
-                    Add a person
-                    <Select
-                      value=""
-                      onChange={(event) => {
-                        const member = members.data.items.find(
-                          (candidate) => candidate.id === event.target.value,
-                        );
-                        if (!member || draft.participantIds.includes(member.id))
-                          return;
-                        setNames((current) => ({
-                          ...current,
-                          [member.id]: member.displayName,
-                        }));
-                        setDraft((current) => ({
-                          ...current,
-                          participantIds: [
-                            ...current.participantIds,
-                            member.id,
-                          ],
-                        }));
-                        setError(null);
-                      }}
-                    >
-                      <option value="">Choose a member</option>
-                      {members.data.items
-                        .filter(
-                          (member) => !draft.participantIds.includes(member.id),
-                        )
-                        .map((member) => (
-                          <option key={member.id} value={member.id}>
-                            {member.displayName}
-                          </option>
-                        ))}
-                    </Select>
-                  </label>
-                )}
-                {members.data?.nextCursor && (
-                  <Button
-                    onClick={() =>
-                      setMembersCursor(members.data.nextCursor ?? '')
-                    }
-                  >
-                    More members
-                  </Button>
-                )}
               </section>
               <section
                 className="proposal-section"
@@ -691,7 +598,10 @@ export function ProposalTermsEditor({
                   <span aria-hidden="true">2</span>
                   <div>
                     <h3 id="proposal-items">Build your exchange</h3>
-                    <p>Select items, then choose who receives each one.</p>
+                    <p>
+                      Select the items each of you will give to the other
+                      person.
+                    </p>
                   </div>
                 </div>
                 <div className="proposal-items-grid">
@@ -732,32 +642,7 @@ export function ProposalTermsEditor({
                               {displayName(transfer.ownerId)} gives{' '}
                               {titles[transfer.listingId] ?? 'Item'} to
                             </span>
-                            <Select
-                              aria-label={`${displayName(transfer.ownerId)} gives ${titles[transfer.listingId] ?? 'Item'} to`}
-                              value={transfer.recipientId}
-                              onChange={(event) => {
-                                setDraft((current) => ({
-                                  ...current,
-                                  transfers: current.transfers.map((entry) =>
-                                    entry.listingId === transfer.listingId
-                                      ? {
-                                          ...entry,
-                                          recipientId: event.target.value,
-                                        }
-                                      : entry,
-                                  ),
-                                }));
-                                setError(null);
-                              }}
-                            >
-                              {draft.participantIds
-                                .filter((id) => id !== transfer.ownerId)
-                                .map((id) => (
-                                  <option key={id} value={id}>
-                                    {displayName(id)}
-                                  </option>
-                                ))}
-                            </Select>
+                            <span>{displayName(transfer.recipientId)}</span>
                           </div>
                         ))}
                     </div>

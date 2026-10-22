@@ -112,19 +112,6 @@ try {
   ).rows[0];
   assert.equal(first.message_order, 1);
   assert.equal(second.message_order, 2);
-  const group = (
-    await migration.query(
-      "INSERT INTO public.conversations (type) VALUES ('group') RETURNING id",
-    )
-  ).rows[0].id;
-  await migration.query(
-    'INSERT INTO public.conversation_members (conversation_id,user_id,active) VALUES ($1,$2,true),($1,$3,true),($1,$4,false)',
-    [group, alice.id, carol.id, dan.id],
-  );
-  const groupMessage = (
-    await insertMessage(runtime, group, carol, 'Synthetic group history')
-  ).rows[0];
-
   for (const user of [alice, bob]) {
     assert.equal(
       (await read(user, 'conversations', 'id', direct.id)).length,
@@ -151,29 +138,6 @@ try {
     assert.deepEqual(
       await read(user, 'conversation_members', 'conversation_id', direct.id),
       [],
-    );
-  }
-  for (const user of [alice, carol]) {
-    assert.equal((await read(user, 'conversations', 'id', group)).length, 1);
-    const history = await read(user, 'messages', 'conversation_id', group);
-    assert.deepEqual(
-      history.map((row) => row.id),
-      [groupMessage.id],
-    );
-    assert.equal(
-      (await read(user, 'conversation_members', 'conversation_id', group))
-        .length,
-      2,
-    );
-  }
-  for (const user of [bob, dan]) {
-    assert.deepEqual(await read(user, 'conversations', 'id', group), []);
-    assert.deepEqual(await read(user, 'messages', 'id', groupMessage.id), []);
-    assert.deepEqual(
-      (await read(user, 'conversation_members', 'conversation_id', group)).map(
-        (row) => ({ user_id: row.user_id, active: row.active }),
-      ),
-      user === dan ? [{ user_id: dan.id, active: false }] : [],
     );
   }
   // Both membership revocation and current restrictions take effect on the next read.
@@ -227,14 +191,10 @@ try {
       .expect(204);
     await start(alice, bob).expect(403);
     await start(bob, alice).expect(403);
-    // Blocks prevent renewed contact; history and existing groups remain visible.
+    // Blocks prevent renewed contact; history remains visible.
     assert.equal(
       (await read(alice, 'messages', 'conversation_id', direct.id)).length,
       2,
-    );
-    assert.equal(
-      (await read(alice, 'messages', 'conversation_id', group)).length,
-      1,
     );
     await request(app)
       .delete(`/api/v1/safety/blocks/${blocked.id}`)
@@ -278,7 +238,7 @@ try {
     }),
   };
   const bypasses = [
-    ['conversations', { type: 'group' }, 'id', group],
+    ['conversations', { type: 'group' }, 'id', randomUUID()],
     [
       'conversation_members',
       { conversation_id: direct.id, user_id: carol.id, active: true },
@@ -465,6 +425,7 @@ try {
     { code: '42501' },
   );
 
+  const anotherDirect = (await start(alice, carol).expect(200)).body;
   const key = randomUUID();
   const keyed = (
     await insertMessage(
@@ -476,7 +437,13 @@ try {
     )
   ).rows[0];
   await assert.rejects(
-    insertMessage(runtime, group, alice, 'Duplicate across conversations', key),
+    insertMessage(
+      runtime,
+      anotherDirect.id,
+      alice,
+      'Duplicate across conversations',
+      key,
+    ),
     { code: '23505' },
   );
   assert.equal(
@@ -536,7 +503,7 @@ try {
   await start(dan, bob, limited).expect(429);
   assert.equal((await read(dan, 'conversations', 'id', fresh.id)).length, 1);
   console.info(
-    'Local conversations: canonical concurrent DM creation, restrictions/blocks and racing block, active-only private history and own revoked/pending membership status, stranger/guessed-ID/group isolation, browser writes/RPC and accidental-grant denials, constraints/deduplication, commit-ordered allocation/rollback/concurrency and persistent quotas passed.',
+    'Local conversations: canonical concurrent DM creation, restrictions/blocks and racing block, active-only private history and own revoked/pending membership status, stranger/guessed-ID isolation, browser writes/RPC and accidental-grant denials, constraints/deduplication, commit-ordered allocation/rollback/concurrency and persistent quotas passed.',
   );
 } finally {
   await fixture.cleanup();

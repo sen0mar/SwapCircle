@@ -4,7 +4,6 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { getGroup } from '../groups/groups-api';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
 import { getPublicProfile } from '../account/profile-api';
@@ -37,7 +36,7 @@ export function useInbox() {
       const items = await Promise.all(
         page.items.map(async (conversation) => {
           const peer = directPeer(conversation, userId);
-          const [profile, history, unread, group] = await Promise.all([
+          const [profile, history, unread] = await Promise.all([
             peer ? getPublicProfile(peer, signal).catch(() => null) : null,
             readHistory(sdk, conversation.id, undefined, signal, 1),
             readUnread(request, conversation.id, signal).catch(
@@ -51,14 +50,10 @@ export function useInbox() {
                 return null;
               },
             ),
-            conversation.type === 'group'
-              ? getGroup(request, conversation.id, signal).catch(() => null)
-              : null,
           ]);
           return {
             conversation,
             profile,
-            group,
             latest: history.items[0],
             unreadCount: unread?.unreadCount ?? null,
           };

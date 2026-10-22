@@ -18,16 +18,6 @@ export function termChanges(before: Terms, after: Terms): string[] {
   const changes: string[] = [];
   const count = (amount: number, noun: string, action: string) =>
     `${amount} ${noun}${amount === 1 ? '' : 's'} ${action}`;
-  const added = after.participantIds.filter(
-    (id) => !before.participantIds.includes(id),
-  ).length;
-  const removed = before.participantIds.filter(
-    (id) => !after.participantIds.includes(id),
-  ).length;
-
-  if (added) changes.push(count(added, 'participant', 'added'));
-  if (removed) changes.push(count(removed, 'participant', 'removed'));
-
   const oldItems = new Map(before.items.map((item) => [item.listingId, item]));
   const newItems = new Map(after.items.map((item) => [item.listingId, item]));
   const addedItems = after.items.filter(

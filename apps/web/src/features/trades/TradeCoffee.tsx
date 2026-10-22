@@ -280,13 +280,13 @@ export function TradeCoffee({ detail }: { detail: TradeDetail }) {
             name={p.displayName}
           />
         ))}
-      <h3>Pair responses</h3>
+      <h3>Coffee responses</h3>
       {coffee.data?.length ? (
         <ul>
           {coffee.data.map((i) => (
             <li key={i.id}>
-              {names.get(i.inviterId) ?? 'Former participant'} →{' '}
-              {names.get(i.inviteeId) ?? 'Former participant'} ·{' '}
+              {names.get(i.inviterId) ?? 'Member'} →{' '}
+              {names.get(i.inviteeId) ?? 'Member'} ·{' '}
               {i.status === 'accepted'
                 ? 'Both agreed to coffee'
                 : i.status === 'pending'
@@ -301,7 +301,7 @@ export function TradeCoffee({ detail }: { detail: TradeDetail }) {
       ) : (
         !coffee.isPending &&
         !coffee.isError && (
-          <p>No coffee invitations yet. No participant has agreed to coffee.</p>
+          <p>No coffee invitations yet. Neither of you has agreed to coffee.</p>
         )
       )}
     </section>

@@ -75,9 +75,9 @@ function fixture(initial = true) {
         state.allowed
           ? {
               id: thread,
-              type: 'group',
-              direct_user_low: null,
-              direct_user_high: null,
+              type: 'direct',
+              direct_user_low: alice,
+              direct_user_high: '00000000-0000-4000-8000-000000000099',
               created_at: date,
             }
           : null,

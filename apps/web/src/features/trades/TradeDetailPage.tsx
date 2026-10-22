@@ -6,7 +6,6 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
-import { GroupInvitation } from '../groups/GroupInvitation';
 import { TradeMeeting } from './TradeMeeting';
 import { TradeCoffee } from './TradeCoffee';
 import { TradeAcceptance } from './TradeAcceptance';
@@ -117,7 +116,7 @@ export function TradeDetailPage() {
         </div>
       )}
       <h1 ref={heading} tabIndex={-1} id="trade-title" className="sr-only">
-        {trade.data.participantCount > 2 ? 'Group swap' : 'Your swap'}
+        Your swap
       </h1>
       <section className="panel swap-overview" aria-label="Items in this swap">
         <div className="trade-detail-grid">
@@ -146,30 +145,6 @@ export function TradeDetailPage() {
             </section>
           ))}
         </div>
-        {trade.data.items.some(
-          (item) =>
-            item.ownerId !== session?.user.id &&
-            item.recipientId !== session?.user.id,
-        ) && (
-          <section className="swap-group-items">
-            <h2>Between other participants</h2>
-            <ul className="swap-detail-items">
-              {trade.data.items
-                .filter(
-                  (item) =>
-                    item.ownerId !== session?.user.id &&
-                    item.recipientId !== session?.user.id,
-                )
-                .map((item) => (
-                  <SwapDetailItem
-                    key={item.id}
-                    item={item}
-                    transfer={`${names.get(item.ownerId) ?? 'Member'} → ${names.get(item.recipientId) ?? 'Member'}`}
-                  />
-                ))}
-            </ul>
-          </section>
-        )}
       </section>
       {self && (
         <div className="swap-inline-actions">
@@ -206,9 +181,6 @@ export function TradeDetailPage() {
             detail={trade.data}
           />
         </details>
-      )}
-      {trade.data.groupConversationId && (
-        <GroupInvitation id={trade.data.groupConversationId} />
       )}
       {self && (
         <TradeProblem

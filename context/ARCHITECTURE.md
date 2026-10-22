@@ -1,17 +1,17 @@
 # SwapCircle Architecture
 
-**Status:** Implementation blueprint · **Updated:** 2026-09-21
+**Status:** Implementation blueprint · **Updated:** 2026-10-21
 
 ## 1. Product rules
 
 SwapCircle is a community for exchanging belongings and optionally meeting socially.
 
-- **Trades involve two or more people**, with one or more items per person. Do not require three participants, automatic cycle matching, equal valuations, predefined wishlists, or membership in a closed community. Store participants and transfers as rows, not fixed user slots.
+- **Trades involve exactly two distinct people**, with one or more items per person. The pair is fixed at creation; changing either person requires a new proposal. Every transfer goes to the other person. Do not require equal valuations, predefined wishlists, or membership in a closed community. Retain participant rows for individual version-specific acceptances.
 - Profiles contain a biography, approximate location, and selectable interests. Listings contain photos, condition, description, and ownership. Messaging and negotiation may precede proposals. The listing “Propose a trade” entry point now sends a direct message with one optional photo; it does not create formal trade terms. Existing formal proposals retain their revision and acceptance flows.
 - **Meet to swap** is always available. **Swap + coffee** appears only when the inviter and invitee share at least **two distinct interest IDs**, verified by the backend. “Coffee’s on me” is an optional invitation flag; payment happens in person.
-- For group trades, evaluate coffee eligibility per inviter/invitee pair. Eligible participants may meet socially without requiring everyone to share interests. Check eligibility when sending and accepting; later profile changes do not invalidate accepted plans.
+- Check coffee eligibility when sending and accepting; later profile changes do not invalidate accepted plans.
 - Coffee requires separate consent. Declining or cancelling coffee never cancels the trade or penalizes the member.
-- Direct messages exist independently of trades. Trades with three or more participants receive a separate group conversation. Conversation membership is not trade acceptance. Never expose private messages to a group.
+- Direct messages exist independently of trades. The same two people coordinate through their direct conversation. Messaging is not acceptance of formal trade terms.
 
 ## 2. System and tool choices
 
@@ -144,7 +144,7 @@ Use UUIDs, foreign keys, unique constraints, and `timestamptz`. Index ownership,
 | `trades`, `trade_versions`, `trade_participants`, `trade_items` | Versioned terms, invitations, version-specific acceptances; each item records owner and recipient |
 | `item_reservations`, `trade_events` | At most one active reservation per listing; append-only transition history |
 | `meetups`, `meetup_responses`, `coffee_invitations` | Private place/time, confirmations, pairwise coffee invitations and payer offer |
-| `conversations`, `conversation_members`, `messages` | Direct/group identity, accepted membership, durable messages and deduplication IDs |
+| `conversations`, `conversation_members`, `messages` | Fixed direct-message pair, access membership, durable messages and deduplication IDs |
 | `notifications`, `blocks`, `reports`, `action_quotas` | Recipient-only notifications, abuse controls, moderation, persistent usage limits |
 
 Keep precise meeting details out of public profiles and listings. Store meeting instants plus an IANA time-zone name. Changing the meeting location/time requires renewed meeting confirmations, not automatic acceptance.
@@ -157,7 +157,7 @@ proposed → declined | expired | cancelled
 confirmed → cancelled (before any handover) | disputed
 ```
 
-Proposals include participants, transfers, a version, and an expiry. Each owner must accept the exact version containing their items. Membership, items, or material condition changes create a new version and invalidate all earlier acceptances. Freeze confirmed terms; renegotiation requires explicit cancellation and a new proposal.
+Proposals include participants, transfers, a version, and an expiry. Each owner must accept the exact version containing their items. Item or material condition changes create a new version and invalidate all earlier acceptances. Participants cannot be added, removed, or replaced. Freeze confirmed terms; renegotiation requires explicit cancellation and a new proposal.
 
 On final acceptance, use one short transaction: lock the trade and listings in deterministic order, recheck version, expiry, ownership, membership, blocks, and availability; record acceptance; reserve every item; confirm the trade; persist events and notifications. Commit everything or nothing. Enforce one active reservation per listing with a unique partial index. Never hold locks while awaiting a person’s response.
 
@@ -177,11 +177,11 @@ Enable RLS on every exposed table and explicitly restrict grants. Allow authenti
 
 Use least-privilege runtime credentials and separate migration credentials. Only the Supabase URL/publishable key and API URL belong in public frontend configuration. `VITE_*` values are public; secret/service-role keys, database passwords, and deployment tokens stay server-side or in CI.[^vite]
 
-Allowlist CORS origins and OAuth redirects. Set API headers with Helmet and frontend CSP/security headers through Cloudflare Pages. Render user text as plain text. Apply upload/body limits, burst throttling, and persistent action quotas; CORS is not authorization. Support blocking/reporting from launch. Blocks in either direction prevent DMs and new joint trade/coffee invitations. Existing groups remain member-visible; leaving revokes further access.
+Allowlist CORS origins and OAuth redirects. Set API headers with Helmet and frontend CSP/security headers through Cloudflare Pages. Render user text as plain text. Apply upload/body limits, burst throttling, and persistent action quotas; CORS is not authorization. Support blocking/reporting from launch. Blocks in either direction prevent DMs and new joint trade/coffee invitations. Existing direct-message history remains subject to membership and account restrictions.
 
 ## 7. Messaging and media
 
-Send messages through Express; read authorized history and receive events through Supabase. Enforce unique `(sender_id, client_message_id)` keys; use stable cursors, pending/failed states, and reconnect backfills. Recheck membership on all sends and blocks on direct sends. Group invitations require acceptance before access; never convert a direct conversation into a group. Do not describe messages as end-to-end encrypted.
+Send messages through Express; read authorized history and receive events through Supabase. Enforce unique `(sender_id, client_message_id)` keys; use stable cursors, pending/failed states, and reconnect backfills. Recheck membership on all sends and blocks on direct sends. Conversations have exactly two fixed identities; membership checks cannot admit a third person. Do not describe messages as end-to-end encrypted.
 
 Create notifications transactionally with important domain changes. Update TanStack Query after events; never optimistically declare a trade confirmed.
 
@@ -207,7 +207,7 @@ Target **$0 within free allowances**, not unlimited availability. Render Free sl
 
 ## 9. Required acceptance tests and deferred scope
 
-Before release, verify unauthorized reads/writes through both Express and direct Supabase access; forged identity fields; exactly-one versus two shared interests; independent coffee consent; private-to-group isolation; blocked contact; stale acceptances; concurrent reservations; duplicate retries; partial-handover disputes; reconnect recovery; and logout cache clearing. Cover direct and multi-person trades, migration replay, upload rejection, keyboard navigation, and automated accessibility checks.
+Before release, verify unauthorized reads/writes through both Express and direct Supabase access; forged identity fields; exactly-one versus two shared interests; independent coffee consent; direct-conversation isolation; blocked contact; stale acceptances; concurrent reservations; duplicate retries; partial-handover disputes; reconnect recovery; and logout cache clearing. Cover two-person trades and rejection of additional or replacement participants, migration replay, upload rejection, keyboard navigation, and automated accessibility checks.
 
 Deferred: payments, shipping, automatic cycle discovery, AI matching, video and general chat attachments, Socket.IO, Redis/queues, presence indicators, and external venue/search services. Zustand, Turnstile, analytics, and email delivery are optional additions with an explicit need and cost review.
 

@@ -11,8 +11,6 @@ const titles: Record<NotificationRead['event_type'], string> = {
   trade_invitation: 'Trade invitation',
   trade_status: 'Trade status changed',
   trade_revision: 'Trade terms changed',
-  group_invitation: 'Group invitation',
-  group_membership: 'Group membership changed',
   proposal_response: 'Trade proposal response',
   coffee_invitation: 'Coffee invitation',
   coffee_response: 'Coffee response',
@@ -62,20 +60,14 @@ export function NotificationContent({
           <Link
             to={
               item.resource_type === 'conversation'
-                ? item.event_type === 'group_invitation' ||
-                  item.event_type === 'group_membership'
-                  ? `/groups/${item.resource_id}`
-                  : `/inbox/${item.resource_id}`
+                ? `/inbox/${item.resource_id}`
                 : item.resource_type === 'trade'
                   ? `/swaps/${item.resource_id}`
                   : `/notifications/${item.id}`
             }
           >
             {item.resource_type === 'conversation'
-              ? item.event_type === 'group_invitation' ||
-                item.event_type === 'group_membership'
-                ? 'View group invitation'
-                : 'Open conversation'
+              ? 'Open conversation'
               : item.resource_type === 'trade'
                 ? 'View swap'
                 : 'View notification'}

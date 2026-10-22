@@ -58,17 +58,10 @@ const edit = (revision, description = 'Revised synthetic details') =>
       description,
       condition: 'fair',
     });
-const memberships = async (id) =>
-  (
-    await migration.query(
-      'SELECT user_id,status,active FROM public.conversation_members WHERE conversation_id=$1 ORDER BY user_id',
-      [id],
-    )
-  ).rows;
-const failNotifications = async (enabled, groupOnly = false) => {
+const failNotifications = async (enabled) => {
   if (enabled) {
     await migration.query(`CREATE FUNCTION public.synthetic_revision_failure() RETURNS trigger
-      LANGUAGE plpgsql AS $$ BEGIN IF ${groupOnly ? `NEW.event_type='${groupOnly === true ? 'group_invitation' : groupOnly}'` : 'true'} THEN RAISE EXCEPTION 'synthetic failure'; END IF; RETURN NEW; END $$`);
+      LANGUAGE plpgsql AS $$ BEGIN IF true THEN RAISE EXCEPTION 'synthetic failure'; END IF; RETURN NEW; END $$`);
     await migration.query(`CREATE TRIGGER synthetic_revision_failure BEFORE INSERT ON public.notifications
       FOR EACH ROW EXECUTE FUNCTION public.synthetic_revision_failure()`);
   } else {
@@ -108,11 +101,11 @@ try {
   await revise(id, forged).expect(422);
   await migration.query(
     'INSERT INTO public.blocks (blocker_id,blocked_id) VALUES ($1,$2)',
-    [carol.id, alice.id],
+    [bob.id, alice.id],
   );
-  await revise(id, terms([alice, bob, carol])).expect(403);
+  await revise(id, terms()).expect(403);
   await migration.query('DELETE FROM public.blocks WHERE blocker_id=$1', [
-    carol.id,
+    bob.id,
   ]);
   await migration.query(
     'INSERT INTO public.account_restrictions (user_id,reason) VALUES ($1,$2)',
@@ -163,150 +156,31 @@ try {
       .listingId,
     items.get(bob.id),
   );
-  await failNotifications(true, true);
-  await revise(id, terms([alice, bob, carol], 3)).expect(500);
+  await failNotifications(true);
+  await revise(id, terms([alice, bob], 3)).expect(500);
   await failNotifications(false);
   assert.equal((await detail(id)).currentVersion, 3);
-  assert.equal((await detail(id)).groupConversationId, null);
-  assert.equal(
-    (
-      await migration.query(
-        'SELECT count(*)::int AS n FROM public.trade_versions WHERE trade_id=$1',
-        [id],
-      )
-    ).rows[0].n,
-    3,
+  await revise(id, terms([alice, bob, carol], 3)).expect(400);
+  const beforeReplacement = await detail(id);
+  const replacementResponse = await revise(id, terms([alice, carol], 3)).expect(
+    422,
   );
-  await revise(id, terms([alice, bob, carol], 3)).expect(200);
-  const group = (await detail(id)).groupConversationId;
-  assert.ok(group);
-  let members = await memberships(group);
-  assert.equal(members.find((m) => m.user_id === carol.id).active, false);
-  assert.equal(members.find((m) => m.user_id === carol.id).status, 'pending');
-  await request(app)
-    .put(`/api/v1/conversations/${group}/invitation/accept`)
-    .set(auth(carol))
-    .send({})
-    .expect(200);
-  const savedMessage = await request(app)
-    .post('/api/v1/conversations/messages')
-    .set(auth(carol))
-    .send({
-      conversation_id: group,
-      client_message_id: randomUUID(),
-      body: 'Synthetic history before removal',
-    })
-    .expect(200);
-  const permittedHistory = await carol.client
-    .from('messages')
-    .select('id')
-    .eq('id', savedMessage.body.id)
-    .abortSignal(globalThis.AbortSignal.timeout(10_000));
-  assert.equal(permittedHistory.error, null);
-  assert.equal(permittedHistory.data.length, 1);
-  await request(app)
-    .put(`/api/v1/conversations/${group}/invitation/decline`)
-    .set(auth(bob))
-    .send({})
-    .expect(200);
-  const originalTransfers = (await snapshot(id, 4)).items;
-  const retargeted = terms([alice, bob, carol], 4);
-  retargeted.transfers.forEach((transfer, index) => {
-    transfer.recipientId = retargeted.participantIds[(index + 2) % 3];
-  });
-  await migration.query(
-    'UPDATE public.trade_participants SET accepted_version=4,accepted_at=now() WHERE trade_id=$1',
-    [id],
-  );
-  await revise(id, retargeted).expect(200);
-  const retargetedSnapshot = await snapshot(id, 5);
-  for (const transfer of retargeted.transfers)
-    assert.equal(
-      retargetedSnapshot.items.find(
-        (item) => item.listingId === transfer.listingId,
-      ).recipientId,
-      transfer.recipientId,
-    );
-  assert.deepEqual((await snapshot(id, 4)).items, originalTransfers);
-  assert.ok(
-    (await detail(id)).participants.every(
-      (participant) => participant.acceptedVersion === null,
+  assert.equal(replacementResponse.body.error.code, 'PARTICIPANTS_FIXED');
+  assert.deepEqual(await detail(id), beforeReplacement);
+  await assert.rejects(
+    migration.query(
+      'UPDATE public.trade_participants SET user_id=$3 WHERE trade_id=$1 AND user_id=$2',
+      [id, bob.id, carol.id],
     ),
+    { code: '23514' },
   );
-  assert.equal(
-    (await memberships(group)).find((m) => m.user_id === bob.id).status,
-    'declined',
+  await assert.rejects(
+    migration.query(
+      'INSERT INTO public.trade_participants (trade_id,user_id) VALUES ($1,$2)',
+      [id, carol.id],
+    ),
+    { code: '23514' },
   );
-  const groupBefore = await memberships(group);
-  await failNotifications(true, true);
-  await revise(id, terms([alice, bob, outsider], 5)).expect(500);
-  await failNotifications(false);
-  assert.deepEqual(await memberships(group), groupBefore);
-  assert.equal((await detail(id)).currentVersion, 5);
-  await revise(id, terms([alice, bob, outsider], 5)).expect(200);
-  members = await memberships(group);
-  assert.equal(members.find((m) => m.user_id === carol.id).status, 'left');
-  assert.equal(members.find((m) => m.user_id === carol.id).active, false);
-  assert.equal(
-    members.find((m) => m.user_id === outsider.id).status,
-    'pending',
-  );
-  assert.equal(members.find((m) => m.user_id === outsider.id).active, false);
-  await request(app)
-    .put(`/api/v1/conversations/${group}/invitation/accept`)
-    .set(auth(carol))
-    .send({})
-    .expect(403);
-  await revise(id, terms([alice, bob, carol], 6), carol).expect(404);
-  await request(app).get(`/api/v1/trades/${id}`).set(auth(carol)).expect(404);
-  await snapshot(id, 4, carol);
-  await request(app)
-    .get(`/api/v1/trades/${id}/versions/6`)
-    .set(auth(carol))
-    .expect(404);
-  await request(app)
-    .get(`/api/v1/trades/${id}/versions/1`)
-    .set(auth(outsider))
-    .expect(404);
-  await revise(id, terms([alice, bob, carol], 6)).expect(200);
-  assert.equal(
-    (await memberships(group)).find((m) => m.user_id === carol.id).status,
-    'pending',
-  );
-  assert.equal(
-    (await memberships(group)).find((m) => m.user_id === carol.id).active,
-    false,
-  );
-  const joinRace = await Promise.all([
-    revise(id, terms([alice, bob, outsider], 7)),
-    request(app)
-      .put(`/api/v1/conversations/${group}/invitation/accept`)
-      .set(auth(carol))
-      .send({}),
-  ]);
-  assert.equal(joinRace[0].status, 200);
-  assert.ok([200, 403].includes(joinRace[1].status));
-  assert.equal(
-    (await memberships(group)).find((m) => m.user_id === carol.id).active,
-    false,
-  );
-  await request(app)
-    .post('/api/v1/conversations/messages')
-    .set(auth(carol))
-    .send({
-      conversation_id: group,
-      client_message_id: randomUUID(),
-      body: 'Revoked synthetic send',
-    })
-    .expect(403);
-  const revokedRead = await carol.client
-    .from('messages')
-    .select('id')
-    .eq('conversation_id', group)
-    .abortSignal(globalThis.AbortSignal.timeout(10_000));
-  assert.equal(revokedRead.error, null);
-  assert.deepEqual(revokedRead.data, []);
-  await revise(id, terms([alice, bob, carol], 8)).expect(200);
   // Competing listing and proposal edits serialize; both outcomes preserve fresh current snapshots.
   const before = (await detail(id)).currentVersion;
   await migration.query(
@@ -314,7 +188,7 @@ try {
     [id, before],
   );
   const race = await Promise.all([
-    revise(id, terms([alice, bob, carol], before)),
+    revise(id, terms([alice, bob], before)),
     edit(1),
   ]);
   assert.equal(race[1].status, 200);
@@ -333,7 +207,7 @@ try {
     'fair',
   );
   assert.ok(current.participants.every((p) => p.acceptedVersion === null));
-  await revise(id, terms([alice, bob, carol], before)).expect(409);
+  await revise(id, terms([alice, bob], before)).expect(409);
   assert.equal(
     (await snapshot(id, 1)).items.find((item) => item.ownerId === alice.id)
       .conditionSnapshot,
@@ -388,7 +262,7 @@ try {
   );
   await assert.rejects(
     runtime.query(
-      'UPDATE public.trade_participants SET active=false WHERE trade_id=$1',
+      'UPDATE public.trade_participants SET user_id=gen_random_uuid() WHERE trade_id=$1',
       [other],
     ),
   );
@@ -399,129 +273,14 @@ try {
       [other, alice.id, [alice.id, bob.id]],
     ),
   );
-  const removalOnly = await create([alice, bob, carol]);
-  const removalGroup = (await detail(removalOnly)).groupConversationId;
-  for (const member of [bob, carol])
-    await request(app)
-      .put(`/api/v1/conversations/${removalGroup}/invitation/accept`)
-      .set(auth(member))
-      .send({})
-      .expect(200);
-  const removalSnapshot = await snapshot(removalOnly, 1, carol);
-  const eventCount = async () =>
-    (
-      await migration.query(
-        'SELECT count(*)::int AS n FROM public.conversation_membership_events WHERE conversation_id=$1',
-        [removalGroup],
-      )
-    ).rows[0].n;
-  const notificationCount = async () =>
-    (
-      await migration.query(
-        "SELECT count(*)::int AS n FROM public.notifications WHERE resource_type='conversation' AND resource_id=$1",
-        [removalGroup],
-      )
-    ).rows[0].n;
-  const beforeRemoval = {
-    members: await memberships(removalGroup),
-    events: await eventCount(),
-    notifications: await notificationCount(),
-  };
-  await failNotifications(true, 'group_membership');
-  await revise(removalOnly, terms([alice, bob])).expect(500);
-  await failNotifications(false);
-  assert.deepEqual(await memberships(removalGroup), beforeRemoval.members);
-  assert.equal(await eventCount(), beforeRemoval.events);
-  assert.equal(await notificationCount(), beforeRemoval.notifications);
-  assert.equal((await detail(removalOnly)).currentVersion, 1);
-  await revise(removalOnly, terms([alice, bob])).expect(200);
-  assert.equal(await eventCount(), beforeRemoval.events + 1);
-  assert.equal(await notificationCount(), beforeRemoval.notifications + 3);
-  const removalEvent = (
-    await migration.query(
-      "SELECT id,actor_id,affected_user_id FROM public.conversation_membership_events WHERE conversation_id=$1 AND event_type='removed'",
-      [removalGroup],
-    )
-  ).rows[0];
-  assert.equal(removalEvent.actor_id, alice.id);
-  assert.equal(removalEvent.affected_user_id, carol.id);
-  const removalNotifications = (
-    await migration.query(
-      'SELECT recipient_id,event_type,resource_type,resource_id FROM public.notifications WHERE domain_event_id=$1',
-      [removalEvent.id],
-    )
-  ).rows;
-  assert.deepEqual(
-    new Set(removalNotifications.map((row) => row.recipient_id)),
-    new Set([alice.id, bob.id, carol.id]),
-  );
-  assert.ok(
-    removalNotifications.every(
-      (row) =>
-        row.event_type === 'group_membership' &&
-        row.resource_type === 'conversation' &&
-        row.resource_id === removalGroup,
-    ),
-  );
-  assert.deepEqual(await snapshot(removalOnly, 1, carol), removalSnapshot);
-  await request(app)
-    .get(`/api/v1/trades/${removalOnly}/versions/2`)
-    .set(auth(carol))
-    .expect(404);
-  await request(app)
-    .get(`/api/v1/conversations/${removalGroup}/invitation`)
-    .set(auth(carol))
-    .expect(403);
-  await revise(removalOnly, terms([alice, bob])).expect(409);
-  assert.equal(await eventCount(), beforeRemoval.events + 1);
-  const removedCreator = await create([alice, bob, carol]);
-  await revise(removedCreator, terms([bob, carol]), bob).expect(200);
-  await request(app)
-    .get(`/api/v1/trades/${removedCreator}`)
-    .set(auth(alice))
-    .expect(404);
-  await snapshot(removedCreator, 1, alice);
-  await revise(removedCreator, terms(), alice).expect(404);
-  const originalCreation = await snapshot(removedCreator, 1, alice);
-  const originalKey = (
-    await migration.query(
-      'SELECT operation_key FROM public.trades WHERE id=$1',
-      [removedCreator],
-    )
-  ).rows[0].operation_key;
-  await request(app)
-    .post('/api/v1/trades')
-    .set(auth(alice))
-    .send({
-      operationKey: originalKey,
-      participantIds: originalCreation.participantIds,
-      transfers: originalCreation.items.map((item) => ({
-        listingId: item.listingId,
-        ownerId: item.ownerId,
-        recipientId: item.recipientId,
-      })),
-      expiresAt: originalCreation.expiresAt,
-      meetingMode: 'meet_to_swap',
-    })
-    .expect(404);
   const expired = await create();
   await migration.query(
     "UPDATE public.trades SET expires_at=created_at+interval '1 millisecond' WHERE id=$1",
     [expired],
   );
   await revise(expired, terms(), bob).expect(409);
-  for (const role of ['anon', 'authenticated', 'service_role'])
-    assert.equal(
-      (
-        await migration.query(
-          "SELECT has_function_privilege($1,'private.reconcile_trade_group(uuid,uuid,uuid[])','EXECUTE') AS allowed",
-          [role],
-        )
-      ).rows[0].allowed,
-      false,
-    );
   console.info(
-    'Local revision authorization, immutable history, stale races, listing coordination, group consent, frozen terms and rollback passed.',
+    'Local revision authorization, immutable history, stale races, listing coordination, fixed participants, frozen terms and rollback passed.',
   );
 } catch (error) {
   console.error(error.message);

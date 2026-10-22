@@ -64,7 +64,7 @@ export function TradeAcceptance({ detail }: { detail: TradeDetail }) {
       </h2>
       <p role="status">
         {accepted
-          ? 'Your acceptance is saved. Waiting for the other participants.'
+          ? 'Your acceptance is saved. Waiting for the other person.'
           : 'Items are reserved once everyone agrees.'}
       </p>
       {unavailable && (

@@ -20,6 +20,7 @@ await new Promise((resolve) => server.once('listening', resolve));
 const [alice, bob, stranger] = fixture.users;
 const discoveryInterestId = randomUUID();
 const output = new URL('../test-results/inbox-local/', import.meta.url);
+const syntheticPeers = [];
 let preview;
 let browser;
 const api = async (path, user, body, method = 'GET') => {
@@ -113,13 +114,24 @@ try {
   );
   // Bounded list pagination, including exact creation-time ties; these are seeded histories only.
   for (let i = 0; i < 21; i++) {
-    const group = await fixture.migration.query(
-      "INSERT INTO public.conversations(type,created_at) VALUES ('group','2020-01-01T00:00:00Z') RETURNING id",
+    const peer = randomUUID();
+    await fixture.migration.query('INSERT INTO auth.users (id) VALUES ($1)', [
+      peer,
+    ]);
+    await fixture.migration.query(
+      "INSERT INTO public.profiles (id,display_name,biography,approximate_location) VALUES ($1,'Synthetic inbox peer','','Approximate demo location')",
+      [peer],
+    );
+    const [low, high] = [alice.id, peer].sort();
+    const directHistory = await fixture.migration.query(
+      "INSERT INTO public.conversations(type,direct_user_low,direct_user_high,created_at) VALUES ('direct',$1,$2,'2020-01-01T00:00:00Z') RETURNING id",
+      [low, high],
     );
     await fixture.migration.query(
-      'INSERT INTO public.conversation_members(conversation_id,user_id) VALUES ($1,$2)',
-      [group.rows[0].id, alice.id],
+      'INSERT INTO public.conversation_members(conversation_id,user_id) VALUES ($1,$2),($1,$3)',
+      [directHistory.rows[0].id, alice.id, peer],
     );
+    syntheticPeers.push(peer);
   }
   // PostgREST can briefly report a newly issued local JWT as issued in the future.
   // Wait for real authorized readiness; never replace the token or bypass RLS.
@@ -520,5 +532,19 @@ try {
   await fixture.migration.query('DELETE FROM public.interests WHERE id=$1', [
     discoveryInterestId,
   ]);
+  if (syntheticPeers.length) {
+    await fixture.migration.query(
+      'DELETE FROM public.conversations WHERE direct_user_low=ANY($1::uuid[]) OR direct_user_high=ANY($1::uuid[])',
+      [syntheticPeers],
+    );
+    await fixture.migration.query(
+      'DELETE FROM public.profiles WHERE id=ANY($1::uuid[])',
+      [syntheticPeers],
+    );
+    await fixture.migration.query(
+      'DELETE FROM auth.users WHERE id=ANY($1::uuid[])',
+      [syntheticPeers],
+    );
+  }
   await fixture.cleanup();
 }

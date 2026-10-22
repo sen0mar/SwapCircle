@@ -122,7 +122,6 @@ try {
     );
   const direct = await propose([alice, bob], [items[0], items[2]]);
 
-  const group = await propose(users, [items[1], items[3], items[5]]);
   const environment = {
     ...process.env,
     NODE_ENV: 'production',
@@ -182,7 +181,7 @@ try {
 
   await signIn(alicePage, alice, `/swaps/${direct.id}`);
   await signIn(bobPage, bob, `/swaps/${direct.id}`);
-  await signIn(carolPage, stranger, `/swaps/${group.id}`);
+  await signIn(carolPage, stranger, `/swaps/${direct.id}`);
   const review = async (page) => {
     await page.getByRole('button', { name: 'Review current terms' }).click();
     await expect(
@@ -407,37 +406,8 @@ try {
   const confirmed = await api(`/trades/${direct.id}`, bob);
   assert.equal(confirmed.status, 'confirmed');
   assert.ok(confirmed.items.every((i) => i.currentAvailability === 'reserved'));
-  // Group pairs differ: Bob is eligible, Carol is not; only Alice/Bob agree.
-  await updateInterests(bob, 'Coffee Bob', 2);
-  for (const page of [alicePage, bobPage, carolPage]) {
-    await page.goto(`${origin}/swaps/${group.id}`);
-    await page
-      .locator('summary')
-      .filter({ hasText: /^Swap \+ coffee$/ })
-      .click();
-  }
-  await aliceBob.getByLabel('Swap + coffee').check();
-  await expect(
-    pair(alicePage, 'Coffee Carol').getByLabel('Swap + coffee'),
-  ).toHaveCount(0);
-  await expect(aliceBob.getByLabel('Coffee on me')).not.toBeChecked();
-  const groupBaseline = await api(`/trades/${group.id}`, alice);
-  await aliceBob
-    .getByRole('button', { name: 'Send coffee invitation' })
-    .click();
-  await refreshPair(bobPage, 'Coffee Alice');
-  await bobAlice.getByRole('button', { name: 'Accept coffee' }).click();
-  await refreshPair(carolPage, 'Coffee Alice');
-  await expect(coffee(carolPage)).toContainText(
-    'Coffee Alice → Coffee Bob · Both agreed to coffee',
-  );
-  await expect(pair(carolPage, 'Coffee Alice')).not.toContainText(
-    'Coffee agreed',
-  );
-  assert.deepEqual(await api(`/trades/${group.id}`, alice), groupBaseline);
-  await capture(carolPage, 'group-pair');
   // Coffee read outage exposes recovery and cannot send using stale eligibility/list state.
-  await alicePage.route(`**/trades/${group.id}/coffee*`, (route) =>
+  await alicePage.route(`**/trades/${direct.id}/coffee*`, (route) =>
     route.abort('failed'),
   );
   await refreshPair(alicePage, 'Coffee Bob');
@@ -448,14 +418,14 @@ try {
     aliceBob.getByRole('button', { name: 'Cancel coffee' }),
   ).toBeDisabled();
   await capture(alicePage, 'read-failure');
-  await alicePage.unroute(`**/trades/${group.id}/coffee*`);
+  await alicePage.unroute(`**/trades/${direct.id}/coffee*`);
   await refreshPair(alicePage, 'Coffee Bob');
   await expect(
     aliceBob.getByRole('button', { name: 'Cancel coffee' }),
   ).toBeEnabled();
   assert.deepEqual(errors, []);
   console.info(
-    'Real local coffee: 1/2 interests, default/optional offer, notification authorization, decline without trade changes, eligibility races, preserved same-key retries and lost response, acceptance/cancellation independence, explicit group pairs, keyboard, responsive Light/Dark and axe passed.',
+    'Real local coffee: 1/2 interests, default/optional offer, notification authorization, decline without trade changes, eligibility races, preserved same-key retries and lost response, acceptance/cancellation independence, keyboard, responsive Light/Dark and axe passed.',
   );
 } finally {
   if (browser) await browser.close();

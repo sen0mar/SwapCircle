@@ -1,6 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
 import type {
-  GroupMembershipStatus,
   MessageReceipt,
   MessageSubmission,
   MessageProposal,
@@ -23,67 +22,6 @@ export class ConversationsRepository {
     } finally {
       client.release();
     }
-  }
-
-  async groupInvitation(client: PoolClient, actor: string, id: string) {
-    const result = await client.query(
-      `SELECT c.id AS "conversationId", c.trade_id AS "tradeId", m.status, m.active
-       FROM public.conversations c JOIN public.conversation_members m ON m.conversation_id=c.id
-       JOIN public.trade_participants p ON p.trade_id=c.trade_id AND p.user_id=m.user_id
-       WHERE c.id=$1 AND c.type='group' AND m.user_id=$2 AND p.active`,
-      [id, actor],
-    );
-    if (!result.rows[0]) return null;
-
-    const members = await client.query(
-      `SELECT m.user_id AS "userId", p.display_name AS "displayName", m.status, m.active
-       FROM public.conversation_members m JOIN public.profiles p ON p.id=m.user_id
-       WHERE m.conversation_id=$1 ORDER BY m.user_id`,
-      [id],
-    );
-
-    return { ...result.rows[0], members: members.rows };
-  }
-
-  async groupMembership(client: PoolClient, actor: string, id: string) {
-    // Sends, reads and transitions all hold this lock until commit. Membership
-    // SELECT needs no UPDATE privilege; the private transition function owns it.
-    const group = await client.query(
-      "SELECT id FROM public.conversations WHERE id=$1 AND type='group' AND trade_id IS NOT NULL FOR NO KEY UPDATE",
-      [id],
-    );
-    if (!group.rowCount) return null;
-
-    const result = await client.query<{
-      status: GroupMembershipStatus;
-      active: boolean;
-    }>(
-      `SELECT m.status,m.active FROM public.conversation_members m JOIN public.conversations c ON c.id=m.conversation_id
-       JOIN public.trade_participants p ON p.trade_id=c.trade_id AND p.user_id=m.user_id
-       WHERE m.conversation_id=$1 AND m.user_id=$2 AND p.active`,
-      [id, actor],
-    );
-
-    return result.rows[0] ?? null;
-  }
-
-  async respondGroup(
-    client: PoolClient,
-    actor: string,
-    id: string,
-    status: GroupMembershipStatus,
-  ) {
-    await client.query('SELECT private.respond_group_membership($1,$2,$3)', [
-      id,
-      actor,
-      status,
-    ]);
-    const event = await client.query<{ id: string }>(
-      'INSERT INTO public.conversation_membership_events (conversation_id,actor_id,event_type) VALUES ($1,$2,$3) RETURNING id',
-      [id, actor, status],
-    );
-
-    return event.rows[0]!.id;
   }
 
   async lockReader(client: PoolClient, actor: string, id: string) {
@@ -124,9 +62,9 @@ export class ConversationsRepository {
 
   async identity(client: PoolClient, id: string) {
     const result = await client.query<{
-      type: 'direct' | 'group';
-      direct_user_low: string | null;
-      direct_user_high: string | null;
+      type: 'direct';
+      direct_user_low: string;
+      direct_user_high: string;
     }>(
       'SELECT type,direct_user_low,direct_user_high FROM public.conversations WHERE id=$1',
       [id],

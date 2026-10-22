@@ -96,9 +96,6 @@ export function startInboxRealtime({
           void queries.invalidateQueries({
             queryKey: [...threadKey, 'profiles'],
           });
-          void queries.invalidateQueries({
-            queryKey: ['private', userId, 'group', id],
-          });
         }
         readScope.throwIfAborted();
         await queries.invalidateQueries({ queryKey: inboxKey });

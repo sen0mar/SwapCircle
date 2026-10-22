@@ -532,7 +532,6 @@ async function main() {
         status: string;
         coffee?: string;
         meeting?: string;
-        chat?: string;
       };
       const items = spec.items.map((key) =>
         listings.find((item) => item.key === key)!,
@@ -561,60 +560,6 @@ async function main() {
           }),
       );
       const id = proposal.id;
-
-      if (spec.chat && owners.length > 2) {
-        const detail = await request(
-          spec.creator,
-          `/trades/${id}`,
-          tradeDetailSchema,
-        );
-        const conversationId = detail.groupConversationId;
-        if (!conversationId) throw new DemoError('Missing group conversation.');
-        const groupOwners =
-          spec.chat === 'pending'
-            ? owners.filter((owner) => owner !== 'guest')
-            : owners;
-        for (const owner of groupOwners) {
-          if (owner === spec.creator) continue;
-          await journal.step(
-            `join/${spec.key}/${owner}`,
-            { conversationId },
-            z.unknown(),
-            () =>
-              request(
-                owner,
-                `/conversations/${conversationId}/invitation/accept`,
-                z.unknown(),
-                {},
-                'PUT',
-              ),
-          );
-        }
-        if (spec.chat === 'accepted') {
-          const messages = [
-            'Glad we found a swap that works for all three of us!',
-            'I have checked my item and it matches the listing. Happy to answer questions.',
-            'Thanks! Let us keep the handover plan here so everyone has the same details.',
-          ];
-          for (const [index, owner] of owners.entries())
-            await journal.step(
-              `group-message/${spec.key}/${index}`,
-              { conversationId, body: messages[index] },
-              messageReceiptSchema,
-              (operationKey) =>
-                request(
-                  owner,
-                  '/conversations/messages',
-                  messageReceiptSchema,
-                  {
-                    conversation_id: conversationId,
-                    body: messages[index],
-                    client_message_id: operationKey,
-                  },
-                ),
-            );
-        }
-      }
 
       if (['confirmed', 'completed', 'disputed'].includes(spec.status))
         for (const owner of owners)
@@ -946,7 +891,7 @@ async function main() {
       guestId: actors.get('guest')!.id,
     });
     console.info(
-      `${hosted ? 'Production' : 'Development'} demo ready: ${members.length} members, ${listings.length} illustrated listings, ${swaps.length} swaps, 5 direct chats and 2 populated group chats. ${changed} edited listings preserved.`,
+      `${hosted ? 'Production' : 'Development'} demo ready: ${members.length} members, ${listings.length} illustrated listings, ${swaps.length} two-person swaps and 5 direct chats. ${changed} edited listings preserved.`,
     );
     console.info(
       `Private form-login credentials: packages/database/${hosted ? '.demo.hosted.local' : '.demo.local'}/credentials.json. No credentials were printed.`,

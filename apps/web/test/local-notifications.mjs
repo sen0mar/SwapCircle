@@ -87,48 +87,6 @@ const saved = async (id) =>
       [id],
     )
   ).rows[0].read_at;
-const seedGroup = async (id, active) => {
-  const trade = randomUUID();
-  const client = await fixture.migration.connect();
-
-  try {
-    await client.query('BEGIN');
-    await client.query(
-      "INSERT INTO public.trades (id,creator_id,expires_at) VALUES ($1,$2,now()+interval '1 day')",
-      [trade, bob.id],
-    );
-    await client.query(
-      "INSERT INTO public.trade_versions (trade_id,version,created_by,participant_ids,expires_at) VALUES ($1,1,$2,$3,now()+interval '1 day')",
-      [trade, bob.id, [alice.id, bob.id, stranger.id]],
-    );
-    await client.query(
-      'INSERT INTO public.trade_participants (trade_id,user_id) VALUES ($1,$2),($1,$3),($1,$4)',
-      [trade, alice.id, bob.id, stranger.id],
-    );
-    await client.query(
-      "INSERT INTO public.conversations (id,type,trade_id) VALUES ($1,'group',$2)",
-      [id, trade],
-    );
-    await client.query(
-      "INSERT INTO public.conversation_members (conversation_id,user_id,active,status) VALUES ($1,$2,$5,$6),($1,$3,true,'accepted'),($1,$4,true,'accepted')",
-      [
-        id,
-        alice.id,
-        bob.id,
-        stranger.id,
-        active,
-        active ? 'accepted' : 'pending',
-      ],
-    );
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
-};
-
 try {
   for (const [user, displayName] of [
     [alice, 'Notification Alice'],
@@ -157,16 +115,14 @@ try {
     },
     'POST',
   );
-  const authorizedGroup = randomUUID();
-  await seedGroup(authorizedGroup, true);
   const conversation = await seed(
     alice,
-    'group_invitation',
+    'proposal_response',
     'conversation',
-    authorizedGroup,
+    direct.id,
   );
   const deferred = await seed(alice);
-  const missing = await seed(alice, 'group_invitation', 'conversation');
+  const missing = await seed(alice, 'proposal_response', 'conversation');
   const peerId = await seed(bob, 'meeting_change', 'meetup');
   // Fixture notifications reference synthetic local resources; no production manufacturing endpoint.
   execFileSync('pnpm', ['build'], {
@@ -367,50 +323,22 @@ try {
   );
   await bell(page, 3).click();
   await item(page, missing)
-    .getByRole('link', { name: 'View group invitation' })
+    .getByRole('link', { name: 'Open conversation' })
     .click();
   await expect(
     page.getByText(
-      'This group invitation is unavailable or you do not have access.',
-      { exact: true },
+      'This conversation cannot be found or you do not have access.',
     ),
   ).toBeVisible();
   assert.equal(await saved(missing), null);
   await bell(page, 3).click();
   await item(page, conversation)
-    .getByRole('link', { name: 'View group invitation' })
+    .getByRole('link', { name: 'Open conversation' })
     .click();
-  await page.getByRole('link', { name: 'Open group conversation' }).click();
   await expect(page.getByLabel('Message draft')).toBeVisible();
   assert.equal(await saved(conversation), null);
-  await expect(bell(page, 3)).toBeVisible();
-  // Pending group invites do not grant membership/history or accept on navigation.
-  const group = randomUUID();
-  await seedGroup(group, false);
-  const pendingId = await seed(
-    alice,
-    'group_invitation',
-    'conversation',
-    group,
-  );
+  await seed(alice);
   await expect(bell(page, 4)).toBeVisible();
-  await bell(page, 4).click();
-  await item(page, pendingId)
-    .getByRole('link', { name: 'View group invitation' })
-    .click();
-  await expect(
-    page.getByRole('button', { name: 'Join group chat' }),
-  ).toBeVisible();
-  await expect(page.getByLabel('Message draft')).toHaveCount(0);
-  assert.equal(
-    (
-      await fixture.runtime.query(
-        'SELECT active FROM public.conversation_members WHERE conversation_id=$1 AND user_id=$2',
-        [group, alice.id],
-      )
-    ).rows[0].active,
-    false,
-  );
   // Read failures preserve unread and retry. Reads never update message progress.
   await bell(page, 4).click();
   await page.route('**/api/v1/notifications/read', (route) =>

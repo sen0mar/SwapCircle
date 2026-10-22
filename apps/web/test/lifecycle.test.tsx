@@ -27,10 +27,19 @@ function mount() {
     participantCount: 2,
     itemCount: 2,
     hasUnavailableItems: true,
-    participants: [],
+    participants: [self, 'b8ded912-c170-4988-8750-9747558e8a87'].map(
+      (userId) => ({
+        userId,
+        displayName: 'Synthetic member',
+        invitationStatus: 'joined' as const,
+        invitedAt: '2026-01-01T00:00:00.000Z',
+        respondedAt: null,
+        acceptedVersion: 1,
+        acceptedAt: '2026-01-01T00:00:00.000Z',
+      }),
+    ),
     items: [],
     events: [],
-    groupConversationId: null,
   };
   let code = '';
   let failRead = false;

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { Pool } from 'pg';
+import { readMigrationFiles } from 'drizzle-orm/migrator';
+import { fileURLToPath } from 'node:url';
 import { databaseConfig } from '../src/config.ts';
 import { verifyPermissions } from './verify-permissions.ts';
 
@@ -117,7 +119,11 @@ export async function verify(
 
     assert.equal(
       (await pool.query('select * from drizzle.__drizzle_migrations')).rowCount,
-      27,
+      readMigrationFiles({
+        migrationsFolder: fileURLToPath(
+          new URL('../migrations', import.meta.url),
+        ),
+      }).length,
     );
 
     const publication = await pool.query<{ tablename: string }>(
@@ -151,7 +157,6 @@ export async function verify(
       'action_quotas',
       'conversations',
       'conversation_members',
-      'conversation_membership_events',
       'conversation_reads',
       'messages',
       'message_photos',
@@ -202,6 +207,8 @@ export async function verify(
       'public.guard_conversation_identity()',
       'public.guard_trade_event_history()',
       'public.guard_proposal_terms()',
+      'public.guard_swap_pair()',
+      'public.check_swap_pair()',
       'public.guard_new_trade_snapshot()',
       'private.guard_trade_handover()',
       'private.guard_exchanged_listing()',
@@ -222,16 +229,6 @@ export async function verify(
     }
 
     for (const role of ['anon', 'authenticated', 'service_role']) {
-      assert.equal(
-        (
-          await pool.query(
-            "SELECT has_function_privilege($1, 'private.respond_group_membership(uuid,uuid,text)', 'EXECUTE') AS execute",
-            [role],
-          )
-        ).rows[0]?.execute,
-        false,
-      );
-
       const result = await pool.query<{ execute: boolean }>(
         "SELECT has_function_privilege($1, 'private.lock_conversation_reader(uuid,uuid)', 'EXECUTE') AS execute",
         [role],

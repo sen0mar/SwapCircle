@@ -115,7 +115,6 @@ try {
     );
   const direct = await propose([alice, bob], [items[0], items[2]]);
   const competing = await propose([alice, stranger], [items[0], items[4]]);
-  const group = await propose(users, [items[1], items[3], items[5]]);
   const environment = {
     ...process.env,
     NODE_ENV: 'production',
@@ -324,39 +323,9 @@ try {
     [direct.id],
   );
   await capture(carolPage, 'conflict');
-  // Three participant acceptance is independent of group chat consent.
-  for (const page of [alicePage, bobPage, carolPage])
-    await page.goto(`${origin}/swaps/${group.id}`);
-  await accept(alicePage);
-  await accept(bobPage);
-  await expect(agreement(bobPage)).toContainText('Your acceptance is saved');
-  assert.equal(
-    (await api(`/listings/${items[1].id}`, alice)).availability,
-    'available',
-  );
-  await accept(carolPage);
-  await expect(
-    carolPage
-      .getByLabel('Swap status', { exact: true })
-      .filter({ hasText: 'Confirmed' }),
-  ).toBeVisible();
-  for (const page of [alicePage, bobPage]) {
-    await page.reload();
-    await expect(
-      page
-        .getByLabel('Swap status', { exact: true })
-        .filter({ hasText: 'Confirmed' }),
-    ).toBeVisible();
-  }
-  const groupTerms = await api(`/trades/${group.id}`, alice);
-  assert.ok(groupTerms.participants.every((p) => p.acceptedVersion === 1));
-  assert.ok(
-    groupTerms.items.every((i) => i.currentAvailability === 'reserved'),
-  );
-  await capture(carolPage, 'group-confirmed');
   assert.deepEqual(errors, []);
   console.info(
-    'Real direct/group cross-user acceptance, pending availability, lost response recovery, navigation refresh, competing reservation conflict, keyboard, both themes, responsive and axe checks passed.',
+    'Real two-person cross-user acceptance, pending availability, lost response recovery, navigation refresh, competing reservation conflict, keyboard, both themes, responsive and axe checks passed.',
   );
 } finally {
   releaseAcceptance();

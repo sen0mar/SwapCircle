@@ -23,10 +23,10 @@ Guest access uses the same form and Supabase SDK lifecycle in development and pr
 - **Home and Browse:** ten fictional Paris neighbours, 32 listings, AI-generated covers and four multi-image bundles. Most items remain available. Search for books, plants or a camera; try a condition or availability filter.
 - **Member and listing pages:** complete biographies, approximate locations, avatars, interests and other items from the owner. Photos are illustrative AI-generated images, and every listing identifies itself as fictional.
 - **My Shelf:** ten items owned by Camille, with available, reserved and exchanged examples. Open an available item in the editor to explore the normal form and gallery.
-- **My Swaps:** nine scenarios, including an incoming camera proposal, an outgoing music proposal, confirmed plants, completed books, a cancelled guitar exchange, a disputed bicycle exchange and three group proposals. Separate items keep reservations consistent.
-- **Swap details:** real transition histories, accepted terms, receipt acknowledgements, pairwise coffee consent, private fictional meetings and a three-person transfer cycle. Coffee eligibility uses the existing interest catalogue. No invented statistics or environmental impact are inserted.
-- **Inbox:** five short direct conversations and two accepted group conversations, including read and unread activity.
-- **Notifications and group invitations:** domain-generated read/unread notifications link to real records; one group invitation remains pending for Camille to accept.
+- **My Swaps:** nine scenarios, including an incoming camera proposal, an outgoing music proposal, confirmed plants, completed books, a cancelled guitar exchange, a disputed bicycle exchange and weekend, writing, and furniture exchanges between two people. Separate items keep reservations consistent.
+- **Swap details:** real transition histories, accepted terms, receipt acknowledgements, separate coffee consent, private fictional meetings and two-person item transfers. Coffee eligibility uses the existing interest catalogue. No invented statistics or environmental impact are inserted.
+- **Inbox:** five short direct conversations, including read and unread activity.
+- **Notifications:** domain-generated read/unread notifications link to real two-person swap, coffee, and meeting records.
 - **Profile, account and settings:** the normal signed-in experience. Sign out and use another local demo user's form credentials to check account isolation.
 
 New proposals expire 28 days after the initial seed; meetings are set seven days after it in Europe/Paris. Rerunning does not refresh dates or undo user interactions. Completed and disputed swaps are historical demonstrations, not real exchanges.
@@ -43,7 +43,7 @@ The bundled image prompts and provenance are recorded in `packages/database/demo
 
 ## Verification
 
-With the seed and both development servers running, `pnpm --filter @swapcircle/web test:demo-local` checks public photos, guest login/reload, private page coverage, group invitations, notifications, profile/editor/settings, logout and a second user's password form login. It also checks the sign-in form at narrow/wide widths with axe. It reads only the ignored local demo credentials and deliberately avoids printing secrets or private page text. Public screenshots are saved under the ignored web test-results directory. Opening an inbox thread can mark synthetic messages read, as normal browsing does.
+With the seed and both development servers running, `pnpm --filter @swapcircle/web test:demo-local` checks public photos, guest login/reload, private page coverage, notifications, profile/editor/settings, logout and a second user's password form login. It also checks the sign-in form at narrow/wide widths with axe. It reads only the ignored local demo credentials and deliberately avoids printing secrets or private page text. Public screenshots are saved under the ignored web test-results directory. Opening an inbox thread can mark synthetic messages read, as normal browsing does.
 
 ## Production
 
@@ -94,3 +94,21 @@ Fresh seeds use the new descriptions and conditions. Listing creation keeps its 
 Build the API, then run `NODE_ENV=development pnpm demo:conditions:check` followed by `NODE_ENV=development pnpm demo:conditions:refresh`. For an explicitly authorized hosted refresh, use the same production environment, authorization and verified API revision as the hosted seed, with `demo:conditions:check:production` and `demo:conditions:refresh:production`.
 
 The refresh verifies all seeded identities and listing ownership, completes preflight before writing, and refuses subsequent edits or frozen items. Updates use authenticated Express listing edits with revision checks. Proposed trades receive normal new versions and notifications when their item descriptions or conditions change; frozen histories stay intact. Private before-images and receipts remain beside the seed journal. Reruns skip already matching records. No schema migration, SQL write, reset or reseed is required.
+
+## Two-person migration
+
+Migration `0027_lazy_ben_urich.sql` removes chat membership events, invitation response columns, trade-linked conversations and the corresponding database functions. It enforces exactly two fixed participants in every swap and term version. Applied migration history remains intact.
+
+The migration locks affected tables and **fails before changing anything** if it finds legacy conversations, membership history, notifications, changed participant sets, or swaps with other than two participants. It does not delete or silently convert existing exchanges. A populated older demo therefore needs an explicitly reviewed export/retirement plan before migration; do not reuse its seed journal to pretend it is the new demo. Fresh isolated databases can replay all migrations and seed the new two-person scenarios. No production migration, seed, or deployment is authorized by this preparation.
+
+Rollback: before applying this schema-removal migration to any persistent environment, take and verify a backup and define a coordinated application/database restore procedure. The old binary requires removed structures and cannot simply be rolled back against the new schema. Keep destructive data cleanup separate from schema history.
+
+Validate the schema replay and fixed-pair transactions without changing the existing local demo using `pnpm --filter @swapcircle/api test:two-person-local`. This creates and removes a disposable database in the local Supabase container, copying schema only. Synthetic verifier identities are injected only into the test app; this check does not exercise real Supabase login or browser RLS. The normal local suites cover those boundaries on a fresh migrated stack.
+
+### Local cleanup completed on 2026-10-22
+
+The owner authorized cleanup of the existing local Supabase database. Before changes, a full database backup was restored into a disposable database and verified against row totals and migration history; the demo journal was archived alongside it. The private backup, verification, cleanup receipt, and retired journal are in `packages/database/.maintenance.local/two-person-20261022/` (ignored by Git).
+
+Cleanup removed three legacy group trades, 45 group conversations, and their dependent records; it released three reserved items. Twelve existing two-person trades, direct conversations, accounts, and unrelated listings were preserved. Migration 0027 was then applied through `pnpm db:migrate`. The existing demo journal retained account, listing, media, direct chat, and two-person trade entries; only the three retired group scenarios were removed before rerunning `NODE_ENV=development pnpm demo:seed`.
+
+The refreshed demo contains all nine two-person scenarios and preserves additional local activity. The local API and frontend use the existing local Supabase stack. No production data, seed, migration, release approval digest, or deployment was changed.

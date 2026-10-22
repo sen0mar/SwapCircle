@@ -32,18 +32,15 @@ export class MeetingsRepository {
       [id],
     );
     const row = result.rows[0]!;
-    // Retain consent through unrelated terms changes, but never through a
-    // membership gap. Arrangement revisions independently invalidate everyone.
+    // Retain consent through item changes. Arrangement revisions require fresh
+    // responses from both people.
     const responses = await client.query<Meetup['responses'][number]>(
       `SELECT p.user_id AS "userId",r.response FROM public.trade_participants p
        LEFT JOIN LATERAL (
          SELECT saved.response FROM public.meetup_responses saved
          WHERE saved.meetup_id=$1 AND saved.user_id=p.user_id AND saved.revision=$2
-         AND saved.trade_version <= $3 AND NOT EXISTS (
-           SELECT 1 FROM public.trade_versions v WHERE v.trade_id=p.trade_id
-           AND v.version>saved.trade_version AND NOT (p.user_id=ANY(v.participant_ids))
-         ) ORDER BY saved.trade_version DESC LIMIT 1
-       ) r ON true WHERE p.trade_id=$4 AND p.active ORDER BY p.user_id`,
+         AND saved.trade_version <= $3 ORDER BY saved.trade_version DESC LIMIT 1
+       ) r ON true WHERE p.trade_id=$4 ORDER BY p.user_id`,
       [id, row.revision, tradeVersion, row.tradeId],
     );
     return meetupSchema.parse({

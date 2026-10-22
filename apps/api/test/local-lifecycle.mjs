@@ -11,7 +11,7 @@ const fixture = await createDiscoveryFixture();
 const {
   migration,
   runtime,
-  users: [alice, bob, carol, outsider],
+  users: [alice, bob, , outsider],
 } = fixture;
 // This long isolated concurrency suite uses a larger injected fixture burst budget.
 // Production rate limits and the dedicated safety suite stay unchanged.
@@ -173,10 +173,7 @@ try {
     expectedStatus: 'confirmed',
   }).expect(200);
   await released(changedStatus);
-  for (const members of [
-    [alice, bob],
-    [alice, bob, carol],
-  ]) {
+  for (const members of [[alice, bob]]) {
     const confirmed = await confirm(members);
     await transition(confirmed.id, 'decline', bob).expect(409);
     await transition(confirmed.id, 'expire').expect(409);

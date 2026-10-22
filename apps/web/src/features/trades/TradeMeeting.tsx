@@ -118,8 +118,8 @@ export function TradeMeeting({ detail }: { detail: TradeDetail }) {
         if (input.kind === 'respond') {
           setSuccess(
             input.input.response === 'confirmed'
-              ? 'Meetup confirmed. The other participants have been notified.'
-              : 'Meetup declined. The other participants have been notified.',
+              ? 'Meetup confirmed. The other person has been notified.'
+              : 'Meetup declined. The other person has been notified.',
           );
         }
         setAttempt(null);
@@ -295,11 +295,8 @@ export function TradeMeeting({ detail }: { detail: TradeDetail }) {
             {declining ? 'Decline this meetup?' : 'Confirm this meetup?'}
           </DialogTitle>
           <DialogDescription>
-            {declining ? 'Declining' : 'Confirming'} will notify{' '}
-            {detail.participantCount > 2
-              ? 'the other participants'
-              : 'the other user'}{' '}
-            that{' '}
+            {declining ? 'Declining' : 'Confirming'} will notify the other
+            person that{' '}
             {declining
               ? 'you won’t be meeting them.'
               : 'you are ready to meet them 🎉'}

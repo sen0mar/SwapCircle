@@ -10,7 +10,7 @@ import { preparedCommand, selectSuites, suites } from './test-local-suites.mjs';
 
 test('journey shards cover every suite exactly once and retain ordering', () => {
   assert.equal(suites.api.names.length, 19);
-  assert.equal(suites.journeys.names.length, 17);
+  assert.equal(suites.journeys.names.length, 16);
   const shards = [1, 2, 3].map(
     (index) => selectSuites('journeys', `${index}/3`).names,
   );
@@ -19,7 +19,7 @@ test('journey shards cover every suite exactly once and retain ordering', () => 
   assert.deepEqual(combined.toSorted(), suites.journeys.names.toSorted());
   assert.deepEqual(
     shards.map((names) => names.length),
-    [6, 6, 5],
+    [6, 5, 5],
   );
   assert.deepEqual(selectSuites('api').names, suites.api.names);
   for (const shard of ['0/3', '4/3', '1/0', '1/19', '1/3 extra', '-1/3'])

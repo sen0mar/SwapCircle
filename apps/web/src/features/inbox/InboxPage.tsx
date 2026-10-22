@@ -12,8 +12,6 @@ import { ConversationDenied } from './inbox-api';
 import { useInbox, useThread } from './useInbox';
 import { useInboxRealtime } from './useInboxRealtime';
 import { useVisibleRead } from './useVisibleRead';
-import { GroupInvitation } from '../groups/GroupInvitation';
-import { useGroup } from '../groups/useGroup';
 import { UnreadBadge } from './UnreadBadge';
 import { useComposer } from './MessageComposerProvider';
 
@@ -104,14 +102,8 @@ function ConversationList({ selected }: { selected: string | undefined }) {
           <ul className="conversation-list">
             {inbox.data.pages
               .flatMap((page) => page.items)
-              .map(({ conversation, profile, group, latest, unreadCount }) => {
-                const name =
-                  conversation.type === 'group'
-                    ? group?.members
-                        .filter((member) => member.active)
-                        .map((member) => member.displayName)
-                        .join(', ') || 'Group conversation'
-                    : (profile?.displayName ?? 'Member unavailable');
+              .map(({ conversation, profile, latest, unreadCount }) => {
+                const name = profile?.displayName ?? 'Member unavailable';
                 return (
                   <li key={conversation.id}>
                     <Link
@@ -127,11 +119,6 @@ function ConversationList({ selected }: { selected: string | undefined }) {
                       <span className="conversation-summary">
                         <span className="conversation-name-row">
                           <strong>{name}</strong>
-                          {conversation.type === 'group' && (
-                            <span className="conversation-group-badge">
-                              Group
-                            </span>
-                          )}
                         </span>
                         <span className="inbox-preview">
                           {latest?.proposal
@@ -173,7 +160,6 @@ function Thread({
   const { conversation, history, messages, profiles, peer, userId } =
     useThread(id);
   const composer = useComposer();
-  const group = useGroup(id, conversation.data?.type === 'group');
   const local = composer.outbox.filter(
     (message) =>
       message.payload.conversation_id === id &&
@@ -255,12 +241,9 @@ function Thread({
 
   const unavailable =
     conversation.isError || (history.isError && !history.data);
-  const name =
-    conversation.data?.type === 'group'
-      ? 'Group conversation'
-      : peer
-        ? (profiles?.get(peer)?.displayName ?? 'Conversation')
-        : 'Conversation';
+  const name = peer
+    ? (profiles?.get(peer)?.displayName ?? 'Conversation')
+    : 'Conversation';
 
   return (
     <section className="panel inbox-thread" aria-labelledby="thread-title">
@@ -281,17 +264,6 @@ function Thread({
             <h2 id="thread-title" ref={heading} tabIndex={-1}>
               {denied ? 'Conversation unavailable' : name}
             </h2>
-            {group.data && !denied && (
-              <p>
-                {group.data.members
-                  .filter((member) => member.active)
-                  .map((member) => member.displayName)
-                  .join(', ')}
-              </p>
-            )}
-            {conversation.data?.type === 'group' && !denied && (
-              <p>Group conversation</p>
-            )}
           </div>
         </div>
         {!denied && !unavailable && history.data && (
@@ -307,12 +279,6 @@ function Thread({
           </Button>
         )}
       </header>
-      {conversation.data?.type === 'group' && !denied && (
-        <details className="group-thread-membership">
-          <summary>Participants and chat membership</summary>
-          <GroupInvitation id={id} thread />
-        </details>
-      )}
       {denied ? (
         <p role="alert">
           This conversation cannot be found or you do not have access.

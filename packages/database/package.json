@@ -10,7 +10,8 @@
     "test": "node --test test/*.test.ts",
     "local": "node --env-file-if-exists=.env scripts/local.ts",
     "backup": "node --env-file-if-exists=.env scripts/backup.ts",
-    "hosted": "node scripts/hosted.ts"
+    "hosted": "node scripts/hosted.ts",
+    "test:two-person-local": "node scripts/test-two-person.ts"
   },
   "exports": {
     ".": {

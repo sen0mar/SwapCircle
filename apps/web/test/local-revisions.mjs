@@ -188,8 +188,8 @@ try {
   await alicePage
     .getByRole('button', { name: 'Edit proposal', exact: true })
     .click();
-  await alicePage.getByLabel('Add a person').selectOption(stranger.id);
-  await alicePage.getByRole('checkbox', { name: items[2].title }).check();
+  await expect(alicePage.getByLabel('Add a person')).toHaveCount(0);
+  await alicePage.getByRole('checkbox', { name: extra.title }).check();
   await alicePage
     .getByRole('button', { name: 'Review proposal', exact: true })
     .click();
@@ -201,15 +201,15 @@ try {
       .filter({ hasText: 'Proposed' }),
   ).toBeVisible();
   const before = await api(`/trades/${proposal.id}`, alice);
-  assert.equal(before.participants.length, 3);
+  assert.equal(before.participants.length, 2);
   await signIn(carolPage, stranger, `/swaps/${proposal.id}`);
   await expect(
-    carolPage.getByRole('button', { name: 'Review current terms' }),
+    carolPage.getByRole('heading', { name: 'Swap unavailable' }),
   ).toBeVisible();
   await bobPage.getByRole('button', { name: 'Save revision' }).click();
   const conflict = bobPage.getByRole('region', { name: 'Proposal conflict' });
   await expect(conflict).toContainText('latest version 2');
-  await expect(conflict).toContainText('Revision Carol');
+  await expect(conflict).toContainText(extra.title);
   await expect(
     bobPage.getByRole('button', { name: 'Save revision' }),
   ).toBeDisabled();
@@ -441,7 +441,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.info(
-    'Real revision UI, participant add/remove, stale two-session recovery, draft retention, listing edits, immutable snapshots, frozen terms, keyboard, themes and accessibility passed.',
+    'Real revision UI, fixed participants, stale two-session recovery, draft retention, listing edits, immutable snapshots, frozen terms, keyboard, themes and accessibility passed.',
   );
 } finally {
   if (browser) await browser.close();

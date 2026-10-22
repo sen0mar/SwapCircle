@@ -301,7 +301,7 @@ test('reminds users to save and requests confirmation before notifying others', 
   );
   expect(
     screen.getByText(
-      'Confirming will notify the other user that you are ready to meet them 🎉',
+      'Confirming will notify the other person that you are ready to meet them 🎉',
     ),
   ).toBeVisible();
   expect(confirmations).toBe(0);
@@ -331,7 +331,7 @@ test('declining asks before notifying the other user', async () => {
   );
   expect(
     screen.getByText(
-      'Declining will notify the other user that you won’t be meeting them.',
+      'Declining will notify the other person that you won’t be meeting them.',
     ),
   ).toBeVisible();
   expect(submissions).toBe(0);
@@ -371,8 +371,8 @@ for (const response of ['confirmed', 'declined'] as const) {
     );
     const message =
       response === 'confirmed'
-        ? 'Meetup confirmed. The other participants have been notified.'
-        : 'Meetup declined. The other participants have been notified.';
+        ? 'Meetup confirmed. The other person has been notified.'
+        : 'Meetup declined. The other person has been notified.';
     expect(screen.queryByText(message)).not.toBeInTheDocument();
     await user.click(
       screen.getByRole('button', {

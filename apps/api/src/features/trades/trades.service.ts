@@ -2,6 +2,8 @@ import type { PoolClient } from 'pg';
 import { createHash } from 'node:crypto';
 import {
   proposalCreationResultSchema,
+  proposalCreationSchema,
+  proposalRevisionSchema,
   tradeOutcomeResultSchema,
   type TradeReceiptSubmission,
   type TradeProblemSubmission,
@@ -283,6 +285,7 @@ export class TradesService {
   }
 
   async create(actor: string, input: ProposalCreation) {
+    input = proposalCreationSchema.parse(input);
     if (!input.participantIds.includes(actor))
       throw new SafetyError(
         422,
@@ -416,25 +419,6 @@ export class TradesService {
             resource_id: tradeId,
           });
 
-      if (input.participantIds.length >= 3) {
-        const group = await this.repository.createGroup(
-          client,
-          tradeId,
-          actor,
-          input.participantIds,
-        );
-
-        for (const recipientId of input.participantIds)
-          if (recipientId !== actor)
-            await createNotification(client, {
-              recipient_id: recipientId,
-              domain_event_id: group.eventId,
-              event_type: 'group_invitation',
-              resource_type: 'conversation',
-              resource_id: group.id,
-            });
-      }
-
       return {
         id: tradeId,
         currentVersion: 1 as const,
@@ -444,6 +428,7 @@ export class TradesService {
   }
 
   async revise(actor: string, id: string, input: ProposalRevision) {
+    input = proposalRevisionSchema.parse(input);
     await this.refreshExpiry(actor, id);
     const result = await this.repository.transaction(async (client) => {
       await lockProposalBoundary(client);
@@ -495,6 +480,16 @@ export class TradesService {
           422,
           'PROPOSAL_INVALID',
           'Include yourself in the proposal.',
+        );
+
+      if (
+        [...input.participantIds].sort().join() !==
+        [...previousParticipants].sort().join()
+      )
+        throw new SafetyError(
+          422,
+          'PARTICIPANTS_FIXED',
+          'A swap is between the same two people. Create a new proposal to swap with someone else.',
         );
 
       if (Date.parse(input.expiresAt) <= Date.now())
@@ -566,41 +561,10 @@ export class TradesService {
           await createNotification(client, {
             recipient_id: recipientId,
             domain_event_id: eventId,
-            event_type: previousParticipants.includes(recipientId)
-              ? 'trade_revision'
-              : 'trade_invitation',
+            event_type: 'trade_revision',
             resource_type: 'trade',
             resource_id: id,
           });
-
-      const group = await this.repository.coordinateGroup(
-        client,
-        id,
-        actor,
-        input.participantIds,
-        input.participantIds.filter(
-          (user) => !previousParticipants.includes(user),
-        ),
-      );
-      if (group)
-        for (const change of group.changes) {
-          const recipients =
-            change.event_type === 'removed'
-              ? new Set([change.user_id, ...group.activeMembers])
-              : new Set([change.user_id]);
-
-          for (const recipientId of recipients)
-            await createNotification(client, {
-              recipient_id: recipientId,
-              domain_event_id: change.event_id,
-              event_type:
-                change.event_type === 'removed'
-                  ? 'group_membership'
-                  : 'group_invitation',
-              resource_type: 'conversation',
-              resource_id: group.id,
-            });
-        }
 
       return {
         id,
@@ -711,7 +675,7 @@ export class TradesService {
         !version.expires_match ||
         [...version.participant_ids].sort().join() !==
           [...participants].sort().join() ||
-        participants.length < 2 ||
+        participants.length !== 2 ||
         terms.items.length === 0 ||
         participants.some(
           (user) => !terms.items.some((item) => item.owner_id === user),

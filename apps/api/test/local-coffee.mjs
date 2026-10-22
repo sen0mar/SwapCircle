@@ -276,37 +276,6 @@ try {
   await respond(trade, invitation.id, 'accept').expect(409);
 
   await setInterests(bob, interests.slice(0, 2));
-  const group = await make([alice, bob, carol]);
-  const groupBaseline = await detail(group);
-  await setInterests(carol, [interests[1], interests[2]]);
-  const ab = (await send(group).expect(201)).body;
-  const ac = (await send(group, alice, carol).expect(201)).body;
-  assert.equal(
-    (await eligibility(group, bob, carol).expect(200)).body.eligible,
-    false,
-  );
-  await send(group, bob, carol).expect(409);
-  // Pending group/trade invitations grant no implicit coffee consent.
-  assert.ok(
-    (await list(group, carol).expect(200)).body.every(
-      (i) => i.status === 'pending',
-    ),
-  );
-  await respond(group, ab.id, 'accept', carol).expect(404);
-  await respond(group, ab.id, 'decline').expect(200);
-  await respond(group, ab.id, 'decline').expect(200);
-  assert.equal((await notifications(ab.id)).length, 2);
-  await respond(group, ac.id, 'accept', carol).expect(200);
-  assert.equal(
-    (await list(group).expect(200)).body.find((i) => i.id === ab.id).status,
-    'declined',
-  );
-  assert.equal(
-    (await list(group).expect(200)).body.find((i) => i.id === ac.id).status,
-    'accepted',
-  );
-  assert.deepEqual(await detail(group), groupBaseline);
-
   const rollback = await make();
   const rollbackKey = randomUUID();
   await failure(true);
@@ -346,36 +315,6 @@ try {
     [bob.id],
   );
   assert.deepEqual((await list(blockedSend).expect(200)).body, []);
-
-  const isolated = await make();
-  await respond(isolated, ac.id, 'accept', carol).expect(404);
-  // A departed group member cannot read or consent through the coffee API.
-  const departure = await detail(group);
-  await request(app)
-    .put(`/api/v1/trades/${group}`)
-    .set(auth(alice))
-    .send({
-      expectedVersion: departure.currentVersion,
-      participantIds: [alice.id, bob.id],
-      transfers: departure.items
-        .filter((i) => i.ownerId !== carol.id)
-        .map((i) => ({
-          listingId: i.listingId,
-          ownerId: i.ownerId,
-          recipientId: i.ownerId === alice.id ? bob.id : alice.id,
-        })),
-      meetingMode: 'meet_to_swap',
-      expiresAt: departure.expiresAt,
-    })
-    .expect(200);
-  await list(group, carol).expect(404);
-  await request(app)
-    .get(`/api/v1/coffee/${ac.id}`)
-    .set(auth(carol))
-    .expect(404);
-  await eligibility(group, alice, carol).expect(422);
-  await respond(group, ac.id, 'cancel', carol).expect(404);
-  await send(group, alice, carol).expect(422);
 
   const racing = await make();
   const holder = await migration.connect();
@@ -429,12 +368,12 @@ try {
     code: '42501',
   });
   assert.ok(
-    !JSON.stringify((await list(group).expect(200)).body).includes(
+    !JSON.stringify((await list(trade).expect(200)).body).includes(
       'operationKey',
     ),
   );
   console.log(
-    'Coffee consent: distinct 0/1/2 interests, duplicate tags, pair authorization, independent group pairs, send/response retries, concurrent profile edits, restrictions/blocks, atomic notification rollback, private grants/RLS and unchanged trade reservations passed.',
+    'Coffee consent: distinct 0/1/2 interests, duplicate tags, pair authorization, send/response retries, concurrent profile edits, restrictions/blocks, atomic notification rollback, private grants/RLS and unchanged trade reservations passed.',
   );
 } finally {
   await failure(false);

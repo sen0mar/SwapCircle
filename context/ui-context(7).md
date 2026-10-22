@@ -215,8 +215,8 @@ Reuse the shell, tokens, spacing, and card treatment. Keep behavior inside featu
 
 - Browse/detail: shareable filters, condition and photo details, owner profile, Message, and Propose a trade.
 - Profile: biography, approximate location, selectable interest tags, and listings. Public member pages are distinct from the private account drawer.
-- Trades: scalable participant/item lists, clear give/receive summaries, version-specific acceptance, meeting details, and an event history. Never hardcode two or three user slots.
-- Messages: conversation list plus thread on desktop; list/thread navigation on mobile. Direct and group conversations are distinct.
+- Trades: two fixed participants and flexible item lists, clear give/receive summaries, version-specific acceptance, meeting details, and an event history. Show each person’s individual acceptance.
+- Messages: conversation list plus thread on desktop; list/thread navigation on mobile. Conversations are always between two people.
 - Safety: reachable block/report actions, readable unavailable/restricted states, and no exact public meeting addresses.
 
 ## Spacing and Density
@@ -225,7 +225,7 @@ Reuse the shell, tokens, spacing, and card treatment. Keep behavior inside featu
 - Card padding: 16–24px; grid gaps: 16–24px; section separation: 24–32px.
 - Base spacing unit: 4px. Prefer whitespace to extra borders and decoration.
 - Controls: at least 44px high for primary touch interactions; full-width dialog actions on narrow screens.
-- Dialog: approximately 480px wide with viewport-safe margins and internal scrolling. Group proposals may widen to 640px. Drawer: 400px wide, capped at viewport width.
+- Dialog: approximately 480px wide with viewport-safe margins and internal scrolling. Drawer: 400px wide, capped at viewport width.
 - No page-level horizontal scrolling. Truncate previews only when the full content is reachable; never truncate essential consent, errors, or trade terms.
 
 ## Buttons and Interactions
@@ -244,18 +244,18 @@ Provide a visible close button, Escape/backdrop dismissal, focus trapping, an ac
 
 ### Trades and Coffee
 
-- Trades support **two or more people** and multiple items. Display exactly who gives and receives each item; do not require a three-way cycle, equal values, a wishlist, or closed-community membership.
+- Trades support **exactly two distinct people** and multiple items. Display exactly who gives and receives each item; do not require equal values, a wishlist, or closed-community membership.
 - **Meet to swap** is always available for a permitted trade. Default to it.
 - Show **Swap + coffee** only when the backend confirms at least **two distinct shared interest IDs** for the inviter/invitee pair. Show the matching tags, not a compatibility percentage. Ineligible users can still trade and message.
 - **Coffee on me** is an optional, initially unchecked add-on shown only when an eligible coffee invitation is selected. It records an offer to pay in person, not an online payment or a separate trade type. **Do not copy the mockup's checked coffee box while Meet to swap is selected.**
-- Coffee consent is independent. The recipient can accept the swap and decline coffee without penalty. For groups, evaluate and accept invitations per pair; not everyone must join. Recheck eligibility on send/accept; later interest edits do not undo an accepted plan.
-- Keep participant invitation acceptance separate from acceptance of trade terms. Changing participants, items, or material condition creates new terms and invalidates earlier trade acceptances; changing meeting time/place requires renewed meeting confirmations.
+- Coffee consent is independent. The recipient can accept the swap and decline coffee without penalty. Recheck eligibility on send/accept; later interest edits do not undo an accepted plan.
+- Keep participant invitation acceptance separate from acceptance of trade terms. Participants are fixed. Changing items or material condition creates new terms and invalidates earlier trade acceptances; changing meeting time/place requires renewed meeting confirmations.
 - Reflect authoritative states: `proposed`, `confirmed`, `completed`, `declined`, `expired`, `cancelled`, `disputed`. Never optimistically confirm a trade or claim items are reserved before the API confirms it. On conflicts, refresh terms/availability and explain what changed.
 - Confirmed does not mean handed over. Completion requires everyone's receipt acknowledgement; reported partial handovers/problems need the dispute flow, not a casual cancel-and-release action. Coffee cancellation remains separate.
 
 ### Messaging, Loading, and Recovery
 
-Direct messages can precede a trade. Three-or-more-person trades use a separate group thread; invited members gain access only after accepting membership. Never reveal earlier direct messages to the group or describe messaging as end-to-end encrypted. Blocking prevents new direct contact; existing group visibility follows `ARCHITECTURE.md`.
+Direct messages can precede a trade. Swappers use their existing direct thread. Never describe messaging as end-to-end encrypted. Blocking prevents new direct contact; history access follows `ARCHITECTURE.md`.
 
 Show sending/sent/failed message states and a retry action that preserves the same deduplication ID. Backfill history after reconnecting; do not treat realtime delivery as the permanent record. Do not display online/typing indicators until presence is implemented.
 
@@ -293,4 +293,4 @@ Charts are **not a launch requirement**. The tokens are reserved for a specified
 - Dialogs/drawers must trap and restore focus, mark the background inert, and remain usable with keyboard and screen reader. Avoid simultaneous stacked profile/trade overlays; protect unsaved work before switching.
 - Respect reduced motion, text zoom, and smaller viewports. Display meeting date/time with its explicit time zone; keep exact locations visible only to authorized participants.
 
-Before shipping, run automated accessibility checks and manual keyboard checks in both themes. Exercise 360px, 768px, 1280px, and 1600px layouts plus 200% zoom; verify closed/open drawers, eligible/ineligible coffee, group trades, stale proposals, errors, and empty states. Compare composition with the references without reproducing their incorrect or unspecified behaviors.
+Before shipping, run automated accessibility checks and manual keyboard checks in both themes. Exercise 360px, 768px, 1280px, and 1600px layouts plus 200% zoom; verify closed/open drawers, eligible/ineligible coffee, two-person swaps, stale proposals, errors, and empty states. Compare composition with the references without reproducing their incorrect or unspecified behaviors.

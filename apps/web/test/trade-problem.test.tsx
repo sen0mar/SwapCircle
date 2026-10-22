@@ -40,7 +40,6 @@ function mount() {
     ),
     items: [],
     events: [],
-    groupConversationId: null,
   };
   let code = '';
   let lose = false;

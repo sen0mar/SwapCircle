@@ -17,7 +17,7 @@ const summarySql = `SELECT t.id, t.creator_id AS "creatorId",
   CASE WHEN t.status='proposed' AND t.expires_at <= statement_timestamp() THEN 'expired' ELSE t.status END AS status,
   t.current_version AS "currentVersion", t.expires_at AS "expiresAt",
   t.created_at AS "createdAt", t.updated_at AS "updatedAt",
-  (SELECT count(*)::int FROM public.trade_participants p WHERE p.trade_id=t.id AND p.active) AS "participantCount",
+  (SELECT count(*)::int FROM public.trade_participants p WHERE p.trade_id=t.id) AS "participantCount",
   (SELECT count(*)::int FROM public.trade_items i JOIN public.trade_versions v ON v.id=i.version_id
    WHERE v.trade_id=t.id AND v.version=t.current_version) AS "itemCount",
   EXISTS (SELECT 1 FROM public.trade_items i JOIN public.trade_versions v ON v.id=i.version_id
@@ -186,34 +186,6 @@ export class TradesRepository {
     return { tradeId, eventId: event.rows[0]!.id };
   }
 
-  async createGroup(
-    client: PoolClient,
-    tradeId: string,
-    actor: string,
-    ids: string[],
-  ) {
-    const result = await client.query<{ id: string }>(
-      "INSERT INTO public.conversations (type,trade_id) VALUES ('group',$1) RETURNING id",
-      [tradeId],
-    );
-    const id = result.rows[0]!.id;
-
-    for (const user of ids)
-      await client.query(
-        `INSERT INTO public.conversation_members (conversation_id,user_id,active,status)
-         VALUES ($1,$2,$3,$4)`,
-        [id, user, user === actor, user === actor ? 'accepted' : 'pending'],
-      );
-
-    const event = await client.query<{ id: string }>(
-      `INSERT INTO public.conversation_membership_events (conversation_id,actor_id,event_type)
-       VALUES ($1,$2,'invited') RETURNING id`,
-      [id, actor],
-    );
-
-    return { id, eventId: event.rows[0]!.id };
-  }
-
   async lockTrade(client: PoolClient, id: string, actor: string) {
     const result = await client.query<{
       current_version: number;
@@ -222,7 +194,7 @@ export class TradesRepository {
     }>(
       `SELECT t.current_version,t.status,t.expires_at FROM public.trades t
        WHERE t.id=$1 AND EXISTS (SELECT 1 FROM public.trade_participants p
-       WHERE p.trade_id=t.id AND p.user_id=$2 AND p.active) FOR UPDATE`,
+       WHERE p.trade_id=t.id AND p.user_id=$2) FOR UPDATE`,
       [id, actor],
     );
     return result.rows[0];
@@ -240,7 +212,7 @@ export class TradesRepository {
     const result = await client.query<{ id: string }>(
       `SELECT t.id FROM public.trades t WHERE t.status='proposed'
        AND t.expires_at <= clock_timestamp() AND EXISTS
-       (SELECT 1 FROM public.trade_participants p WHERE p.trade_id=t.id AND p.user_id=$1 AND p.active)
+       (SELECT 1 FROM public.trade_participants p WHERE p.trade_id=t.id AND p.user_id=$1)
        ORDER BY t.id`,
       [actor],
     );
@@ -462,7 +434,7 @@ export class TradesRepository {
     );
     await client.query(
       `UPDATE public.trade_participants SET accepted_version=$2,accepted_at=statement_timestamp(),invitation_status='joined',responded_at=statement_timestamp()
-      WHERE trade_id=$1 AND user_id=$3 AND active`,
+      WHERE trade_id=$1 AND user_id=$3`,
       [id, version, actor],
     );
     await client.query(
@@ -475,7 +447,7 @@ export class TradesRepository {
   async unanimous(client: PoolClient, id: string, version: number) {
     return !(
       await client.query(
-        `SELECT 1 FROM public.trade_participants p WHERE p.trade_id=$1 AND p.active
+        `SELECT 1 FROM public.trade_participants p WHERE p.trade_id=$1
       AND NOT EXISTS (SELECT 1 FROM public.trade_acceptances a WHERE a.trade_id=p.trade_id AND a.actor_id=p.user_id AND a.version=$2)
       LIMIT 1`,
         [id, version],
@@ -533,7 +505,7 @@ export class TradesRepository {
 
   async participantIds(client: PoolClient, id: string) {
     const result = await client.query<{ user_id: string }>(
-      'SELECT user_id FROM public.trade_participants WHERE trade_id=$1 AND active ORDER BY user_id',
+      'SELECT user_id FROM public.trade_participants WHERE trade_id=$1 ORDER BY user_id',
       [id],
     );
     return result.rows.map((row) => row.user_id);
@@ -547,17 +519,9 @@ export class TradesRepository {
     listings: Awaited<ReturnType<TradesRepository['availableListings']>>,
   ) {
     await client.query(
-      `UPDATE public.trade_participants SET invitation_status=CASE WHEN NOT active AND user_id=ANY($2::uuid[]) THEN 'invited' ELSE invitation_status END,
-       active=(user_id=ANY($2::uuid[])),accepted_version=NULL,accepted_at=NULL WHERE trade_id=$1`,
-      [id, input.participantIds],
+      'UPDATE public.trade_participants SET accepted_version=NULL,accepted_at=NULL WHERE trade_id=$1',
+      [id],
     );
-    for (const user of input.participantIds)
-      await client.query(
-        `INSERT INTO public.trade_participants (trade_id,user_id) VALUES ($1,$2)
-         ON CONFLICT (trade_id,user_id) DO UPDATE SET active=true,
-         invitation_status=CASE WHEN trade_participants.active THEN trade_participants.invitation_status ELSE 'invited' END`,
-        [id, user],
-      );
     const version = input.expectedVersion + 1;
     const result = await client.query<{ id: string }>(
       `INSERT INTO public.trade_versions (trade_id,version,created_by,participant_ids,expires_at)
@@ -646,52 +610,6 @@ export class TradesRepository {
     return events;
   }
 
-  async coordinateGroup(
-    client: PoolClient,
-    id: string,
-    actor: string,
-    participants: string[],
-    added: string[],
-  ) {
-    const existing = await client.query<{ id: string }>(
-      'SELECT id FROM public.conversations WHERE trade_id=$1 FOR NO KEY UPDATE',
-      [id],
-    );
-    if (!existing.rows[0]) {
-      if (participants.length < 3) return null;
-      const group = await this.createGroup(client, id, actor, participants);
-      return {
-        id: group.id,
-        changes: participants
-          .filter((user) => user !== actor)
-          .map((user) => ({
-            user_id: user,
-            event_id: group.eventId,
-            event_type: 'invited' as const,
-          })),
-        activeMembers: [actor],
-      };
-    }
-    const groupId = existing.rows[0].id;
-    const result = await client.query<{
-      user_id: string;
-      event_id: string;
-      event_type: 'invited' | 'removed';
-    }>(
-      'SELECT user_id,event_id,event_type FROM private.reconcile_trade_group($1,$2,$3)',
-      [groupId, actor, added],
-    );
-    const members = await client.query<{ user_id: string }>(
-      'SELECT user_id FROM public.conversation_members WHERE conversation_id=$1 AND active',
-      [groupId],
-    );
-    return {
-      id: groupId,
-      changes: result.rows,
-      activeMembers: members.rows.map((row) => row.user_id),
-    };
-  }
-
   async version(
     client: PoolClient,
     actor: string,
@@ -754,7 +672,7 @@ export class TradesRepository {
   ): Promise<TradePage> {
     const result = await client.query(
       `${summarySql}
-       WHERE EXISTS (SELECT 1 FROM public.trade_participants p WHERE p.trade_id=t.id AND p.user_id=$1 AND p.active)
+       WHERE EXISTS (SELECT 1 FROM public.trade_participants p WHERE p.trade_id=t.id AND p.user_id=$1)
          AND ($2::uuid IS NULL OR t.id < $2::uuid)
        ORDER BY t.id DESC LIMIT $3`,
       [actor, after ?? null, limit + 1],
@@ -779,15 +697,10 @@ export class TradesRepository {
   ): Promise<TradeDetail | null> {
     const trade = await client.query(
       `${summarySql}
-       WHERE t.id=$1 AND EXISTS (SELECT 1 FROM public.trade_participants p WHERE p.trade_id=t.id AND p.user_id=$2 AND p.active)`,
+       WHERE t.id=$1 AND EXISTS (SELECT 1 FROM public.trade_participants p WHERE p.trade_id=t.id AND p.user_id=$2)`,
       [id, actor],
     );
     if (!trade.rows[0]) return null;
-
-    const group = await client.query<{ id: string }>(
-      "SELECT id FROM public.conversations WHERE trade_id=$1 AND type='group'",
-      [id],
-    );
 
     const participants = await client.query(
       `SELECT p.user_id AS "userId", u.display_name AS "displayName",
@@ -795,7 +708,7 @@ export class TradesRepository {
         p.responded_at AS "respondedAt", p.accepted_version AS "acceptedVersion",
         p.accepted_at AS "acceptedAt"
        FROM public.trade_participants p JOIN public.profiles u ON u.id=p.user_id
-       WHERE p.trade_id=$1 AND p.active ORDER BY p.user_id`,
+       WHERE p.trade_id=$1 ORDER BY p.user_id`,
       [id],
     );
     const items = await client.query(
@@ -821,7 +734,6 @@ export class TradesRepository {
       JSON.parse(
         JSON.stringify({
           ...trade.rows[0],
-          groupConversationId: group.rows[0]?.id ?? null,
           participants: participants.rows,
           items: items.rows,
           events: events.rows,

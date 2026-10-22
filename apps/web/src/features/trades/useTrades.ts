@@ -79,7 +79,6 @@ export function useReviseTrade(id: string) {
       await Promise.all([
         queries.invalidateQueries({ queryKey: [...root, 'trade', id] }),
         queries.invalidateQueries({ queryKey: [...root, 'my-trades'] }),
-        queries.invalidateQueries({ queryKey: [...root, 'group'] }),
         queries.invalidateQueries({ queryKey: [...root, 'inbox'] }),
       ]);
     },

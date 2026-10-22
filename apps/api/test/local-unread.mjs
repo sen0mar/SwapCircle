@@ -9,7 +9,7 @@ import { ConversationsService } from '../dist/features/conversations/conversatio
 import { createApp } from '../dist/app.js';
 import { createDiscoveryFixture } from './discovery-fixture.mjs';
 const fixture = await createDiscoveryFixture();
-const [alice, bob, carol, dan] = fixture.users;
+const [alice, bob, carol] = fixture.users;
 const app = fixture.makeApp({
   allowance: 500,
   windowSeconds: 3600,
@@ -190,15 +190,6 @@ try {
     'DELETE FROM public.account_restrictions WHERE user_id=$1',
     [alice.id],
   );
-  const group = (
-    await fixture.migration.query(
-      "INSERT INTO public.conversations(type) VALUES ('group') RETURNING id",
-    )
-  ).rows[0].id;
-  await fixture.migration.query(
-    'INSERT INTO public.conversation_members(conversation_id,user_id,active) VALUES ($1,$2,true),($1,$3,true),($1,$4,false)',
-    [group, alice.id, carol.id, dan.id],
-  );
   // A failure after a real upsert must roll back progress; retry remains safe.
   class FailingRepository extends ConversationsRepository {
     async advanceRead(client, actor, id, message) {
@@ -222,11 +213,6 @@ try {
   assert.ok(!JSON.stringify(failure.body).includes('Synthetic'));
   assert.equal((await state(carol, other).expect(200)).body.lastViewedOrder, 0);
   await read(carol, other, unrelated.id).expect(200);
-  const grouped = await send(carol, group);
-  await read(dan, group, grouped.id).expect(403);
-  await read(bob, group, grouped.id).expect(403);
-  await read(alice, group, grouped.id).expect(200);
-  assert.equal((await state(carol, group).expect(200)).body.lastViewedOrder, 0);
   console.info(
     'Local unread: incoming-only counts, exact target validation, forged identity/auth denial, monotonic concurrent/old-session updates, independent conversations/members, persistence, peer/outsider/pending/left/restricted authorization, owner-only SQL/PostgREST reads and all direct writes denied passed.',
   );

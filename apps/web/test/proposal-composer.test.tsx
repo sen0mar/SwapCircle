@@ -248,7 +248,6 @@ function proposal(version = 1): TradeDetail {
     participantCount: 2,
     itemCount: 2,
     hasUnavailableItems: false,
-    groupConversationId: null,
     events: [],
     participants: [ids.self, ids.owner].map((userId) => ({
       userId,
@@ -277,12 +276,6 @@ test('older revision preserves draft and compares authoritative terms without au
   const latest = proposal(2);
   latest.items[0]!.descriptionSnapshot = 'A changed bicycle condition';
   latest.items[0]!.listingRevision = 2;
-  latest.participants.push({
-    ...latest.participants[0]!,
-    userId: ids.third,
-    displayName: 'Casey',
-  });
-  latest.participantCount = 3;
   const payloads: Record<string, unknown>[] = [];
   server.use(
     http.put('http://127.0.0.1:3001/api/v1/trades/:id', async ({ request }) => {
@@ -321,7 +314,6 @@ test('older revision preserves draft and compares authoritative terms without au
     name: 'Proposal conflict',
   });
   expect(conflict).toHaveTextContent('latest version 2');
-  expect(conflict).toHaveTextContent('participant added');
   expect(conflict).toHaveTextContent('listing snapshot revised');
   expect(conflict).toHaveTextContent('A changed bicycle condition');
   expect(screen.getByRole('button', { name: 'Save revision' })).toBeDisabled();
@@ -342,28 +334,6 @@ test('older revision preserves draft and compares authoritative terms without au
   );
   expect(payloads).toHaveLength(2);
   expect(payloads[1]!.expectedVersion).toBe(2);
-});
-
-test('revision permits participant removal and keeps saved terms unchanged before submission', async () => {
-  const saved = proposal();
-  saved.participants.push({
-    ...saved.participants[0]!,
-    userId: ids.third,
-    displayName: 'Casey',
-  });
-  saved.participantCount = 3;
-  const { user, writes } = mount(saved);
-  await user.click(
-    await screen.findByRole('button', { name: 'Edit proposal' }),
-  );
-  await user.click(screen.getByRole('button', { name: 'Remove Casey' }));
-  expect(saved.participants).toHaveLength(3);
-  expect(writes()).toBe(0);
-  await user.click(screen.getByRole('button', { name: 'Review proposal' }));
-  expect(
-    await screen.findByRole('list', { name: 'Trade transfers' }),
-  ).not.toHaveTextContent('Casey');
-  expect(saved.currentVersion).toBe(1);
 });
 
 test('failed authoritative refresh blocks saving until retry and frozen terms cannot reuse the draft', async () => {

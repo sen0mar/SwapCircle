@@ -637,66 +637,9 @@ try {
     0,
   );
   await expect(outsider.getByText(/cancelled, not completed/)).toHaveCount(0);
-  stage = 'revoked-access';
-
-  // An actual revision removes a member from a proposal; their original
-  // recipient-only invitation remains without granting access to its target.
-  const third = await item(stranger, 'Synthetic group book');
-  const group = await api(
-    '/trades',
-    alice,
-    {
-      operationKey: randomUUID(),
-      participantIds: [alice.id, bob.id, stranger.id],
-      transfers: [
-        { listingId: left.id, ownerId: alice.id, recipientId: bob.id },
-        { listingId: right.id, ownerId: bob.id, recipientId: stranger.id },
-        { listingId: third.id, ownerId: stranger.id, recipientId: alice.id },
-      ],
-      meetingMode: 'meet_to_swap',
-      expiresAt: new Date(Date.now() + 86400000).toISOString(),
-    },
-    'POST',
-  );
-  const invitationNotice = (
-    await fixture.migration.query(
-      "SELECT id FROM public.notifications WHERE recipient_id=$1 AND resource_id=$2 AND event_type='trade_invitation'",
-      [bob.id, group.id],
-    )
-  ).rows[0];
-  assert.ok(invitationNotice);
-  await bobPage.goto(`${origin}/notifications/${invitationNotice.id}`);
-  await expect(
-    bobPage.getByText('Current swap status: proposed.', { exact: false }),
-  ).toBeVisible();
-  await api(
-    `/trades/${group.id}`,
-    alice,
-    {
-      expectedVersion: 1,
-      participantIds: [alice.id, stranger.id],
-      transfers: [
-        { listingId: left.id, ownerId: alice.id, recipientId: stranger.id },
-        { listingId: third.id, ownerId: stranger.id, recipientId: alice.id },
-      ],
-      meetingMode: 'meet_to_swap',
-      expiresAt: new Date(Date.now() + 86400000).toISOString(),
-    },
-    'PUT',
-  );
-  await bobPage.reload();
-  await expect(bobPage.getByText(/unavailable to this account/)).toBeVisible();
-  await expect(bobPage.getByText(/Current swap status: proposed/)).toHaveCount(
-    0,
-  );
-  await bobPage.getByRole('link', { name: /^View swap/ }).click();
-  await expect(
-    bobPage.getByRole('heading', { name: 'Swap unavailable' }),
-  ).toBeVisible();
-  await expect(bobPage.getByText('Synthetic group book')).toHaveCount(0);
   assert.deepEqual(errors, []);
   console.info(
-    'Real lifecycle browser journey passed: declined/expired/cancelled/history, separate coffee, held response, released availability, stale tab, historical confirmed acceptance replay, private notifications, revoked access, keyboard focus/trap, Light/Dark responsive and axe.',
+    'Real lifecycle browser journey passed: declined/expired/cancelled/history, separate coffee, held response, released availability, stale tab, historical confirmed acceptance replay, private notifications, keyboard focus/trap, Light/Dark responsive and axe.',
   );
 } catch (error) {
   // Only named stages, source locations and UI booleans; never payloads, URLs,
