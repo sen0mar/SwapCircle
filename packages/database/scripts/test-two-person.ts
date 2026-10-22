@@ -52,7 +52,7 @@ export async function testTwoPersonDatabase(
   ) => Promise<void>,
 ) {
   try {
-    docker(['createdb', '-U', 'supabase_admin', database]);
+    docker(['createdb', '-U', 'supabase_admin', '--owner=postgres', database]);
     sql(
       docker([
         'pg_dump',
@@ -69,7 +69,7 @@ export async function testTwoPersonDatabase(
     sql(`DROP SCHEMA public CASCADE;
     DROP SCHEMA private CASCADE;
     DROP SCHEMA drizzle CASCADE;
-    CREATE SCHEMA public;
+    CREATE SCHEMA public AUTHORIZATION postgres;
     DROP POLICY item_media_deny_browser_insert ON storage.objects;
     DROP POLICY item_media_deny_browser_update ON storage.objects;
     DROP POLICY item_media_deny_browser_delete ON storage.objects;`);
@@ -88,7 +88,7 @@ export async function testTwoPersonDatabase(
       );
       if (entry.tag.startsWith('0000_'))
         source = source.replace(/^CREATE ROLE swapcircle_runtime .*;$/m, '');
-      sql(`BEGIN;\n${source}\nCOMMIT;`);
+      sql(`SET ROLE postgres; BEGIN;\n${source}\nCOMMIT;`);
     }
     const [existingTrade, existingVersion] = [randomUUID(), randomUUID()];
     sql(`INSERT INTO auth.users(id) VALUES ('${alice}'),('${bob}'),('${carol}');

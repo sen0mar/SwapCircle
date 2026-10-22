@@ -26,14 +26,17 @@ for (const value of [
   assert.equal(target.pathname, '/postgres');
 }
 await testTwoPersonDatabase(async (database, phase) => {
-  const runtime = new Pool({
-    ...databaseConfig(process.env.DATABASE_URL),
-    database,
-  });
-  const migration = new Pool({
-    ...databaseConfig(process.env.MIGRATION_DATABASE_URL, false),
-    database,
-  });
+  assert.match(database, /^swapcircle_pair_test_[a-f0-9]{32}$/);
+  const connection = (value, runtime) => {
+    const config = databaseConfig(value, runtime);
+    const target = new URL(value);
+    // pg parses connectionString after other options, so changing only the
+    // database option would still connect to the original /postgres database.
+    target.pathname = `/${database}`;
+    return new Pool({ ...config, connectionString: target.href });
+  };
+  const runtime = connection(process.env.DATABASE_URL, true);
+  const migration = connection(process.env.MIGRATION_DATABASE_URL, false);
   const [alice, bob, outsider] = [randomUUID(), randomUUID(), randomUUID()];
   const app = createApp({
     allowedOrigins: [],
@@ -91,6 +94,11 @@ await testTwoPersonDatabase(async (database, phase) => {
     return { id: result.body.id, terms, items };
   };
   try {
+    for (const pool of [runtime, migration])
+      assert.equal(
+        (await pool.query('SELECT current_database() AS name')).rows[0].name,
+        database,
+      );
     await migration.query('INSERT INTO auth.users(id) VALUES ($1),($2),($3)', [
       alice,
       bob,
