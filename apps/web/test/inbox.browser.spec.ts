@@ -391,24 +391,22 @@ test('received and sent proposals appear as complete cards in both themes and na
   await incoming.getByRole('button', { name: 'Accept proposal' }).click();
   await expect(incoming.getByText('Accepted', { exact: true })).toBeVisible();
   await incoming.getByRole('link', { name: 'View in My Swaps' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Accepted swaps' }),
-  ).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Upcoming swaps' })).toBeVisible();
   await expect(cards).toHaveCount(0);
   await expect(
     page
-      .getByRole('region', { name: 'Accepted swaps' })
-      .getByText('Good', { exact: true }),
+      .getByRole('tabpanel', { name: 'Upcoming swaps' })
+      .getByText('Compact desktop keyboard', { exact: true }),
   ).toBeVisible();
   await expect(
     page
-      .getByRole('region', { name: 'Accepted swaps' })
-      .getByRole('link', { name: 'Open swap conversation' }),
+      .getByRole('tabpanel', { name: 'Upcoming swaps' })
+      .getByRole('link', {
+        name: 'Open swap conversation: Compact desktop keyboard',
+      }),
   ).toHaveAttribute('href', `/inbox/${id}`);
   await page.reload();
-  await expect(
-    page.getByRole('heading', { name: 'Accepted swaps' }),
-  ).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Upcoming swaps' })).toBeVisible();
   await expect(cards).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
