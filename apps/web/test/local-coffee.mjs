@@ -402,17 +402,6 @@ try {
   await bobAlice.getByRole('button', { name: 'Cancel coffee' }).click();
   await expect(coffee(bobPage)).toContainText('Coffee cancelled');
   assert.deepEqual(await api(`/trades/${direct.id}`, alice), baseline);
-  // Trade agreement is still independent and can confirm after coffee cancellation.
-  await accept(alicePage);
-  await accept(bobPage);
-  await expect(
-    bobPage
-      .getByLabel('Swap status', { exact: true })
-      .filter({ hasText: 'Confirmed' }),
-  ).toBeVisible();
-  const confirmed = await api(`/trades/${direct.id}`, bob);
-  assert.equal(confirmed.status, 'confirmed');
-  assert.ok(confirmed.items.every((i) => i.currentAvailability === 'reserved'));
   // Coffee read outage exposes recovery and cannot send using stale eligibility/list state.
   await alicePage.route(`**/trades/${direct.id}/coffee*`, (route) =>
     route.abort('failed'),
@@ -434,6 +423,23 @@ try {
   await expect(
     aliceBob.getByRole('button', { name: 'Refresh coffee with Coffee Bob' }),
   ).toBeEnabled();
+  // Trade agreement is still independent and can confirm after coffee cancellation.
+  await accept(alicePage);
+  await accept(bobPage);
+  await expect(
+    bobPage
+      .getByLabel('Swap status', { exact: true })
+      .filter({ hasText: 'Confirmed' }),
+  ).toBeVisible();
+  const confirmed = await api(`/trades/${direct.id}`, bob);
+  assert.equal(confirmed.status, 'confirmed');
+  assert.ok(confirmed.items.every((i) => i.currentAvailability === 'reserved'));
+  await expect(
+    bobPage.getByRole('region', { name: 'Coffee invitations' }),
+  ).toHaveCount(0);
+  await expect(
+    bobPage.getByRole('region', { name: 'Meetup reminder' }),
+  ).toBeVisible();
   assert.deepEqual(errors, []);
   console.info(
     'Real local coffee: 1/2 interests, default/optional offer, notification authorization, decline without trade changes, eligibility races, preserved same-key retries and lost response, acceptance/cancellation independence, keyboard, responsive Light/Dark and axe passed.',

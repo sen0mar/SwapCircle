@@ -272,7 +272,9 @@ try {
   await bobPage.unroute(`**/trades/${direct.id}/accept`);
   await alicePage.goto(`${origin}/swaps`);
   await expect(
-    alicePage.getByText('Confirmed', { exact: true }).first(),
+    alicePage
+      .getByRole('link', { name: /^View swap/ })
+      .filter({ has: alicePage.getByText('Agreement item 1-1') }),
   ).toBeVisible();
   await alicePage.goto(`${origin}/swaps/${direct.id}`);
   await expect(

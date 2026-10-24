@@ -377,7 +377,7 @@ try {
 
   stage = 'confirmed-cancellation';
 
-  // Confirmed cancellation does not release locally while the response is withheld.
+  // Confirmed reminders expose no cancellation control; the server still owns reservation release.
   const accept = (id, user, key = randomUUID()) =>
     api(
       `/trades/${id}/accept`,
@@ -400,43 +400,30 @@ try {
     alicePage
       .locator('.swap-card')
       .filter({ has: alicePage.locator(`a[href="/swaps/${competing.id}"]`) }),
-  ).toContainText('no longer available');
+  ).toHaveCount(0);
   await alicePage.goto(`${origin}/swaps/${cancelled.id}`);
   await expect(
     alicePage
       .getByLabel('Swap status', { exact: true })
       .filter({ hasText: 'Confirmed' }),
   ).toBeVisible();
-  let release;
-  let committed;
-  const gate = new Promise((resolve) => {
-    release = resolve;
-  });
-  const didCommit = new Promise((resolve) => {
-    committed = resolve;
-  });
-  await alicePage.route(`**/trades/${cancelled.id}/cancel`, async (route) => {
-    const response = await route.fetch();
-    committed();
-    await gate;
-    await route.fulfill({ response });
-  });
-  await lifecycle(alicePage)
-    .getByRole('button', { name: 'Cancel confirmed swap' })
-    .click();
-  await alicePage
-    .getByRole('button', { name: 'Confirm cancellation', exact: true })
-    .click();
-  await didCommit;
   await expect(
-    alicePage.getByRole('button', { name: 'Checking and saving…' }),
-  ).toBeDisabled();
-  release();
+    alicePage.getByRole('button', { name: 'Cancel confirmed swap' }),
+  ).toHaveCount(0);
   await expect(
-    alicePage
-      .getByLabel('Swap status', { exact: true })
-      .filter({ hasText: 'Cancelled' }),
+    alicePage.getByRole('region', { name: 'Meetup reminder' }),
   ).toBeVisible();
+  // Domain cancellation remains covered through the guarded API; reminder pages are read-only.
+  await api(
+    `/trades/${cancelled.id}/cancel`,
+    alice,
+    { expectedVersion: 1, expectedStatus: 'confirmed' },
+    'POST',
+  );
+  await alicePage.reload();
+  await expect(
+    alicePage.getByLabel('Swap status', { exact: true }),
+  ).toContainText('Cancelled');
   await expect(
     alicePage.getByRole('heading', { name: 'Synthetic camera', exact: true }),
   ).toBeVisible();
@@ -454,7 +441,7 @@ try {
     alicePage
       .locator('.swap-card')
       .filter({ has: alicePage.locator(`a[href="/swaps/${competing.id}"]`) }),
-  ).not.toContainText('no longer available');
+  ).toHaveCount(0);
 
   stage = 'outdated-version';
 
@@ -519,10 +506,13 @@ try {
   await bobPage
     .getByRole('button', { name: 'Confirm cancellation', exact: true })
     .click();
-  await expect(bobPage.getByRole('dialog')).toContainText('swap changed');
+  await expect(bobPage.getByRole('dialog')).toHaveCount(0);
   await expect(
-    bobPage.getByRole('button', { name: 'Confirm cancellation', exact: true }),
-  ).toBeDisabled();
+    bobPage.getByLabel('Swap status', { exact: true }),
+  ).toContainText('Confirmed');
+  await expect(
+    bobPage.getByRole('button', { name: 'Cancel confirmed swap' }),
+  ).toHaveCount(0);
   assert.equal(
     (await api(`/trades/${sameVersion.id}`, bob)).status,
     'confirmed',
@@ -531,21 +521,16 @@ try {
     (await api(`/listings/${left.id}`, alice)).availability,
     'reserved',
   );
-  await bobPage.getByRole('button', { name: 'Go back', exact: true }).click();
-  await lifecycle(bobPage)
-    .getByRole('button', { name: 'Cancel confirmed swap' })
-    .click();
-  await expect(bobPage.getByRole('dialog')).toContainText(
-    'before any reported exchange or problem',
+  await api(
+    `/trades/${sameVersion.id}/cancel`,
+    bob,
+    { expectedVersion: 1, expectedStatus: 'confirmed' },
+    'POST',
   );
-  await bobPage
-    .getByRole('button', { name: 'Confirm cancellation', exact: true })
-    .click();
+  await bobPage.reload();
   await expect(
-    bobPage
-      .getByLabel('Swap status', { exact: true })
-      .filter({ hasText: 'Cancelled' }),
-  ).toBeVisible();
+    bobPage.getByLabel('Swap status', { exact: true }),
+  ).toContainText('Cancelled');
 
   stage = 'acceptance-replay';
 
@@ -639,7 +624,7 @@ try {
   await expect(outsider.getByText(/cancelled, not completed/)).toHaveCount(0);
   assert.deepEqual(errors, []);
   console.info(
-    'Real lifecycle browser journey passed: declined/expired/cancelled/history, separate coffee, held response, released availability, stale tab, historical confirmed acceptance replay, private notifications, keyboard focus/trap, Light/Dark responsive and axe.',
+    'Real lifecycle browser journey passed: declined/expired/cancelled/history, separate coffee, read-only confirmed reminders, released availability, stale tab, historical confirmed acceptance replay, private notifications, keyboard focus/trap, Light/Dark responsive and axe.',
   );
 } catch (error) {
   // Only named stages, source locations and UI booleans; never payloads, URLs,

@@ -340,28 +340,35 @@ try {
         ).toBeVisible();
       }
       await a.reload();
-      const meeting = a.getByRole('region', {
-        name: 'Meeting arrangement',
-        exact: true,
-      });
-      await meeting.getByRole('button', { name: 'Plan meetup' }).click();
-      const dialog = a.getByRole('dialog');
-      await dialog
-        .getByLabel('Public meeting place')
-        .fill('Synthetic public library entrance');
-      await dialog.getByLabel('Time zone').selectOption('Europe/Paris');
-      await dialog.getByLabel('Date', { exact: true }).fill('2026-11-03');
-      await dialog.getByLabel('Hour', { exact: true }).selectOption('12');
-      await dialog.getByLabel('Minute', { exact: true }).selectOption('00');
-      await dialog.getByRole('button', { name: 'Save meeting' }).click();
-      await expect(dialog).toHaveCount(0);
+      const meeting = await api(
+        `/trades/${id}/meeting`,
+        alice,
+        {
+          operationKey: randomUUID(),
+          expectedTradeVersion: 1,
+          place: 'Synthetic public library entrance',
+          meetingAt: '2026-11-03T11:00:00.000Z',
+          timeZone: 'Europe/Paris',
+        },
+        'POST',
+      );
+      await a.reload();
+      await b.reload();
       for (const page of [a, b]) {
-        if (page === b) await page.reload();
-        await page
-          .getByRole('button', { name: 'Confirm this meeting' })
-          .click();
-        await page.getByRole('button', { name: 'Confirm and notify' }).click();
-        await expect(page.getByRole('dialog')).toHaveCount(0);
+        const reminder = page.getByRole('region', { name: 'Meetup reminder' });
+        await expect(
+          reminder.getByText('Synthetic public library entrance'),
+        ).toBeVisible();
+        await expect(reminder.locator('time')).toHaveAttribute(
+          'datetime',
+          meeting.meetingAt,
+        );
+        await expect(page.getByRole('textbox')).toHaveCount(0);
+        await expect(
+          page.getByRole('button', {
+            name: /Plan meetup|Confirm this meeting|Decline this meeting/,
+          }),
+        ).toHaveCount(0);
       }
       await audit(a, `confirmed-${theme}-${width}`, true);
       // Retain completed-history rendering coverage using server-owned synthetic fixture actions.
