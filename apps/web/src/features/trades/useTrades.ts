@@ -1,5 +1,6 @@
 import {
   acceptedProposalPageSchema,
+  tradeOutcomeResultSchema,
   type AcceptedProposalPage,
 } from '@swapcircle/contracts';
 import {
@@ -180,5 +181,51 @@ export function useAcceptedProposals() {
     enabled: !!session,
     retry: false,
     refetchInterval: 15000,
+  });
+}
+
+export function useSwapSchedule() {
+  const { session, request } = useAuth();
+
+  return useInfiniteQuery({
+    queryKey: ['private', session?.user.id, 'my-trades', 'schedule'],
+    initialPageParam: '',
+    queryFn: ({ pageParam, signal }) => getMyTrades(request, pageParam, signal),
+    getNextPageParam: (page) => page.nextAfter ?? undefined,
+    enabled: !!session,
+    retry: false,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useConfirmReceipt(id: string) {
+  const { session, request } = useAuth();
+  const queries = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      input: import('@swapcircle/contracts').TradeReceiptSubmission,
+    ) =>
+      request(
+        `/api/v1/trades/${encodeURIComponent(id)}/receipt`,
+        tradeOutcomeResultSchema,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        },
+      ),
+    onSettled: async () => {
+      await Promise.all([
+        ...['my-trades', 'trade', 'my-listings', 'notifications'].map((key) =>
+          queries.invalidateQueries({
+            queryKey: ['private', session?.user.id, key],
+          }),
+        ),
+        ...['listing', 'listings', 'proposal-items'].map((key) =>
+          queries.invalidateQueries({ queryKey: [key] }),
+        ),
+      ]);
+    },
   });
 }

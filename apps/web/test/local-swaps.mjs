@@ -5,7 +5,7 @@ import process from 'node:process';
 import { URL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { setTimeout } from 'node:timers';
 import { chromium, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
@@ -85,8 +85,8 @@ try {
     '/listings',
     alice,
     {
-      title: `Desk lamp ${randomUUID().slice(0, 6)}`,
-      description: 'Synthetic local lamp',
+      title: `Everyday backpack ${randomUUID().slice(0, 6)}`,
+      description: 'Synthetic local backpack',
       condition: 'good',
     },
     'POST',
@@ -95,12 +95,30 @@ try {
     '/listings',
     bob,
     {
-      title: `Bicycle ${randomUUID().slice(0, 6)}`,
-      description: 'Synthetic local bicycle',
+      title: `Film camera ${randomUUID().slice(0, 6)}`,
+      description: 'Synthetic local camera',
       condition: 'good',
     },
     'POST',
   );
+
+  for (const [user, listing, file] of [
+    [alice, aliceItem, 'backpack.jpg'],
+    [bob, bobItem, 'camera.jpg'],
+  ]) {
+    const response = await fetch(
+      `${apiOrigin}/api/v1/listings/${listing.id}/photos`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'image/jpeg',
+        },
+        body: await readFile(new URL(`../src/assets/${file}`, import.meta.url)),
+      },
+    );
+    assert.equal(response.status, 201);
+  }
 
   const environment = {
     ...process.env,
@@ -182,8 +200,11 @@ try {
   await expect(alicePage.getByText(aliceItem.title).first()).toBeVisible();
   await alicePage.getByRole('link', { name: 'My Swaps' }).first().click();
   await expect(
-    alicePage.getByRole('link', { name: /^View swap/ }),
+    alicePage.getByRole('heading', { name: 'No upcoming swaps' }),
   ).toBeVisible();
+  await expect(alicePage.getByRole('link', { name: /^View swap/ })).toHaveCount(
+    0,
+  );
   await alicePage.getByLabel('Theme').selectOption('light');
   await alicePage.setViewportSize({ width: 360, height: 900 });
   await alicePage.screenshot({
@@ -192,9 +213,13 @@ try {
   });
 
   await bobPage.goto(`${origin}/swaps`);
-  await expect(bobPage.getByRole('link', { name: /^View swap/ })).toBeVisible();
+  await expect(
+    bobPage.getByRole('heading', { name: 'No upcoming swaps' }),
+  ).toBeVisible();
   await bobPage.reload();
-  await expect(bobPage.getByRole('link', { name: /^View swap/ })).toBeVisible();
+  await expect(
+    bobPage.getByRole('heading', { name: 'No upcoming swaps' }),
+  ).toBeVisible();
   await bobPage.getByLabel('Theme').selectOption('dark');
   await bobPage.setViewportSize({ width: 1280, height: 900 });
   await bobPage.screenshot({
@@ -267,11 +292,40 @@ try {
     confirmed.items.every((item) => item.currentAvailability === 'reserved'),
   );
 
+  const meeting = await api(
+    `/trades/${tradeId}/meeting`,
+    alice,
+    {
+      operationKey: randomUUID(),
+      expectedTradeVersion: 1,
+      place: 'Synthetic test meeting point',
+      meetingAt: new Date(Date.now() + 86400000).toISOString(),
+      timeZone: 'Europe/Paris',
+    },
+    'POST',
+  );
+  await alicePage.goto(`${origin}/swaps`);
+  await expect(
+    alicePage.getByRole('link', { name: /^View swap/ }),
+  ).toBeVisible();
+  await expect(
+    alicePage.getByRole('button', { name: 'Confirm swap completed' }),
+  ).toHaveCount(0);
+
+  // Advance this isolated fixture's meeting, without waiting for real time.
+  await fixture.migration.query(
+    "UPDATE public.meetups SET meeting_at=now()-interval '1 hour' WHERE id=$1 AND trade_id=$2",
+    [meeting.id, tradeId],
+  );
+
   for (const [name, page] of [
     ['alice', alicePage],
     ['bob', bobPage],
   ]) {
-    await page.goto(`${origin}/swaps/${tradeId}`);
+    await page.goto(`${origin}/swaps`);
+    await expect(
+      page.getByRole('button', { name: 'Confirm swap completed' }),
+    ).toBeVisible();
     for (const theme of ['light', 'dark']) {
       await page.getByLabel('Theme').selectOption(theme);
       for (const width of [360, 768, 1280, 1600]) {
@@ -283,6 +337,41 @@ try {
               globalThis.innerWidth,
           ),
         );
+        const navBounds = await page
+          .getByRole('tablist', { name: 'Swap views' })
+          .boundingBox();
+        const headingBounds = await page
+          .getByRole('tabpanel', { name: 'Upcoming swaps' })
+          .boundingBox();
+        assert.ok(
+          navBounds.y < headingBounds.y,
+          'Section navigation stays above the content at every width',
+        );
+        await expect(
+          page.getByRole('img', { name: `${aliceItem.title}, photo 1` }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole('img', { name: `${bobItem.title}, photo 1` }),
+        ).toBeVisible();
+        await page.getByRole('tab', { name: 'Upcoming swaps' }).focus();
+        await page.keyboard.press('ArrowRight');
+        await expect(
+          page.getByRole('tab', { name: 'Swap history' }),
+        ).toBeFocused();
+        await expect(
+          page.getByRole('tabpanel', { name: 'Swap history' }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole('tabpanel', { name: 'Upcoming swaps' }),
+        ).toHaveCount(0);
+        assert.deepEqual(
+          (await new AxeBuilder({ page }).analyze()).violations,
+          [],
+        );
+        await page.keyboard.press('ArrowLeft');
+        await expect(
+          page.getByRole('tab', { name: 'Upcoming swaps' }),
+        ).toBeFocused();
         assert.deepEqual(
           (await new AxeBuilder({ page }).analyze()).violations,
           [],
@@ -295,9 +384,157 @@ try {
       }
     }
   }
+  await alicePage.setViewportSize({ width: 1280, height: 900 });
+  await alicePage.evaluate(() => {
+    globalThis.document.documentElement.style.zoom = '2';
+  });
+  assert.ok(
+    await alicePage.evaluate(
+      () =>
+        globalThis.document.documentElement.scrollWidth <=
+        globalThis.innerWidth,
+    ),
+  );
+  await expect(
+    alicePage.getByRole('button', { name: 'Confirm swap completed' }),
+  ).toBeVisible();
+  await alicePage.evaluate(() => {
+    globalThis.document.documentElement.style.zoom = '';
+  });
+  await alicePage.getByRole('link', { name: /^View swap/ }).focus();
+  await alicePage.keyboard.press('Enter');
+  await expect(alicePage).toHaveURL(`${origin}/swaps/${tradeId}`);
+  const reminder = alicePage.getByRole('region', { name: 'Meetup reminder' });
+  await expect(
+    reminder.getByText('Synthetic test meeting point'),
+  ).toBeVisible();
+  await expect(reminder.getByText(/Europe\/Paris/)).toBeVisible();
+  await expect(alicePage.getByRole('textbox')).toHaveCount(0);
+  await expect(
+    alicePage.getByRole('button', {
+      name: /Change meetup|Review meetup|Confirm this meeting|Decline this meeting|Cancel swap|Review current terms/,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    alicePage.getByRole('button', { name: 'Message', exact: true }),
+  ).toBeVisible();
+  for (const theme of ['light', 'dark']) {
+    await alicePage.getByLabel('Theme').selectOption(theme);
+    for (const width of [360, 768, 1280, 1600]) {
+      await alicePage.setViewportSize({ width, height: 900 });
+      assert.ok(
+        await alicePage.evaluate(
+          () =>
+            globalThis.document.documentElement.scrollWidth <=
+            globalThis.innerWidth,
+        ),
+      );
+      const meetupBounds = await reminder.boundingBox();
+      const itemBounds = await alicePage
+        .getByRole('region', { name: 'Items in this swap' })
+        .boundingBox();
+      assert.ok(
+        meetupBounds.y < itemBounds.y,
+        'Meetup details come before the item summary',
+      );
+      assert.deepEqual(
+        (await new AxeBuilder({ page: alicePage }).analyze()).violations,
+        [],
+      );
+      if (width === 360 || width === 1280)
+        await alicePage.screenshot({
+          path: new URL(`readonly-reminder-${theme}-${width}.png`, output)
+            .pathname,
+          fullPage: true,
+        });
+    }
+  }
+  await alicePage.evaluate(() => {
+    globalThis.document.documentElement.style.zoom = '2';
+  });
+  assert.ok(
+    await alicePage.evaluate(
+      () =>
+        globalThis.document.documentElement.scrollWidth <=
+        globalThis.innerWidth,
+    ),
+  );
+  await alicePage.evaluate(() => {
+    globalThis.document.documentElement.style.zoom = '';
+  });
+
+  await alicePage.getByRole('button', { name: 'Message', exact: true }).click();
+  await expect(alicePage).toHaveURL(/\/inbox\/[0-9a-f-]+$/);
+  await alicePage.goto(`${origin}/swaps`);
+  await alicePage
+    .getByRole('button', { name: 'Confirm swap completed' })
+    .click();
+  await expect(
+    alicePage
+      .getByRole('tabpanel', { name: 'Upcoming swaps' })
+      .getByRole('link'),
+  ).toHaveCount(0);
+  await alicePage.getByRole('tab', { name: 'Swap history' }).click();
+  await expect(
+    alicePage
+      .getByRole('tabpanel', { name: 'Swap history' })
+      .getByRole('link', { name: /^View swap/ }),
+  ).toBeVisible();
+  await expect(
+    alicePage.getByRole('tabpanel', { name: 'Upcoming swaps' }),
+  ).toHaveCount(0);
+  assert.equal((await api(`/trades/${tradeId}`, alice)).status, 'confirmed');
+  await alicePage.reload();
+  await expect(
+    alicePage
+      .getByRole('tabpanel', { name: 'Swap history' })
+      .getByRole('link', { name: /^View swap/ }),
+  ).toBeVisible();
+  await bobPage.reload();
+  await expect(
+    bobPage.getByRole('tabpanel', { name: 'Swap history' }),
+  ).toHaveCount(0);
+  await expect(
+    bobPage
+      .getByRole('tabpanel', { name: 'Upcoming swaps' })
+      .getByRole('link', { name: /^View swap/ }),
+  ).toBeVisible();
+  await bobPage.getByRole('button', { name: 'Confirm swap completed' }).click();
+  await bobPage.getByRole('tab', { name: 'Swap history' }).click();
+  await expect(
+    bobPage
+      .getByRole('tabpanel', { name: 'Swap history' })
+      .getByRole('link', { name: /^View swap/ }),
+  ).toBeVisible();
+  await alicePage.reload();
+  await expect(
+    alicePage
+      .getByRole('tabpanel', { name: 'Swap history' })
+      .getByRole('link', { name: /^View swap/ }),
+  ).toBeVisible();
+  await expect(
+    alicePage.getByRole('tabpanel', { name: 'Upcoming swaps' }),
+  ).toHaveCount(0);
+  assert.equal((await api(`/trades/${tradeId}`, alice)).status, 'completed');
+  await alicePage
+    .getByRole('tabpanel', { name: 'Swap history' })
+    .getByRole('link', { name: /^View swap/ })
+    .click();
+  await expect(
+    alicePage
+      .getByRole('region', { name: 'Meetup reminder' })
+      .getByText('Synthetic test meeting point'),
+  ).toBeVisible();
+  await expect(alicePage.getByRole('textbox')).toHaveCount(0);
+  await expect(
+    alicePage.getByRole('button', {
+      name: /Change meetup|Confirm this meeting|Decline this meeting/,
+    }),
+  ).toHaveCount(0);
+
   assert.deepEqual(errors, []);
   console.info(
-    'Local swap submission, notification, both lists, private access, two-person confirmation, reservations, themes and accessibility passed.',
+    'Local swap submission, notification, both lists, private access, two-person confirmation, reservations, scheduled reminders, independent personal completion, persistent history, themes and accessibility passed.',
   );
 } finally {
   if (browser) await browser.close();

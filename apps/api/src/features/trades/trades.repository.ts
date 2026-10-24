@@ -24,6 +24,10 @@ const summarySql = `SELECT t.id, t.creator_id AS "creatorId",
    LEFT JOIN public.listings l ON l.id=i.listing_id
    WHERE v.trade_id=t.id AND v.version=t.current_version
      AND l.availability IS DISTINCT FROM 'available') AS "hasUnavailableItems",
+  (SELECT jsonb_build_object('meetingAt', m.meeting_at, 'timeZone', m.time_zone)
+    FROM public.meetups m WHERE m.trade_id=t.id) AS meeting,
+  COALESCE((SELECT jsonb_agg(DISTINCT e.actor_id) FROM public.trade_events e
+    WHERE e.trade_id=t.id AND e.event_type='receipt_acknowledged'), '[]'::jsonb) AS "receiptUserIds",
   COALESCE((SELECT jsonb_agg(preview.data ORDER BY preview.id) FROM (
     SELECT i.id, jsonb_build_object(
       'listingId', i.listing_id, 'title', i.title_snapshot,

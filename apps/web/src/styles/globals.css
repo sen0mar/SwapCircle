@@ -3272,3 +3272,517 @@ select.native-select-control {
     justify-content: flex-end;
   }
 }
+
+.swap-schedule {
+  max-width: 1040px;
+  margin-inline: auto;
+  display: grid;
+  gap: 32px;
+}
+.schedule-empty p,
+.schedule-card-action p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+.schedule-navigation {
+  order: 0;
+  margin: 0;
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: 16px;
+}
+.schedule-navigation button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  gap: 8px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+.schedule-navigation button[aria-selected='true'] {
+  background: var(--accent-primary-soft);
+  border-color: var(--accent-primary-text);
+  color: var(--accent-primary-text);
+  box-shadow: inset 0 -2px 0 var(--accent-primary-text);
+}
+.schedule-tab-panel[hidden] {
+  display: none;
+}
+.schedule-tab-panel {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.schedule-tab-panel:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.schedule-navigation button:hover {
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary-text);
+}
+.swap-schedule > section {
+  scroll-margin-top: 96px;
+}
+.schedule-list,
+.schedule-group {
+  display: grid;
+  gap: 16px;
+}
+.schedule-list:has(.schedule-group) {
+  gap: 28px;
+}
+.schedule-group-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+}
+.schedule-group-title::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--border-default);
+}
+.schedule-card {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.schedule-card-link {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  padding: 24px;
+  color: var(--text-primary);
+  transition: background-color 140ms ease;
+}
+.schedule-card-link:hover {
+  background: var(--bg-subtle);
+}
+.schedule-card-link:focus-visible,
+.schedule-navigation button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -4px;
+}
+.schedule-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  gap: 2px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.schedule-date > strong {
+  font-size: 32px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.schedule-date > span:first-child {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.schedule-date-unset {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  gap: 8px;
+}
+.schedule-card-copy {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.schedule-card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+}
+.schedule-card-topline h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.schedule-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.schedule-card[data-state='due'] .schedule-status {
+  color: var(--state-warning);
+}
+.schedule-card[data-state='completed'] .schedule-status {
+  color: var(--state-success);
+}
+.schedule-exchange {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+}
+.schedule-exchange-arrow {
+  color: var(--text-muted);
+}
+.schedule-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.schedule-item > div:last-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.schedule-item span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.schedule-item strong {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.schedule-item-photo {
+  width: 76px;
+  height: 76px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-inset);
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.schedule-item-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.schedule-card-meta,
+.schedule-card-meta > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.schedule-card-meta {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.schedule-card-meta svg {
+  flex-shrink: 0;
+}
+.schedule-open {
+  color: var(--accent-primary-text);
+  font-weight: 600;
+}
+.schedule-more {
+  margin: -8px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.schedule-card-action {
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-inset);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.schedule-card-action p {
+  font-size: 13px;
+}
+.schedule-card-action p[role='alert'] {
+  flex-basis: 100%;
+  color: var(--state-error);
+}
+.schedule-card-action .ui-button {
+  border-radius: 8px;
+}
+.schedule-empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding: 40px 24px;
+  border: 1px dashed var(--border-default);
+  border-radius: 12px;
+  background: var(--bg-surface);
+}
+.schedule-empty > svg {
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.schedule-empty h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.schedule-empty p {
+  max-width: 42ch;
+  font-size: 14px;
+}
+@media (max-width: 767px) {
+  .schedule-card-link {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 16px;
+    padding: 20px;
+  }
+  .schedule-date {
+    min-height: 84px;
+  }
+  .schedule-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .schedule-exchange {
+    gap: 12px;
+    align-items: start;
+  }
+  .schedule-exchange-arrow {
+    margin-top: 28px;
+  }
+}
+@media (max-width: 479px) {
+  .swap-schedule {
+    gap: 24px;
+  }
+  .schedule-navigation {
+    gap: 8px;
+  }
+  .schedule-navigation button {
+    flex: 1;
+    padding-inline: 8px;
+    font-size: 13px;
+    gap: 6px;
+  }
+  .schedule-card-link {
+    padding: 16px;
+    gap: 20px 12px;
+  }
+  .schedule-card-copy {
+    display: contents;
+  }
+  .schedule-card-topline {
+    align-self: center;
+    justify-content: flex-start;
+  }
+  .schedule-card-topline h3 {
+    font-size: 17px;
+  }
+  .schedule-exchange,
+  .schedule-card-meta,
+  .schedule-more,
+  .schedule-offer-item {
+    grid-column: 1 / -1;
+  }
+  .schedule-item-photo {
+    width: 100%;
+    height: 100px;
+  }
+  .schedule-item {
+    align-self: start;
+  }
+  .schedule-offer-item {
+    flex-direction: row;
+    align-items: center;
+  }
+  .schedule-offer-item .schedule-item-photo {
+    width: 76px;
+    height: 76px;
+  }
+  .schedule-card-action {
+    padding: 16px;
+  }
+  .schedule-card-action button {
+    width: 100%;
+  }
+}
+
+.trade-reminder {
+  max-width: 960px;
+  width: 100%;
+  margin-inline: auto;
+  gap: 24px;
+}
+.trade-reminder .swap-reminder-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.trade-reminder .swap-reminder-topbar > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.trade-reminder .swap-reminder-topbar .swap-status {
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+.meetup-reminder {
+  width: 100%;
+  min-width: 0;
+  padding: 24px;
+  border-radius: 12px;
+}
+.meetup-reminder-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.meetup-reminder-facts > div {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 10px;
+  background: var(--bg-inset);
+  min-width: 0;
+}
+.meetup-reminder-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.meetup-reminder-facts dt svg {
+  color: var(--accent-primary-text);
+  flex-shrink: 0;
+}
+.meetup-reminder-facts dd {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.meetup-reminder-zone {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+.meetup-reminder-facts > .meetup-reminder-location {
+  grid-column: 1 / -1;
+  background: transparent;
+  border: 1px solid var(--border-default);
+}
+.meetup-reminder-location dd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+.meetup-reminder-location a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent-primary-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.trade-reminder .swap-overview {
+  border-radius: 12px;
+}
+.trade-reminder .swap-overview h2 {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.trade-reminder .swap-detail-item {
+  padding: 0;
+  background: transparent;
+  align-items: center;
+}
+.trade-reminder .swap-detail-photo {
+  width: 72px;
+  height: 72px;
+}
+.trade-reminder .swap-detail-item h3 {
+  font-size: 16px;
+}
+.trade-reminder .swap-detail-item p {
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+.trade-reminder .swap-inline-actions:empty {
+  display: none;
+}
+.swap-reminder-contact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.swap-reminder-contact .message-action {
+  margin: 0;
+}
+.swap-reminder-contact .ui-button {
+  border-radius: 8px;
+}
+@media (max-width: 639px) {
+  .trade-reminder {
+    gap: 16px;
+  }
+  .meetup-reminder {
+    padding: 20px 16px;
+  }
+  .meetup-reminder-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .meetup-reminder-facts > div {
+    padding: 16px;
+    gap: 8px;
+  }
+  .meetup-reminder-facts dd {
+    font-size: 18px;
+  }
+  .trade-reminder .trade-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

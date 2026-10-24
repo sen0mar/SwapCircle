@@ -482,6 +482,14 @@ export const tradeSummarySchema = z.object({
   participantCount: z.literal(2),
   itemCount: z.number().int().min(1),
   hasUnavailableItems: z.boolean(),
+  meeting: z
+    .object({
+      meetingAt: z.iso.datetime({ offset: true }),
+      timeZone: z.string(),
+    })
+    .nullable()
+    .default(null),
+  receiptUserIds: z.array(z.uuid()).default([]),
   itemPreviews: z
     .array(
       z.object({
@@ -540,7 +548,7 @@ export const tradeEventSchema = z.object({
   createdAt: z.iso.datetime({ offset: true }),
 });
 export const tradeDetailSchema = tradeSummarySchema
-  .omit({ itemPreviews: true })
+  .omit({ itemPreviews: true, meeting: true, receiptUserIds: true })
   .extend({
     participants: z.array(tradeParticipantSchema).length(2),
     items: z.array(tradeItemSchema),

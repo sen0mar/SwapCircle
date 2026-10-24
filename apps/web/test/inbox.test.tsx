@@ -955,15 +955,12 @@ test('recipient retries a failed response and sees the accepted proposal in My S
   await user.click(
     await screen.findByRole('link', { name: 'View in My Swaps' }),
   );
-  await screen.findByRole('heading', { name: 'Accepted swaps' });
-  expect(
-    screen.getByRole('region', { name: 'Accepted swaps' }),
-  ).toHaveTextContent('I can offer a lamp.');
+  await screen.findByRole('tab', { name: 'Upcoming swaps' });
+  expect(screen.getByText('To plan')).toBeVisible();
   expect(screen.getByText('With Bob')).toBeVisible();
-  expect(screen.getByText('Accepted', { exact: true })).toBeVisible();
-  expect(screen.queryByText('No swaps yet')).not.toBeInTheDocument();
+  expect(screen.queryByText('I can offer a lamp.')).not.toBeInTheDocument();
   expect(
-    screen.getByRole('link', { name: 'Open swap conversation' }),
+    screen.getByRole('link', { name: /Open swap conversation:/ }),
   ).toHaveAttribute('href', `/inbox/${thread}`);
   expect(attempts).toBe(2);
 });

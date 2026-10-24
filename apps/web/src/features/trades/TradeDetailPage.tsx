@@ -6,7 +6,8 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { ApiError } from '../../lib/api-client';
 import { useAuth } from '../auth/AuthProvider';
-import { TradeMeeting } from './TradeMeeting';
+import { MeetingReminder } from './MeetingReminder';
+import { MessageAction } from '../inbox/MessageAction';
 import { TradeCoffee } from './TradeCoffee';
 import { TradeAcceptance } from './TradeAcceptance';
 import { TradeProblem } from './TradeProblem';
@@ -89,6 +90,10 @@ export function TradeDetailPage() {
   const self = trade.data.participants.find(
     (person) => person.userId === session?.user.id,
   );
+  const reminderOnly = trade.data.status !== 'proposed';
+  const peer = trade.data.participants.find(
+    (person) => person.userId !== session?.user.id,
+  );
   const gives = trade.data.items.filter(
     (item) => item.ownerId === session?.user.id,
   );
@@ -97,19 +102,31 @@ export function TradeDetailPage() {
   );
 
   return (
-    <article className="trade-detail" aria-labelledby="trade-title">
-      <Link to="/swaps">← My Swaps</Link>
-      <p
-        role="status"
-        aria-label="Swap status"
-        className={`swap-status swap-status-${trade.data.status}`}
-      >
-        {trade.data.status.charAt(0).toUpperCase() + trade.data.status.slice(1)}
-      </p>
+    <article
+      className={`trade-detail${reminderOnly ? ' trade-reminder' : ''}`}
+      aria-labelledby="trade-title"
+    >
+      <header className="swap-reminder-topbar">
+        <Link
+          to={
+            trade.data.status === 'completed' ? '/swaps?view=history' : '/swaps'
+          }
+        >
+          ← My Swaps
+        </Link>
+        <p
+          role="status"
+          aria-label="Swap status"
+          className={`swap-status swap-status-${trade.data.status}`}
+        >
+          {trade.data.status.charAt(0).toUpperCase() +
+            trade.data.status.slice(1)}
+        </p>
+      </header>
       {trade.isError && (
         <div role="alert">
           Current agreement could not be refreshed. These are the last loaded
-          terms; refresh before accepting.
+          details.
           <Button onClick={() => void trade.refetch()}>
             Retry current agreement
           </Button>
@@ -118,6 +135,12 @@ export function TradeDetailPage() {
       <h1 ref={heading} tabIndex={-1} id="trade-title" className="sr-only">
         Your swap
       </h1>
+      {self && reminderOnly && (
+        <MeetingReminder
+          key={`meeting:${session?.user.id}:${id}`}
+          tradeId={id}
+        />
+      )}
       <section className="panel swap-overview" aria-label="Items in this swap">
         <div className="trade-detail-grid">
           {[
@@ -153,24 +176,28 @@ export function TradeDetailPage() {
             revision={trade.data}
             onReadOnlyClose={() => heading.current?.focus()}
           />
-          <TradeLifecycle
-            key={`lifecycle:${session?.user.id}:${id}`}
-            detail={trade.data}
-            current={!trade.isError}
-          />
+          {!reminderOnly && (
+            <TradeLifecycle
+              key={`lifecycle:${session?.user.id}:${id}`}
+              detail={trade.data}
+              current={!trade.isError}
+            />
+          )}
         </div>
       )}
-      <TradeAcceptance
-        key={`acceptance:${session?.user.id}:${id}`}
-        detail={trade.data}
-      />
-      {self && trade.data.status === 'confirmed' && (
-        <TradeMeeting
-          key={`meeting:${session?.user.id}:${id}`}
+      {!reminderOnly && (
+        <TradeAcceptance
+          key={`acceptance:${session?.user.id}:${id}`}
           detail={trade.data}
         />
       )}
-      {self && (
+      {self && reminderOnly && peer && (
+        <div className="swap-reminder-contact">
+          <span>With {peer.displayName}</span>
+          <MessageAction userId={peer.userId} />
+        </div>
+      )}
+      {self && !reminderOnly && (
         <details
           className="panel swap-disclosure"
           open={hash === '#coffee' || undefined}
@@ -182,7 +209,7 @@ export function TradeDetailPage() {
           />
         </details>
       )}
-      {self && (
+      {self && !reminderOnly && (
         <TradeProblem
           key={`problem:${session?.user.id}:${id}`}
           detail={trade.data}

@@ -484,6 +484,9 @@ test('conflict refresh updates shared detail while preserving the independent ol
 test('a frozen authoritative response keeps the open recovery draft while shared detail becomes read-only', async () => {
   let authoritative = proposal();
   server.use(
+    http.get('http://127.0.0.1:3001/api/v1/trades/:id/meeting', () =>
+      HttpResponse.json(null),
+    ),
     http.get('http://127.0.0.1:3001/api/v1/trades/:id', () =>
       HttpResponse.json(authoritative),
     ),

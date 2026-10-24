@@ -1,8 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { test, expect, vi } from 'vitest';
+import { test, expect, vi, beforeEach } from 'vitest';
 import { MySwapsPage } from '../src/features/trades/MySwapsPage';
 
+const mocks = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  items: [] as Record<string, unknown>[],
+}));
 vi.mock('../src/features/auth/AuthProvider', () => ({
   useAuth: () => ({ session: { user: { id: 'self' } } }),
 }));
@@ -11,141 +15,219 @@ vi.mock('../src/features/browse/listing-photos', () => ({
   ListingImage: ({ title }: { title: string }) => <span>Photo: {title}</span>,
 }));
 vi.mock('../src/features/trades/useTrades', () => ({
-  useAcceptedProposals: () => ({
+  useAcceptedProposals: () => ({ data: { pages: [{ items: [] }] } }),
+  useConfirmReceipt: () => ({
+    mutate: mocks.mutate,
     isPending: false,
     isError: false,
-    data: { pages: [{ items: [], nextCursor: null }] },
   }),
-  useMyTrades: () => ({
+  useSwapSchedule: () => ({
     isPending: false,
     isError: false,
-    data: {
-      nextAfter: null,
-      items: [
-        {
-          id: 'swap',
-          status: 'completed',
-          participantCount: 2,
-          itemCount: 5,
-          expiresAt: '2026-10-01T00:00:00Z',
-          hasUnavailableItems: false,
-          itemPreviews: [
-            {
-              listingId: 'camera',
-              title: 'Film camera',
-              ownerId: 'self',
-              recipientId: 'bob',
-              ownerName: 'Me',
-              recipientName: 'Bob',
-            },
-            {
-              listingId: 'book',
-              title: 'Cookbook',
-              ownerId: 'bob',
-              recipientId: 'self',
-              ownerName: 'Bob',
-              recipientName: 'Me',
-            },
-            {
-              listingId: 'lamp',
-              title: 'Desk lamp',
-              ownerId: 'bob',
-              recipientId: 'self',
-              ownerName: 'Bob',
-              recipientName: 'Me',
-            },
-          ],
-        },
-      ],
-    },
+    data: { pages: [{ items: mocks.items }] },
   }),
 }));
 
-test('identifies items, transfer direction, two-person swaps and completed status', () => {
-  render(
+function swap(
+  id: string,
+  status: string,
+  date: string | null,
+  receipts: string[] = [],
+) {
+  return {
+    id,
+    status,
+    currentVersion: 2,
+    receiptUserIds: receipts,
+    updatedAt: '2026-10-01T00:00:00Z',
+    meeting: date ? { meetingAt: date, timeZone: 'Europe/Paris' } : null,
+    itemPreviews: [
+      {
+        listingId: id,
+        title: id,
+        ownerId: 'self',
+        recipientId: 'bob',
+        recipientName: 'Bob',
+        ownerName: 'Me',
+      },
+    ],
+  };
+}
+
+function renderPage(initialEntry = '/swaps') {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <MySwapsPage />
+    </MemoryRouter>,
+  );
+}
+
+beforeEach(() => {
+  mocks.mutate.mockReset();
+  mocks.items = [
+    swap('Future swap', 'confirmed', '2099-01-01T12:00:00Z'),
+    swap('Overdue swap', 'confirmed', '2020-01-01T12:00:00Z'),
+    swap('Finished swap', 'completed', '2020-01-01T12:00:00Z'),
+    swap('Unscheduled swap', 'confirmed', null),
+    swap('Pending proposal', 'proposed', null),
+    swap('Cancelled swap', 'cancelled', null),
+  ];
+});
+
+test('upcoming and history are separate tab panels', () => {
+  renderPage();
+  const upcoming = within(
+    screen.getByRole('tabpanel', { name: 'Upcoming swaps' }),
+  );
+  expect(upcoming.getByText('Overdue swap')).toBeVisible();
+  expect(upcoming.getByText('Future swap')).toBeVisible();
+  expect(upcoming.getByText('Date to arrange')).toBeVisible();
+  expect(
+    screen.queryByRole('tabpanel', { name: 'Swap history' }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText('Pending proposal')).not.toBeInTheDocument();
+  expect(screen.queryByText('Cancelled swap')).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'View swap: Future swap' }),
+  ).toHaveAttribute('href', '/swaps/Future swap');
+  expect(
+    screen.getAllByRole('button', { name: 'Confirm swap completed' }),
+  ).toHaveLength(1);
+  fireEvent.click(screen.getByRole('tab', { name: 'Swap history' }));
+  expect(screen.getByRole('tab', { name: 'Swap history' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  const history = within(
+    screen.getByRole('tabpanel', { name: 'Swap history' }),
+  );
+  expect(history.getByText('Finished swap')).toBeVisible();
+  expect(history.queryByText('Overdue swap')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('tabpanel', { name: 'Upcoming swaps' }),
+  ).not.toBeInTheDocument();
+});
+
+test('explicit completion submits receipt with current version and stable retry key', () => {
+  renderPage();
+  const button = screen.getByRole('button', { name: 'Confirm swap completed' });
+  fireEvent.click(button);
+  fireEvent.click(button);
+  expect(mocks.mutate).toHaveBeenCalledWith({
+    expectedVersion: 2,
+    operationKey: expect.any(String),
+  });
+  expect(mocks.mutate.mock.calls[0]).toEqual(mocks.mutate.mock.calls[1]);
+  expect(
+    within(screen.getByRole('tabpanel', { name: 'Upcoming swaps' })).getByText(
+      'Overdue swap',
+    ),
+  ).toBeInTheDocument();
+});
+
+test('personal history remains independent when switching tabs', () => {
+  mocks.items = [
+    swap('My completed swap', 'confirmed', '2020-01-01T12:00:00Z', ['self']),
+    swap('Their completed swap', 'confirmed', '2020-01-01T12:00:00Z', ['bob']),
+  ];
+  renderPage();
+  const upcoming = within(
+    screen.getByRole('tabpanel', { name: 'Upcoming swaps' }),
+  );
+  expect(upcoming.queryByText('My completed swap')).not.toBeInTheDocument();
+  expect(upcoming.getByText('Their completed swap')).toBeVisible();
+  expect(
+    upcoming.getByRole('button', { name: 'Confirm swap completed' }),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole('tab', { name: 'Swap history' }));
+  const history = within(
+    screen.getByRole('tabpanel', { name: 'Swap history' }),
+  );
+  expect(history.getByText('My completed swap')).toBeVisible();
+  expect(history.queryByText('Their completed swap')).not.toBeInTheDocument();
+  expect(
+    history.queryByRole('button', { name: 'Confirm swap completed' }),
+  ).not.toBeInTheDocument();
+});
+
+test('a saved personal confirmation moves the card without a shared status change', () => {
+  mocks.items = [swap('My swap', 'confirmed', '2020-01-01T12:00:00Z')];
+  const page = renderPage();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Confirm swap completed' }),
+  );
+  // The authenticated API refresh returns our persisted receipt while the other person has not confirmed.
+  mocks.items = [
+    swap('My swap', 'confirmed', '2020-01-01T12:00:00Z', ['self']),
+  ];
+  page.rerender(
     <MemoryRouter>
       <MySwapsPage />
     </MemoryRouter>,
   );
   expect(
-    screen.getByRole('heading', { name: 'Item swap' }),
-  ).toBeInTheDocument();
+    within(
+      screen.getByRole('tabpanel', { name: 'Upcoming swaps' }),
+    ).queryByText('My swap'),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('tab', { name: 'Swap history' }));
   expect(
-    screen.getByRole('heading', { name: 'Film camera' }),
-  ).toBeInTheDocument();
-  expect(screen.getByText('You give')).toBeInTheDocument();
-  expect(screen.getAllByText('You receive')).toHaveLength(2);
-  expect(screen.getAllByText('Bob → you')).toHaveLength(2);
-  expect(screen.getByText('Completed', { exact: true })).toBeInTheDocument();
-  expect(
-    screen.getByText('+2 more items · View the full swap'),
-  ).toBeInTheDocument();
-  expect(screen.queryByText(/Respond before/)).not.toBeInTheDocument();
-  expect(
-    screen.getByRole('link', { name: /View swap: Film camera/ }),
-  ).toHaveAttribute('href', '/swaps/swap');
+    within(screen.getByRole('tabpanel', { name: 'Swap history' })).getByText(
+      'My swap',
+    ),
+  ).toBeVisible();
 });
 
-test.each(['self', 'recipient'])(
-  'accepted swaps show the agreed items in the correct direction for %s',
-  async (userId) => {
-    const { AcceptedSwapCard } =
-      await import('../src/features/trades/AcceptedSwapCard');
-    const { within } = await import('@testing-library/react');
-    const { container } = render(
-      <MemoryRouter>
-        <AcceptedSwapCard
-          userId={userId}
-          item={{
-            message: {
-              id: 'message',
-              client_message_id: 'client-message',
-              message_order: 1,
-              conversation_id: 'conversation',
-              sender_id: 'self',
-              body: 'A small lamp',
-              created_at: '2026-10-01T00:00:00Z',
-              has_photo: false,
-              proposal: {
-                listingId: 'keyboard',
-                listingTitle: 'Desktop keyboard',
-                message: 'A small lamp',
-                condition: 'good',
-              },
-            },
-            response: {
-              status: 'accepted',
-              messageId: 'message',
-              conversationId: 'conversation',
-              recipientId: 'recipient',
-              respondedAt: '2026-10-01T00:01:00Z',
-            },
-            senderName: 'Alice',
-            recipientName: 'Bob',
-          }}
-        />
-      </MemoryRouter>,
-    );
-    const card = within(container);
-    expect(
-      card.getByRole('heading', { name: 'Item swap' }),
-    ).toBeInTheDocument();
-    expect(card.getByText('Accepted')).toBeInTheDocument();
-    expect(card.queryByText('Trade proposal')).not.toBeInTheDocument();
-    const items = card.getAllByRole('listitem');
-    expect(
-      within(items[0]!).getByText(
-        userId === 'self' ? 'You receive' : 'You give',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(items[1]!).getByText(
-        userId === 'self' ? 'You give' : 'You receive',
-      ),
-    ).toBeInTheDocument();
-    expect(card.getByText('Good')).toBeInTheDocument();
-    expect(
-      card.getByRole('link', { name: 'Open swap conversation' }),
-    ).toHaveAttribute('href', '/inbox/conversation');
-  },
-);
+test('organizes upcoming reminders by next action', () => {
+  renderPage();
+  expect(
+    screen.getByRole('heading', { name: 'Ready to complete' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('heading', { name: 'Coming up' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('heading', { name: 'To arrange' }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('tablist', { name: 'Swap views' })).toBeVisible();
+  const card = within(
+    screen.getByRole('link', { name: 'View swap: Overdue swap' }),
+  );
+  expect(card.getByText('You give')).toBeInTheDocument();
+  expect(card.getByText('You receive')).toBeInTheDocument();
+  expect(card.queryByText(/Europe\/Paris/)).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'View swap: Overdue swap' }),
+  ).toHaveAccessibleDescription(/2020/);
+});
+
+test('tabs support arrow, Home and End keys with roving focus', () => {
+  renderPage();
+  const upcoming = screen.getByRole('tab', { name: 'Upcoming swaps' });
+  const history = screen.getByRole('tab', { name: 'Swap history' });
+  upcoming.focus();
+  fireEvent.keyDown(upcoming, { key: 'ArrowRight' });
+  expect(history).toHaveFocus();
+  expect(history).toHaveAttribute('aria-selected', 'true');
+  expect(upcoming).toHaveAttribute('tabindex', '-1');
+  fireEvent.keyDown(history, { key: 'ArrowRight' });
+  expect(upcoming).toHaveFocus();
+  fireEvent.keyDown(upcoming, { key: 'End' });
+  expect(history).toHaveFocus();
+  fireEvent.keyDown(history, { key: 'Home' });
+  expect(upcoming).toHaveFocus();
+  fireEvent.keyDown(upcoming, { key: 'ArrowLeft' });
+  expect(history).toHaveFocus();
+});
+
+test('the history tab can be opened directly from the URL', () => {
+  renderPage('/swaps?view=history');
+  expect(screen.getByRole('tab', { name: 'Swap history' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(screen.getByRole('tabpanel', { name: 'Swap history' })).toBeVisible();
+  expect(
+    screen.queryByRole('tabpanel', { name: 'Upcoming swaps' }),
+  ).not.toBeInTheDocument();
+});
