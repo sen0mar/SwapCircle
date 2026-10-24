@@ -286,7 +286,7 @@ test('received and sent proposals appear as complete cards in both themes and na
       return route.fulfill({ json: responseState(messageId) });
     },
   );
-  await page.route('**/api/v1/trades?*', (route) =>
+  await page.route('**/api/v1/trades/mine?*', (route) =>
     route.fulfill({ json: { items: [], nextAfter: null } }),
   );
   await page.route('**/api/v1/conversations/proposals/accepted?*', (route) =>
@@ -399,11 +399,9 @@ test('received and sent proposals appear as complete cards in both themes and na
       .getByText('Compact desktop keyboard', { exact: true }),
   ).toBeVisible();
   await expect(
-    page
-      .getByRole('tabpanel', { name: 'Upcoming swaps' })
-      .getByRole('link', {
-        name: 'Open swap conversation: Compact desktop keyboard',
-      }),
+    page.getByRole('tabpanel', { name: 'Upcoming swaps' }).getByRole('link', {
+      name: 'Open swap conversation: Compact desktop keyboard',
+    }),
   ).toHaveAttribute('href', `/inbox/${id}`);
   await page.reload();
   await expect(page.getByRole('tab', { name: 'Upcoming swaps' })).toBeVisible();
