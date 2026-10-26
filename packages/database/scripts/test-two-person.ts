@@ -37,8 +37,9 @@ const sql = (input: string) =>
     ],
     input,
   );
+const migrationTag = '0027_lazy_ben_urich';
 const migration = readFileSync(
-  new URL('../migrations/0027_lazy_ben_urich.sql', import.meta.url),
+  new URL(`../migrations/${migrationTag}.sql`, import.meta.url),
   'utf8',
 );
 const [alice, bob, carol, trade, version] = Array.from({ length: 5 }, () =>
@@ -81,7 +82,14 @@ export async function testTwoPersonDatabase(
     ) as {
       entries: { tag: string }[];
     };
-    for (const entry of history.entries.slice(0, -1)) {
+    const migrationIndex = history.entries.findIndex(
+      (entry) => entry.tag === migrationTag,
+    );
+    assert.ok(
+      migrationIndex >= 0,
+      'The two-person migration must exist in the journal.',
+    );
+    for (const entry of history.entries.slice(0, migrationIndex)) {
       let source = readFileSync(
         new URL(`../migrations/${entry.tag}.sql`, import.meta.url),
         'utf8',
