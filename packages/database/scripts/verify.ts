@@ -161,6 +161,7 @@ export async function verify(
       'messages',
       'message_photos',
       'message_proposal_responses',
+      'proposal_meeting_operations',
       'notifications',
       'trades',
       'trade_versions',

@@ -16,6 +16,7 @@ import { MyShelfPage } from './features/listings/MyShelfPage';
 import { InboxPage } from './features/inbox/InboxPage';
 import { NotificationPage } from './features/notifications/NotificationPage';
 import { MySwapsPage } from './features/trades/MySwapsPage';
+import { AcceptedOfferPage } from './features/trades/AcceptedOfferPage';
 import { TradeDetailPage } from './features/trades/TradeDetailPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -32,6 +33,7 @@ export function AppRoutes() {
         <Route path="/notifications/:id" element={<NotificationPage />} />
         <Route path="/inbox" element={<InboxPage />} />
         <Route path="/swaps" element={<MySwapsPage />} />
+        <Route path="/swaps/offers/:id" element={<AcceptedOfferPage />} />
         <Route path="/swaps/:id" element={<TradeDetailPage />} />
         <Route path="/inbox/:id" element={<InboxPage />} />
         <Route path="/account" element={<AccountPage />} />

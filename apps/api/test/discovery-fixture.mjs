@@ -208,6 +208,27 @@ export async function createDiscoveryFixture(origin = 'http://127.0.0.1:4196') {
         client.release();
       }
     }
+    // Only isolated synthetic users; keep operation history immutable outside fixture cleanup.
+    const operationCleanup = await migration.connect();
+    try {
+      await operationCleanup.query('BEGIN');
+      await operationCleanup.query(
+        'ALTER TABLE public.proposal_meeting_operations DISABLE TRIGGER proposal_meeting_operations_append_only',
+      );
+      await operationCleanup.query(
+        'DELETE FROM public.proposal_meeting_operations WHERE actor_id=ANY($1::uuid[])',
+        [users.map((user) => user.id)],
+      );
+      await operationCleanup.query(
+        'ALTER TABLE public.proposal_meeting_operations ENABLE TRIGGER proposal_meeting_operations_append_only',
+      );
+      await operationCleanup.query('COMMIT');
+    } catch (error) {
+      await operationCleanup.query('ROLLBACK');
+      throw error;
+    } finally {
+      operationCleanup.release();
+    }
     await migration.query(
       `DELETE FROM public.conversations WHERE id IN (SELECT conversation_id FROM public.conversation_members WHERE user_id=ANY($1::uuid[]))`,
       [users.map((user) => user.id)],

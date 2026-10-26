@@ -14,7 +14,7 @@ import { TradeProblem } from './TradeProblem';
 import { TradeLifecycle } from './TradeLifecycle';
 import { useTrade } from './useTrades';
 
-import { ProposalComposer } from '../browse/ProposalComposer';
+import { ProposalTermsEditor } from '../browse/ProposalTermsEditor';
 
 function SwapDetailItem({
   item,
@@ -171,7 +171,7 @@ export function TradeDetailPage() {
       </section>
       {self && (
         <div className="swap-inline-actions">
-          <ProposalComposer
+          <ProposalTermsEditor
             key={`${session?.user.id}:${id}`}
             revision={trade.data}
             onReadOnlyClose={() => heading.current?.focus()}

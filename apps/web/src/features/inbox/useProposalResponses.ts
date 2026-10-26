@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   messageProposalStateSchema,
   type MessageProposalState,
+  type MessageProposalResponse,
 } from '@swapcircle/contracts';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -26,14 +27,14 @@ export function useProposalResponse(
       query.state.data?.status === 'pending' ? 15000 : false,
   });
   const respond = useMutation({
-    mutationFn: (action: 'accept' | 'refuse') =>
+    mutationFn: (input: MessageProposalResponse) =>
       request(
         `/api/v1/conversations/messages/${messageId}/proposal`,
         messageProposalStateSchema,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action }),
+          body: JSON.stringify(input),
         },
       ),
     onSuccess: async (saved) => {

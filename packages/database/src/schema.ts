@@ -886,6 +886,12 @@ export const messageProposalResponses = pgTable(
       .notNull()
       .references(() => profiles.id),
     decision: varchar('decision', { length: 16 }).notNull(),
+    meetingRevision: integer('meeting_revision').notNull().default(0),
+    meeting: jsonb('meeting').$type<{
+      place: string;
+      meetingAt: string;
+      timeZone: string;
+    }>(),
     respondedAt: timestamp('responded_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -899,4 +905,21 @@ export const messageProposalResponses = pgTable(
       .on(table.respondedAt, table.id)
       .where(sql`${table.decision} = 'accepted'`),
   ],
+);
+
+export const proposalMeetingOperations = pgTable(
+  'proposal_meeting_operations',
+  {
+    messageId: uuid('message_id')
+      .notNull()
+      .references(() => messageProposalResponses.messageId, {
+        onDelete: 'cascade',
+      }),
+    operationKey: uuid('operation_key').notNull(),
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => profiles.id),
+    input: jsonb('input').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.messageId, table.operationKey] })],
 );

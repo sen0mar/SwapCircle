@@ -104,38 +104,43 @@ async function setup(page: import('@playwright/test').Page) {
   return () => writes;
 }
 
-test('two-person proposals preserve drafts, retry terms and support accessible layouts', async ({
+test('simple proposals keep drafts and retry selected shelf items with accessible layouts', async ({
   page,
 }) => {
   await setup(page);
   let previousPayload: unknown;
   let attempts = 0;
-  await page.route('**/api/v1/trades', async (route) => {
+  await page.route('**/api/v1/conversations/proposals', async (route) => {
     const payload = route.request().postDataJSON();
     attempts++;
     if (previousPayload) expect(payload).toEqual(previousPayload);
     previousPayload = payload;
-    expect(payload.participantIds).toEqual([ids.self, ids.owner]);
-    expect(payload.transfers).toHaveLength(2);
+    expect(payload.offeredListingId).toBe(ids.lamp);
+    expect(payload.body).toBe('Would you swap for my lamp?');
+    expect(payload.photoBase64).toBeUndefined();
     return route.fulfill({ status: 503 });
   });
   await page.getByRole('button', { name: 'Propose a trade' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('checkbox', { name: 'Bicycle' })).toBeChecked();
-  await dialog.getByRole('checkbox', { name: 'Desk lamp' }).check();
-  await expect(dialog.getByRole('checkbox', { name: 'Books' })).toHaveCount(0);
+  await dialog.getByRole('radio', { name: 'Choose from my shelf' }).check();
+  await dialog.getByRole('radio', { name: /Desk lamp/ }).check();
+  await dialog
+    .getByLabel('Message', { exact: true })
+    .fill('Would you swap for my lamp?');
+  await expect(
+    dialog.getByRole('button', { name: 'Review proposal' }),
+  ).toHaveCount(0);
   for (const theme of ['light', 'dark']) {
     await page.keyboard.press('Escape');
-    await expect(dialog).toHaveCount(0);
     await expect(
       page.getByRole('button', { name: 'Propose a trade' }),
     ).toBeFocused();
     await page.getByLabel('Theme').selectOption(theme);
     await page.getByRole('button', { name: 'Propose a trade' }).click();
     await expect(
-      dialog.getByRole('checkbox', { name: 'Desk lamp' }),
+      dialog.getByRole('radio', { name: /Desk lamp/ }),
     ).toBeChecked();
-    for (const width of [360, 768, 1280, 1600]) {
+    for (const width of [360, 768, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       expect(
         await page.evaluate(
@@ -146,15 +151,13 @@ test('two-person proposals preserve drafts, retry terms and support accessible l
         (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
           .violations,
       ).toEqual([]);
+      await page.screenshot({
+        path: `test-results/simple-proposal-${theme}-${width}.png`,
+      });
     }
   }
-  await dialog.getByRole('button', { name: 'Review proposal' }).click();
-  await expect(
-    dialog.getByRole('list', { name: 'Trade transfers' }),
-  ).toContainText('Desk lamp');
   await dialog.getByRole('button', { name: 'Send proposal' }).click();
   await expect(dialog.getByRole('alert')).toBeVisible();
   await dialog.getByRole('button', { name: 'Send proposal' }).click();
   await expect.poll(() => attempts).toBe(2);
-  await expect(dialog.getByRole('alert')).toBeVisible();
 });

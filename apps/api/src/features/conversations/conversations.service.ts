@@ -3,10 +3,15 @@ import {
   messageProposalSchema,
   messageProposalStateSchema,
   acceptedProposalPageSchema,
+  acceptedProposalDetailSchema,
 } from '@swapcircle/contracts';
 import { lockProposalBoundary } from '../trades/proposal-boundary.js';
 import { isDeepStrictEqual } from 'node:util';
-import type { MessageProposal } from '@swapcircle/contracts';
+import type {
+  ProposalMeetingUpdate,
+  ProposalMeeting,
+  MessageProposal,
+} from '@swapcircle/contracts';
 import { createHash } from 'node:crypto';
 import { processPhoto, PhotoError } from '../photos/photos.service.js';
 import type { TradeMessageSubmission } from '@swapcircle/contracts';
@@ -130,6 +135,24 @@ export class ConversationsService {
           );
       }
 
+      if (!previous && proposal?.offeredListing) {
+        const offered = await this.repository.proposalTarget(
+          client,
+          proposal.offeredListing.id,
+        );
+        if (
+          !offered ||
+          offered.owner_id !== actor ||
+          offered.availability !== 'available' ||
+          offered.title !== proposal.offeredListing.title
+        )
+          throw new SafetyError(
+            409,
+            'OFFERED_ITEM_UNAVAILABLE',
+            'Choose an available item from your own shelf.',
+          );
+      }
+
       // Every authorized attempt, including retries, is limited. A rejected send
       // rolls back its quota change together with any position/message insertion.
       await this.permissions.consume(client, actor, 'message');
@@ -157,6 +180,21 @@ export class ConversationsService {
         409,
         'LISTING_UNAVAILABLE',
         'This item is no longer available for a proposal.',
+      );
+
+    const offered = input.offeredListingId
+      ? await this.repository.proposalListing(input.offeredListingId)
+      : undefined;
+    if (
+      input.offeredListingId &&
+      (!offered ||
+        offered.owner_id !== actor ||
+        offered.availability !== 'available')
+    )
+      throw new SafetyError(
+        409,
+        'OFFERED_ITEM_UNAVAILABLE',
+        'Choose an available item from your own shelf.',
       );
 
     const conversation = await this.startDirect(actor, listing.owner_id);
@@ -201,6 +239,14 @@ export class ConversationsService {
       {
         listingId: input.listingId,
         listingTitle: listing.title,
+        ...(offered && input.offeredListingId
+          ? {
+              offeredListing: {
+                id: input.offeredListingId,
+                title: offered.title,
+              },
+            }
+          : {}),
         message: input.body,
         ...(input.condition ? { condition: input.condition } : {}),
       },
@@ -268,6 +314,8 @@ export class ConversationsService {
         recipientId,
         status: previous?.decision ?? 'pending',
         respondedAt: previous?.respondedAt ?? null,
+        meeting: previous?.meeting ?? null,
+        meetingRevision: previous?.meetingRevision ?? 0,
       });
     });
   }
@@ -276,6 +324,7 @@ export class ConversationsService {
     actor: string,
     messageId: string,
     action: 'accept' | 'refuse',
+    meeting?: ProposalMeeting,
   ) {
     return this.repository.transaction(async (client) => {
       await lockProposalBoundary(client);
@@ -324,6 +373,18 @@ export class ConversationsService {
           'PROPOSAL_ALREADY_RESPONDED',
           'This proposal has already been answered.',
         );
+      if (previous && meeting && !isDeepStrictEqual(previous.meeting, meeting))
+        throw new SafetyError(
+          409,
+          'PROPOSAL_ALREADY_RESPONDED',
+          'This proposal was accepted with different meetup details. Refresh the conversation.',
+        );
+      if (!previous && meeting && Date.parse(meeting.meetingAt) <= Date.now())
+        throw new SafetyError(
+          422,
+          'MEETING_IN_PAST',
+          'Choose a future meetup date and time.',
+        );
       await this.permissions.consume(client, actor, 'trade');
       if (
         !previous &&
@@ -355,6 +416,7 @@ export class ConversationsService {
           actor,
           messageId,
           decision,
+          meeting,
         ));
       if (!previous)
         await createNotification(client, {
@@ -370,6 +432,119 @@ export class ConversationsService {
         recipientId,
         status: saved.decision,
         respondedAt: saved.respondedAt,
+        meeting: saved.meeting ?? null,
+        meetingRevision: saved.meetingRevision ?? 0,
+      });
+    });
+  }
+
+  async acceptedProposalDetail(
+    actor: string,
+    messageId: string,
+    input?: ProposalMeetingUpdate,
+  ) {
+    return this.repository.transaction(async (client) => {
+      if (input) await lockProposalBoundary(client);
+      if (!input) {
+        await this.permissions.lockPair(client, actor, actor);
+        await this.permissions.assertUnrestricted(client, [actor]);
+      }
+      const { message, recipientId } = await this.proposalContext(
+        client,
+        actor,
+        messageId,
+      );
+      if (input)
+        await this.permissions.assertContactAllowed(
+          client,
+          message.sender_id,
+          recipientId,
+        );
+      const members = await this.repository.activeMembers(
+        client,
+        message.conversation_id,
+      );
+      if (
+        members.length !== 2 ||
+        !members.includes(actor) ||
+        !members.includes(message.sender_id) ||
+        !members.includes(recipientId) ||
+        !(await this.repository.lockReader(
+          client,
+          actor,
+          message.conversation_id,
+        ))
+      )
+        throw new SafetyError(
+          403,
+          'PROPOSAL_UNAVAILABLE',
+          'This swap is unavailable.',
+        );
+      let saved = await this.repository.proposalDecision(client, messageId);
+      if (saved?.decision !== 'accepted')
+        throw new SafetyError(
+          404,
+          'PROPOSAL_UNAVAILABLE',
+          'This accepted swap is unavailable.',
+        );
+      if (input) {
+        const previous = await this.repository.meetingOperation(
+          client,
+          messageId,
+          input.operationKey,
+        );
+        if (
+          previous &&
+          (previous.actorId !== actor ||
+            !isDeepStrictEqual(previous.input, input))
+        )
+          throw new SafetyError(
+            409,
+            'MEETING_RETRY_CONFLICT',
+            'Use a new reference for different meetup details.',
+          );
+        if (!previous) {
+          if (saved.meetingRevision !== input.expectedRevision)
+            throw new SafetyError(
+              409,
+              'MEETING_CHANGED',
+              'The meetup changed. Refresh the swap before saving again.',
+            );
+          if (Date.parse(input.meeting.meetingAt) <= Date.now())
+            throw new SafetyError(
+              422,
+              'MEETING_IN_PAST',
+              'Choose a future meetup date and time.',
+            );
+          await this.permissions.consume(client, actor, 'trade');
+          await this.repository.updateProposalMeeting(
+            client,
+            actor,
+            messageId,
+            input,
+          );
+          await createNotification(client, {
+            recipient_id:
+              actor === message.sender_id ? recipientId : message.sender_id,
+            domain_event_id: input.operationKey,
+            event_type: 'proposal_response',
+            resource_type: 'conversation',
+            resource_id: message.conversation_id,
+          });
+          saved = (await this.repository.proposalDecision(client, messageId))!;
+        }
+      }
+      return acceptedProposalDetailSchema.parse({
+        message,
+        response: {
+          messageId,
+          conversationId: message.conversation_id,
+          recipientId,
+          status: saved.decision,
+          respondedAt: saved.respondedAt,
+          meeting: saved.meeting,
+          meetingRevision: saved.meetingRevision,
+        },
       });
     });
   }

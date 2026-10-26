@@ -221,3 +221,76 @@ test('proposal snapshots are saved with the message and cannot be forged through
     })
     .expect(400);
 });
+
+test('shelf proposals validate current ownership and availability and snapshot the offered item', async () => {
+  const { service, repository, app } = fixture();
+  const offeredListingId = randomUUID();
+  const offered = {
+    owner_id: actor,
+    title: 'Desk lamp',
+    availability: 'available',
+  };
+  repository.proposalListing.mockResolvedValueOnce({
+    owner_id: owner,
+    title: 'Bicycle',
+    availability: 'available',
+  });
+  repository.proposalListing.mockResolvedValueOnce(offered);
+  Object.assign(repository, { proposalTarget: vi.fn(async () => offered) });
+  const saved = await service.sendProposal(actor, {
+    ...input(),
+    offeredListingId,
+  });
+  expect(saved.proposal?.offeredListing).toEqual({
+    id: offeredListingId,
+    title: 'Desk lamp',
+  });
+  expect(saved.proposal?.message).toBe('I can offer a lamp.');
+
+  for (const invalid of [
+    { ...offered, owner_id: owner },
+    { ...offered, availability: 'reserved' },
+  ]) {
+    const next = fixture();
+    next.repository.proposalListing.mockResolvedValueOnce({
+      owner_id: owner,
+      title: 'Bicycle',
+      availability: 'available',
+    });
+    next.repository.proposalListing.mockResolvedValueOnce(invalid);
+    await expect(
+      next.service.sendProposal(actor, { ...input(), offeredListingId }),
+    ).rejects.toMatchObject({ code: 'OFFERED_ITEM_UNAVAILABLE' });
+    expect(next.repository.insertMessage).not.toHaveBeenCalled();
+  }
+  await request(app)
+    .post('/api/v1/conversations/proposals')
+    .set('Authorization', 'Bearer synthetic')
+    .send({ ...input(), offeredListingId, photoBase64: 'AAAA' })
+    .expect(400);
+});
+
+test('a shelf item that becomes unavailable before insertion prevents the proposal write', async () => {
+  const { service, repository } = fixture();
+  repository.proposalListing.mockResolvedValueOnce({
+    owner_id: owner,
+    title: 'Bicycle',
+    availability: 'available',
+  });
+  repository.proposalListing.mockResolvedValueOnce({
+    owner_id: actor,
+    title: 'Desk lamp',
+    availability: 'available',
+  });
+  Object.assign(repository, {
+    proposalTarget: vi.fn(async () => ({
+      owner_id: actor,
+      title: 'Desk lamp',
+      availability: 'reserved',
+    })),
+  });
+  await expect(
+    service.sendProposal(actor, { ...input(), offeredListingId: randomUUID() }),
+  ).rejects.toMatchObject({ code: 'OFFERED_ITEM_UNAVAILABLE' });
+  expect(repository.insertMessage).not.toHaveBeenCalled();
+});

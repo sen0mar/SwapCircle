@@ -13,6 +13,7 @@ import { http, HttpResponse, delay } from 'msw';
 import { server } from './setup';
 import { apiRequest } from '../src/lib/api-client';
 import { MessageComposerProvider } from '../src/features/inbox/MessageComposerProvider';
+import { AcceptedOfferPage } from '../src/features/trades/AcceptedOfferPage';
 import { MySwapsPage } from '../src/features/trades/MySwapsPage';
 import { InboxPage } from '../src/features/inbox/InboxPage';
 import { authorizeRead } from '../src/features/inbox/inbox-api';
@@ -121,6 +122,7 @@ function fixture() {
             <Route path="/inbox/:id" element={<InboxPage />} />
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/swaps" element={<MySwapsPage />} />
+            <Route path="/swaps/offers/:id" element={<AcceptedOfferPage />} />
           </Routes>
         </MemoryRouter>
       </MessageComposerProvider>
@@ -900,8 +902,19 @@ test('recipient retries a failed response and sees the accepted proposal in My S
     recipientId: alice,
     status: accepted ? 'accepted' : 'pending',
     respondedAt: accepted ? date : null,
+    meeting: accepted
+      ? {
+          place: 'Public library',
+          meetingAt: '2099-06-15T12:00:00.000Z',
+          timeZone: 'Europe/Paris',
+        }
+      : null,
   });
   server.use(
+    http.get(
+      `*/api/v1/conversations/messages/${offered.id}/proposal/detail`,
+      () => HttpResponse.json({ message: offered, response: state() }),
+    ),
     http.get('http://127.0.0.1:55439/rest/v1/messages', () =>
       HttpResponse.json([offered]),
     ),
@@ -911,7 +924,14 @@ test('recipient retries a failed response and sees the accepted proposal in My S
     http.put(
       `*/api/v1/conversations/messages/${offered.id}/proposal`,
       async ({ request }) => {
-        expect(await request.json()).toEqual({ action: 'accept' });
+        expect(await request.json()).toEqual({
+          action: 'accept',
+          meeting: {
+            place: 'Public library',
+            meetingAt: '2099-06-15T12:00:00.000Z',
+            timeZone: 'Europe/Paris',
+          },
+        });
         attempts++;
         await delay(100);
         if (attempts === 1) return new HttpResponse(null, { status: 503 });
@@ -941,27 +961,41 @@ test('recipient retries a failed response and sees the accepted proposal in My S
   );
   const user = userEvent.setup();
   await user.click(
-    await screen.findByRole('button', { name: 'Accept proposal' }),
+    await screen.findByRole('button', { name: 'Accept invite' }),
+  );
+  expect(attempts).toBe(0);
+  await user.type(screen.getByLabelText('Date'), '2099-06-15');
+  await user.type(screen.getByLabelText('Time'), '14:00');
+  await user.clear(screen.getByLabelText('Time zone'));
+  await user.type(screen.getByLabelText('Time zone'), 'Europe/Paris');
+  await user.type(screen.getByLabelText('Location'), 'Public library');
+  await user.click(
+    screen.getByRole('button', { name: 'Accept and send meetup' }),
   );
   expect(screen.getByRole('button', { name: 'Accepting…' })).toBeDisabled();
-  expect(
-    screen.getByRole('button', { name: 'Refuse proposal' }),
-  ).toBeDisabled();
-  await screen.findByRole('alert');
+  expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
+  await screen.findAllByRole('alert');
+  expect(screen.getByLabelText('Location')).toHaveValue('Public library');
   expect(
     screen.queryByRole('link', { name: 'View in My Swaps' }),
   ).not.toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Accept proposal' }));
   await user.click(
-    await screen.findByRole('link', { name: 'View in My Swaps' }),
+    screen.getByRole('button', { name: 'Accept and send meetup' }),
   );
+  expect(await screen.findByText('Public library')).toBeVisible();
+  expect(
+    screen.getByRole('link', { name: 'View in My Swaps' }),
+  ).toHaveAttribute('href', `/swaps/offers/${offered.id}`);
+  await user.click(screen.getByRole('link', { name: 'View in My Swaps' }));
+  await screen.findByRole('heading', { name: 'Your swap' });
+  await user.click(screen.getByRole('link', { name: '← My Swaps' }));
   await screen.findByRole('tab', { name: 'Upcoming swaps' });
-  expect(screen.getByText('To plan')).toBeVisible();
+  expect(screen.queryByText('To plan')).not.toBeInTheDocument();
   expect(screen.getByText('With Bob')).toBeVisible();
   expect(screen.queryByText('I can offer a lamp.')).not.toBeInTheDocument();
   expect(
-    screen.getByRole('link', { name: /Open swap conversation:/ }),
-  ).toHaveAttribute('href', `/inbox/${thread}`);
+    screen.getByRole('link', { name: /Open swap details:/ }),
+  ).toHaveAttribute('href', `/swaps/offers/${offered.id}`);
   expect(attempts).toBe(2);
 });
 
@@ -1009,7 +1043,7 @@ test('a recipient can refuse a proposal and the sender never gets response butto
   );
   await screen.findByText('Refused', { exact: true });
   expect(
-    screen.queryByRole('button', { name: 'Accept proposal' }),
+    screen.queryByRole('button', { name: 'Accept invite' }),
   ).not.toBeInTheDocument();
   expect(
     screen.queryByRole('link', { name: 'View in My Swaps' }),
@@ -1043,7 +1077,7 @@ test('the proposal sender only sees its pending response state', async () => {
   );
   await screen.findByText('Awaiting a response');
   expect(
-    screen.queryByRole('button', { name: 'Accept proposal' }),
+    screen.queryByRole('button', { name: 'Accept invite' }),
   ).not.toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: 'Refuse proposal' }),

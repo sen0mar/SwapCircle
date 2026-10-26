@@ -30,7 +30,7 @@ async function main() {
   // and retired; approving its digest does not bypass that data-preservation gate.
   assert.equal(
     digest,
-    '361ffb5d4c748e5e67f19e6d07dcff4d0c551b8a7ee65a120d41c14cd21fdde8',
+    '9b76c35abed45f0e50e511821a4797c3f75a3586a5fe1cc8f52ab4eaae923cb9',
   );
   assert.equal(process.env.HOSTED_REVIEWED_MIGRATION_SHA256, digest);
   const pool = new Pool({

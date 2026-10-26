@@ -1,3 +1,7 @@
+import type {
+  ProposalMeetingUpdate,
+  ProposalMeeting,
+} from '@swapcircle/contracts';
 import type { Pool, PoolClient } from 'pg';
 import type {
   MessageReceipt,
@@ -169,9 +173,11 @@ export class ConversationsRepository {
       id: string;
       decision: 'accepted' | 'refused';
       respondedAt: string;
+      meeting: ProposalMeeting | null;
+      meetingRevision: number;
     }>(
-      `SELECT id,decision,to_char(responded_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "respondedAt"
-       FROM public.message_proposal_responses WHERE message_id=$1`,
+      `SELECT id,decision,to_jsonb(r)->'meeting' AS meeting,COALESCE((to_jsonb(r)->>'meeting_revision')::integer,0) AS "meetingRevision",to_char(responded_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "respondedAt"
+       FROM public.message_proposal_responses r WHERE message_id=$1`,
       [messageId],
     );
     return result.rows[0];
@@ -182,12 +188,48 @@ export class ConversationsRepository {
     actor: string,
     messageId: string,
     decision: 'accepted' | 'refused',
+    meeting?: ProposalMeeting,
+  ) {
+    // Existing clients keep working during the API-before-migrations release window.
+    if (meeting) {
+      await client.query(
+        'INSERT INTO public.message_proposal_responses (message_id,actor_id,decision,meeting) VALUES ($1,$2,$3,$4)',
+        [messageId, actor, decision, JSON.stringify(meeting)],
+      );
+    } else {
+      await client.query(
+        'INSERT INTO public.message_proposal_responses (message_id,actor_id,decision) VALUES ($1,$2,$3)',
+        [messageId, actor, decision],
+      );
+    }
+    return (await this.proposalDecision(client, messageId))!;
+  }
+
+  async meetingOperation(client: PoolClient, messageId: string, key: string) {
+    const result = await client.query<{
+      actorId: string;
+      input: ProposalMeetingUpdate;
+    }>(
+      'SELECT actor_id AS "actorId",input FROM public.proposal_meeting_operations WHERE message_id=$1 AND operation_key=$2',
+      [messageId, key],
+    );
+    return result.rows[0];
+  }
+
+  async updateProposalMeeting(
+    client: PoolClient,
+    actor: string,
+    messageId: string,
+    input: ProposalMeetingUpdate,
   ) {
     await client.query(
-      'INSERT INTO public.message_proposal_responses (message_id,actor_id,decision) VALUES ($1,$2,$3)',
-      [messageId, actor, decision],
+      'UPDATE public.message_proposal_responses SET meeting=$2,meeting_revision=meeting_revision+1 WHERE message_id=$1',
+      [messageId, JSON.stringify(input.meeting)],
     );
-    return (await this.proposalDecision(client, messageId))!;
+    await client.query(
+      'INSERT INTO public.proposal_meeting_operations (message_id,operation_key,actor_id,input) VALUES ($1,$2,$3,$4)',
+      [messageId, input.operationKey, actor, JSON.stringify(input)],
+    );
   }
 
   async proposalTarget(client: PoolClient, listingId: string) {
@@ -215,13 +257,15 @@ export class ConversationsRepository {
     const result = await client.query<{
       id: string;
       respondedAt: string;
+      meeting: ProposalMeeting | null;
+      meetingRevision: number;
       recipientId: string;
       senderName: string;
       recipientName: string;
       message: MessageReceipt;
     }>(
       `
-      SELECT r.id,to_char(r.responded_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "respondedAt",
+      SELECT r.id,to_jsonb(r)->'meeting' AS meeting,COALESCE((to_jsonb(r)->>'meeting_revision')::integer,0) AS "meetingRevision",to_char(r.responded_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "respondedAt",
         r.actor_id AS "recipientId",sender.display_name AS "senderName",recipient.display_name AS "recipientName",
         jsonb_build_object('id',m.id,'conversation_id',m.conversation_id,'sender_id',m.sender_id,'body',m.body,
           'client_message_id',m.client_message_id,'has_photo',m.has_photo,'proposal',m.proposal,'message_order',m.message_order,
@@ -247,6 +291,8 @@ export class ConversationsRepository {
           recipientId: row.recipientId,
           status: 'accepted',
           respondedAt: row.respondedAt,
+          meeting: row.meeting,
+          meetingRevision: row.meetingRevision,
         },
       })),
       nextCursor:

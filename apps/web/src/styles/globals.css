@@ -2008,73 +2008,127 @@
 }
 
 .proposal-message-card {
-  width: min(380px, 100%);
+  width: min(360px, 100%);
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--bg-surface);
   box-shadow: var(--shadow-card);
   overflow-wrap: anywhere;
 }
+.accepted-offer-detail > .proposal-message-card {
+  width: 100%;
+}
 .proposal-message-header {
   display: grid;
-  gap: 8px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-subtle);
+  gap: 4px;
+  padding: 12px 14px;
   background: var(--accent-primary-dim);
+  border-bottom: 1px solid var(--border-subtle);
 }
-.proposal-message-header h3 {
+.proposal-message-topline {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.proposal-message-header h3 {
+  font-size: 13px;
   font-weight: 600;
-  color: var(--accent-primary-text);
-}
-.proposal-message-header h3 svg {
-  flex-shrink: 0;
-}
-.proposal-message-header p {
-  font-size: 14px;
   color: var(--text-secondary);
 }
-.proposal-message-header a {
-  color: var(--text-primary);
+.proposal-field-label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 12px;
   font-weight: 500;
-  text-decoration: none;
+}
+.proposal-requested-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+.proposal-status {
+  padding: 3px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+}
+.proposal-status-accepted {
+  color: var(--accent-primary-text);
+  background: var(--accent-primary-dim);
 }
 .proposal-message-photo {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 4 / 3;
-  margin: 16px 20px 0;
-  border-radius: 8px;
-  background: var(--bg-inset);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-default);
 }
-.proposal-message-photo > div {
-  padding: 16px;
+.proposal-photo-thumbnail {
+  width: 64px;
+  flex-shrink: 0;
 }
 .proposal-message-photo .message-photo {
   display: block;
-  width: 100%;
-  max-height: 260px;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
   margin: 0;
+  border-radius: 12px;
   background: var(--bg-inset);
 }
 .proposal-message-details {
   display: grid;
-  gap: 16px;
-  padding: 20px;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.proposal-message-note {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-inset);
 }
 .proposal-message-details .proposal-message-body {
   color: var(--text-primary);
   white-space: pre-wrap;
-  line-height: 1.6;
+  line-height: 1.5;
+  font-size: 14px;
 }
-.proposal-message-quality {
-  padding-top: 16px;
-  border-top: 1px solid var(--border-subtle);
+.proposal-offered-listing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-inset);
+}
+.proposal-offered-listing > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.proposal-offered-listing a {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+}
+.proposal-offered-listing img {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: cover;
 }
 .proposal-message-quality > div {
   display: flex;
@@ -2084,32 +2138,35 @@
   gap: 8px;
 }
 .proposal-message-quality dt {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 .proposal-message-quality dd {
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 8px;
   background: var(--bg-subtle);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
 }
 .proposal-message-card footer {
-  padding: 0 20px 12px;
-  text-align: right;
-  color: var(--text-muted);
+  padding: 12px 14px 8px;
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-inset);
+  color: var(--text-secondary);
   font-size: 12px;
 }
-
+.proposal-message-card footer > time {
+  display: block;
+  margin-top: 8px;
+  text-align: right;
+  font-size: 11px;
+}
 .proposal-response-area {
-  padding-top: 16px;
-  margin-bottom: 12px;
-  border-top: 1px solid var(--border-subtle);
   text-align: left;
 }
 .proposal-response-area p {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-secondary);
 }
 .proposal-response-actions {
@@ -2122,16 +2179,115 @@
 }
 .proposal-response-saved {
   display: grid;
+  gap: 12px;
+}
+.proposal-meetup h4 {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.proposal-meetup dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+.proposal-meetup dt {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.proposal-meetup dd {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.proposal-meetup-zone {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 400;
+}
+.proposal-meetup-location {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-default);
+}
+.proposal-meeting-action {
+  display: grid;
   gap: 8px;
 }
-.proposal-response-saved p {
-  font-weight: 600;
-  color: var(--text-primary);
+.proposal-meeting-action .ui-button {
+  width: 100%;
 }
-.proposal-response-saved a {
-  color: var(--accent-primary-text);
-  text-decoration: none;
-  font-size: 14px;
+.proposal-meeting-action p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.proposal-view-swap {
+  width: 100%;
+}
+.proposal-saved-actions {
+  display: grid;
+  gap: 12px;
+}
+.accepted-offer-detail .proposal-message-header {
+  padding: 20px 24px;
+  gap: 6px;
+}
+.accepted-offer-detail .proposal-message-topline {
+  margin-bottom: 12px;
+}
+.accepted-offer-detail .proposal-message-photo {
+  padding: 16px 24px;
+  gap: 16px;
+}
+.accepted-offer-detail .proposal-message-details {
+  padding: 20px 24px;
+  gap: 16px;
+}
+.accepted-offer-detail .proposal-message-note {
+  padding: 14px 16px;
+  gap: 8px;
+}
+.accepted-offer-detail .proposal-message-card footer {
+  padding: 20px 24px 12px;
+}
+.accepted-offer-detail .proposal-response-saved {
+  gap: 20px;
+}
+.accepted-offer-detail .proposal-meetup h4 {
+  margin-bottom: 14px;
+}
+.accepted-offer-detail .proposal-meetup dl {
+  gap: 16px 24px;
+}
+.accepted-offer-detail .proposal-saved-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-default);
+}
+.accepted-offer-detail .proposal-saved-actions .ui-button {
+  width: auto;
+}
+@media (min-width: 640px) {
+  .accepted-offer-detail .proposal-meetup dl {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
+  }
+  .accepted-offer-detail .proposal-meetup-location {
+    display: block;
+    grid-column: auto;
+    padding: 0;
+    border: 0;
+  }
 }
 .accepted-proposal-swaps {
   display: grid;
@@ -3785,4 +3941,76 @@ select.native-select-control {
   .trade-reminder .trade-detail-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.simple-proposal-form,
+.simple-proposal-form fieldset,
+.proposal-shelf-list {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.simple-proposal-form {
+  margin-top: 24px;
+}
+.simple-proposal-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.simple-proposal-form legend {
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.proposal-source-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.proposal-source-options label,
+.proposal-shelf-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.proposal-shelf-item {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.proposal-shelf-item:has(input:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.proposal-shelf-item .listing-photo,
+.proposal-shelf-item .photo-unavailable {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.proposal-upload-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  margin-top: 12px;
+  object-fit: contain;
+}
+.simple-proposal-form .ui-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.proposal-shelf-item span {
+  overflow-wrap: anywhere;
+}
+
+.simple-proposal-form textarea.ui-input {
+  border-radius: 12px;
+  padding: 12px;
+  resize: vertical;
+}
+.proposal-shelf-item .photo-unavailable span {
+  display: none;
 }

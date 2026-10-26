@@ -266,11 +266,18 @@ test('received and sent proposals appear as complete cards in both themes and na
     }),
   );
   const decisions: Record<string, 'pending' | 'accepted' | 'refused'> = {};
+  let meetup: { place: string; meetingAt: string; timeZone: string } | null =
+    null;
+  let meetingRevision = 0;
+  let meetupAttempts = 0;
+  let meetupInput: unknown;
   const responseState = (messageId: string) => ({
     messageId,
     conversationId: id,
     recipientId: messageId.endsWith('13') ? bob : alice,
     status: decisions[messageId] ?? 'pending',
+    meeting: messageId === full.id ? meetup : null,
+    meetingRevision,
     respondedAt: decisions[messageId] ? '2026-09-28T10:02:00Z' : null,
   });
   await page.route(
@@ -280,7 +287,8 @@ test('received and sent proposals appear as complete cards in both themes and na
         .split('/')
         .at(-2)!;
       if (route.request().method() === 'PUT') {
-        const { action } = route.request().postDataJSON();
+        const { action, meeting } = route.request().postDataJSON();
+        if (meeting) meetup = meeting;
         decisions[messageId] = action === 'accept' ? 'accepted' : 'refused';
       }
       return route.fulfill({ json: responseState(messageId) });
@@ -306,6 +314,29 @@ test('received and sent proposals appear as complete cards in both themes and na
         nextCursor: null,
       },
     }),
+  );
+  await page.route(
+    '**/api/v1/conversations/messages/*/proposal/detail',
+    (route) =>
+      route.fulfill({
+        json: { message: full, response: responseState(full.id) },
+      }),
+  );
+  await page.route(
+    '**/api/v1/conversations/messages/*/proposal/meeting',
+    (route) => {
+      const input = route.request().postDataJSON();
+      meetupAttempts++;
+      if (meetupInput) expect(input).toEqual(meetupInput);
+      meetupInput = input;
+      if (meetupAttempts === 1) return route.fulfill({ status: 503 });
+      expect(input.expectedRevision).toBe(meetingRevision);
+      meetup = input.meeting;
+      meetingRevision++;
+      return route.fulfill({
+        json: { message: full, response: responseState(full.id) },
+      });
+    },
   );
   let photoAttempts = 0;
   await page.route('**/api/v1/conversations/messages/*/photo', (route) => {
@@ -344,9 +375,7 @@ test('received and sent proposals appear as complete cards in both themes and na
     1,
   );
   await expect(
-    page
-      .locator('.message-own')
-      .getByRole('button', { name: 'Accept proposal' }),
+    page.locator('.message-own').getByRole('button', { name: 'Accept invite' }),
   ).toHaveCount(0);
   await page.reload();
   await expect(cards).toHaveCount(3);
@@ -386,25 +415,82 @@ test('received and sent proposals appear as complete cards in both themes and na
   await refused.getByRole('button', { name: 'Refuse proposal' }).click();
   await expect(refused.getByText('Refused', { exact: true })).toBeVisible();
   await expect(
-    refused.getByRole('button', { name: 'Accept proposal' }),
+    refused.getByRole('button', { name: 'Accept invite' }),
   ).toHaveCount(0);
-  await incoming.getByRole('button', { name: 'Accept proposal' }).click();
+  await incoming.getByRole('button', { name: 'Accept invite' }).click();
+  const meetupDialog = page.getByRole('dialog', { name: 'Accept invite' });
+  await meetupDialog.getByLabel('Date', { exact: true }).fill('2099-06-15');
+  await meetupDialog.getByLabel('Time', { exact: true }).fill('14:00');
+  await meetupDialog.getByLabel('Location').fill('Public library');
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await meetupDialog
+    .getByRole('button', { name: 'Accept and send meetup' })
+    .click();
   await expect(incoming.getByText('Accepted', { exact: true })).toBeVisible();
+  await expect(incoming.locator('svg')).toHaveCount(0);
+  await page.setViewportSize({ width: 1280, height: 1600 });
+  await incoming.scrollIntoViewIfNeeded();
+  await incoming.screenshot({ path: 'test-results/trade-card-accepted.png' });
   await incoming.getByRole('link', { name: 'View in My Swaps' }).click();
-  await expect(page.getByRole('tab', { name: 'Upcoming swaps' })).toBeVisible();
-  await expect(cards).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`/swaps/offers/${full.id}$`));
+  await expect(page.getByRole('heading', { name: 'Your swap' })).toBeVisible();
+  const detailCard = page.getByRole('article', { name: 'Trade proposal' });
+  expect(
+    await detailCard.evaluate((element) =>
+      Math.abs(
+        element.getBoundingClientRect().width -
+          element.parentElement!.getBoundingClientRect().width,
+      ),
+    ),
+  ).toBeLessThan(2);
   await expect(
-    page
-      .getByRole('tabpanel', { name: 'Upcoming swaps' })
-      .getByText('Compact desktop keyboard', { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('tabpanel', { name: 'Upcoming swaps' }).getByRole('link', {
-      name: 'Open swap conversation: Compact desktop keyboard',
+    page.getByText('Changes are shared with the other person.', {
+      exact: false,
     }),
-  ).toHaveAttribute('href', `/inbox/${id}`);
+  ).toHaveCount(0);
+
+  const dateButton = await page
+    .getByRole('button', { name: 'Change date and time' })
+    .boundingBox();
+  const conversationButton = await page
+    .getByRole('link', { name: 'Open swap conversation' })
+    .boundingBox();
+  expect(Math.abs(dateButton!.y - conversationButton!.y)).toBeLessThan(2);
+  expect(dateButton!.x + dateButton!.width).toBeLessThan(conversationButton!.x);
+  await detailCard.screenshot({ path: 'test-results/trade-page-card.png' });
+  await page
+    .getByRole('article', { name: 'Trade proposal' })
+    .getByRole('button', { name: 'Change date and time' })
+    .click();
+  const edit = page.getByRole('dialog', { name: 'Edit meetup' });
+  await expect(edit.getByLabel('Location')).toHaveValue('Public library');
+  await edit.getByLabel('Date', { exact: true }).fill('2099-06-16');
+  await edit.getByLabel('Time', { exact: true }).fill('16:30');
+  for (const width of [360, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  }
+  await edit.getByRole('button', { name: 'Save meetup' }).click();
+  await expect(edit.getByRole('alert')).toBeVisible();
+  await expect(edit.getByLabel('Date', { exact: true })).toHaveValue(
+    '2099-06-16',
+  );
+  await edit.getByRole('button', { name: 'Save meetup' }).click();
+  await expect(edit).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Change date and time' }),
+  ).toBeFocused();
+  expect(meetingRevision).toBe(1);
   await page.reload();
+  await expect(
+    page.getByRole('button', { name: 'Change date and time' }),
+  ).toBeVisible();
+  await page.getByRole('link', { name: '← My Swaps' }).click();
   await expect(page.getByRole('tab', { name: 'Upcoming swaps' })).toBeVisible();
-  await expect(cards).toHaveCount(0);
+  await expect(
+    page.getByRole('link', {
+      name: 'Open swap details: Compact desktop keyboard',
+    }),
+  ).toHaveAttribute('href', `/swaps/offers/${full.id}`);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

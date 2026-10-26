@@ -1,3 +1,4 @@
+import { useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   messagePhotoSchema,
@@ -5,11 +6,35 @@ import {
   type MessageProposalState,
 } from '@swapcircle/contracts';
 import { Link } from 'react-router-dom';
-import { ArrowLeftRight } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../auth/AuthProvider';
 import { conditions } from '../browse/ListingContent';
+import { ProposalAcceptDialog } from './ProposalAcceptDialog';
+import { useListingPhotos } from '../browse/listing-photos';
 import { useProposalResponse } from './useProposalResponses';
+
+function OfferedListing({ id, title }: { id: string; title: string }) {
+  const photos = useListingPhotos(id);
+  const [failedUrl, setFailedUrl] = useState('');
+  const photo = photos.data?.[0];
+
+  return (
+    <section className="proposal-offered-listing" aria-label="Offered item">
+      {photo && photo.url !== failedUrl && (
+        <img
+          src={photo.url}
+          alt={title}
+          loading="lazy"
+          onError={() => setFailedUrl(photo.url)}
+        />
+      )}
+      <div>
+        <span className="proposal-field-label">Offered item</span>
+        <Link to={`/listings/${id}`}>{title}</Link>
+      </div>
+    </section>
+  );
+}
 
 export function MessagePhoto({ id }: { id: string }) {
   const { request, session } = useAuth();
@@ -46,10 +71,12 @@ export function ProposalMessageCard({
   message,
   knownResponse,
   showConversationLink = false,
+  meetingAction,
 }: {
   message: MessageRead;
   knownResponse?: MessageProposalState;
   showConversationLink?: boolean;
+  meetingAction?: ReactNode;
 }) {
   const { session } = useAuth();
   const { state, respond, response } = useProposalResponse(
@@ -57,6 +84,8 @@ export function ProposalMessageCard({
     knownResponse,
   );
   const proposal = message.proposal!;
+  const [acceptOpen, setAcceptOpen] = useState(false);
+  const responseArea = useRef<HTMLDivElement>(null);
 
   return (
     <article
@@ -64,24 +93,44 @@ export function ProposalMessageCard({
       aria-labelledby={`proposal-${message.id}`}
     >
       <header className="proposal-message-header">
-        <h3 id={`proposal-${message.id}`}>
-          <ArrowLeftRight size={18} aria-hidden="true" />
-          Trade proposal
-        </h3>
-        <p>
-          In exchange for{' '}
-          <Link to={`/listings/${proposal.listingId}`}>
-            {proposal.listingTitle}
-          </Link>
-        </p>
+        <div className="proposal-message-topline">
+          <h3 id={`proposal-${message.id}`}>Trade proposal</h3>
+          {response && response.status !== 'pending' && (
+            <span
+              role="status"
+              className={`proposal-status proposal-status-${response.status}`}
+            >
+              {response.status === 'accepted' ? 'Accepted' : 'Refused'}
+            </span>
+          )}
+        </div>
+        <span className="proposal-field-label">Requested item</span>
+        <Link
+          className="proposal-requested-title"
+          to={`/listings/${proposal.listingId}`}
+        >
+          {proposal.listingTitle}
+        </Link>
       </header>
       {message.has_photo && (
-        <div className="proposal-message-photo">
-          <MessagePhoto id={message.id} />
-        </div>
+        <section
+          className="proposal-message-photo"
+          aria-label="Offered item photo"
+        >
+          <div className="proposal-photo-thumbnail">
+            <MessagePhoto id={message.id} />
+          </div>
+          <span className="proposal-field-label">Offered item</span>
+        </section>
       )}
       <div className="proposal-message-details">
-        <p className="proposal-message-body">{proposal.message}</p>
+        {proposal.offeredListing && (
+          <OfferedListing {...proposal.offeredListing} />
+        )}
+        <div className="proposal-message-note">
+          <span className="proposal-field-label">Message</span>
+          <p className="proposal-message-body">{proposal.message}</p>
+        </div>
         {proposal.condition && (
           <dl className="proposal-message-quality">
             <div>
@@ -91,8 +140,22 @@ export function ProposalMessageCard({
           </dl>
         )}
       </div>
+      <ProposalAcceptDialog
+        open={acceptOpen}
+        onOpenChange={setAcceptOpen}
+        respond={respond}
+        onCloseFocus={() => {
+          const button = responseArea.current?.querySelector('button');
+          (button ?? responseArea.current)?.focus();
+        }}
+        accepted={response?.status === 'accepted'}
+      />
       <footer>
-        <div className="proposal-response-area">
+        <div
+          className="proposal-response-area"
+          ref={responseArea}
+          tabIndex={-1}
+        >
           {response ? (
             response.status === 'pending' ? (
               response.recipientId === session?.user.id ? (
@@ -100,17 +163,17 @@ export function ProposalMessageCard({
                   <Button
                     variant="primary"
                     disabled={respond.isPending}
-                    onClick={() => respond.mutate('accept')}
+                    onClick={() => setAcceptOpen(true)}
                   >
-                    {respond.isPending && respond.variables === 'accept'
+                    {respond.isPending && respond.variables?.action === 'accept'
                       ? 'Accepting…'
-                      : 'Accept proposal'}
+                      : 'Accept invite'}
                   </Button>
                   <Button
                     disabled={respond.isPending}
-                    onClick={() => respond.mutate('refuse')}
+                    onClick={() => respond.mutate({ action: 'refuse' })}
                   >
-                    {respond.isPending && respond.variables === 'refuse'
+                    {respond.isPending && respond.variables?.action === 'refuse'
                       ? 'Refusing…'
                       : 'Refuse proposal'}
                   </Button>
@@ -120,22 +183,69 @@ export function ProposalMessageCard({
               )
             ) : (
               <div className="proposal-response-saved">
-                <p role="status">
-                  {response.status === 'accepted' ? 'Accepted' : 'Refused'}
-                </p>
-                {response.status === 'accepted' && (
-                  <Link
-                    to={
-                      showConversationLink
-                        ? `/inbox/${message.conversation_id}`
-                        : '/swaps'
-                    }
+                {response.meeting && (
+                  <section
+                    className="proposal-meetup"
+                    aria-label="Meetup details"
                   >
-                    {showConversationLink
-                      ? 'Open swap conversation'
-                      : 'View in My Swaps'}
-                  </Link>
+                    <h4>Meetup</h4>
+                    <dl>
+                      <div>
+                        <dt>Date</dt>
+                        <dd>
+                          <time dateTime={response.meeting.meetingAt}>
+                            {new Intl.DateTimeFormat(undefined, {
+                              timeZone: response.meeting.timeZone,
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            }).format(new Date(response.meeting.meetingAt))}
+                          </time>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Time</dt>
+                        <dd>
+                          {new Intl.DateTimeFormat(undefined, {
+                            timeZone: response.meeting.timeZone,
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hourCycle: 'h23',
+                          }).format(new Date(response.meeting.meetingAt))}
+                          <span className="proposal-meetup-zone">
+                            {response.meeting.timeZone}
+                          </span>
+                        </dd>
+                      </div>
+                      <div className="proposal-meetup-location">
+                        <dt>Location</dt>
+                        <dd>{response.meeting.place}</dd>
+                      </div>
+                    </dl>
+                  </section>
                 )}
+                <div className="proposal-saved-actions">
+                  {meetingAction}
+                  {response.status === 'accepted' && (
+                    <Button
+                      asChild
+                      variant={meetingAction ? 'secondary' : 'primary'}
+                      className="proposal-view-swap"
+                    >
+                      <Link
+                        to={
+                          showConversationLink
+                            ? `/inbox/${message.conversation_id}`
+                            : `/swaps/offers/${message.id}`
+                        }
+                      >
+                        {showConversationLink
+                          ? 'Open swap conversation'
+                          : 'View in My Swaps'}
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </div>
             )
           ) : state.isError ? (

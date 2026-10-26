@@ -425,10 +425,67 @@ try {
     .set(auth(bob))
     .send({ action: 'accept', actorId: alice.id })
     .expect(400);
+  const meeting = {
+    place: 'Synthetic public library',
+    meetingAt: '2099-06-15T12:00:00.000Z',
+    timeZone: 'Europe/Paris',
+  };
+  for (const invalid of [
+    { ...meeting, place: '  ' },
+    { ...meeting, timeZone: 'Invalid/Zone' },
+    { ...meeting, meetingAt: 'not-a-date' },
+  ]) {
+    await request(app)
+      .put(proposalPath(offerMessage.id))
+      .set(auth(bob))
+      .send({ action: 'accept', meeting: invalid })
+      .expect(400);
+  }
+  await request(app)
+    .put(proposalPath(offerMessage.id))
+    .set(auth(bob))
+    .send({
+      action: 'accept',
+      meeting: { ...meeting, meetingAt: '2020-01-01T12:00:00.000Z' },
+    })
+    .expect(422);
+  await request(app)
+    .put(proposalPath(offerMessage.id))
+    .set(auth(bob))
+    .send({ action: 'refuse', meeting })
+    .expect(400);
+  await request(app)
+    .put(proposalPath(offerMessage.id))
+    .set(auth(alice))
+    .send({ action: 'accept', meeting })
+    .expect(403);
+  assert.equal(
+    (
+      await request(app)
+        .get(proposalPath(offerMessage.id))
+        .set(auth(bob))
+        .expect(200)
+    ).body.status,
+    'pending',
+  );
+  const acceptWithMeeting = () =>
+    request(app)
+      .put(proposalPath(offerMessage.id))
+      .set(auth(bob))
+      .send({ action: 'accept', meeting });
   const accepted = await Promise.all([
-    respondProposal(bob, offerMessage.id, 'accept'),
-    respondProposal(bob, offerMessage.id, 'accept'),
+    acceptWithMeeting(),
+    acceptWithMeeting(),
   ]);
+  await request(app)
+    .put(proposalPath(offerMessage.id))
+    .set(auth(bob))
+    .send({
+      action: 'accept',
+      meeting: { ...meeting, place: 'Different place' },
+    })
+    .expect(409);
+  assert.deepEqual(accepted[0].body.meeting, meeting);
   assert.deepEqual(
     accepted.map((result) => result.status),
     [200, 200],
@@ -446,6 +503,7 @@ try {
     assert.equal(page.items.length, 1);
     assert.equal(page.items[0].message.id, offerMessage.id);
     assert.equal(page.items[0].response.status, 'accepted');
+    assert.deepEqual(page.items[0].response.meeting, meeting);
   }
   assert.equal(
     (
@@ -611,6 +669,153 @@ try {
   ).body;
   assert.equal(nextPage.items.length, 1);
   assert.notEqual(firstPage.items[0].message.id, nextPage.items[0].message.id);
+  const detailPath = `/api/v1/conversations/messages/${offerMessage.id}/proposal/detail`;
+  const meetingPath = `/api/v1/conversations/messages/${offerMessage.id}/proposal/meeting`;
+  await request(app).get(detailPath).expect(401);
+  await request(app).get(detailPath).set(auth(carol)).expect(404);
+  const original = (
+    await request(app).get(detailPath).set(auth(alice)).expect(200)
+  ).body;
+  const edit = {
+    operationKey: randomUUID(),
+    expectedRevision: original.response.meetingRevision,
+    meeting: { ...meeting, meetingAt: '2099-06-16T12:00:00.000Z' },
+  };
+  const update = (user, body, instance = app) =>
+    request(instance).put(meetingPath).set(auth(user)).send(body);
+  await update(carol, edit).expect(404);
+  await update(alice, { ...edit, actorId: bob.id }).expect(400);
+  await update(alice, {
+    ...edit,
+    meeting: { ...meeting, meetingAt: '2020-01-01T12:00:00.000Z' },
+  }).expect(422);
+  const changed = await Promise.all([update(alice, edit), update(alice, edit)]);
+  assert.deepEqual(
+    changed.map((result) => result.status),
+    [200, 200],
+  );
+  assert.deepEqual(changed[0].body, changed[1].body);
+  assert.equal(
+    (
+      await migration.query(
+        'SELECT count(*)::int AS count FROM public.notifications WHERE domain_event_id=$1',
+        [edit.operationKey],
+      )
+    ).rows[0].count,
+    1,
+  );
+  assert.ok(
+    (await bob.client.from('proposal_meeting_operations').select('*')).error,
+  );
+  assert.deepEqual(changed[0].body.response.meeting, edit.meeting);
+  assert.equal(
+    changed[0].body.response.respondedAt,
+    original.response.respondedAt,
+  );
+  await update(alice, { ...edit, meeting }).expect(409);
+  await update(bob, edit).expect(409);
+  await update(bob, { ...edit, operationKey: randomUUID() }).expect(409);
+  const latestRevision = changed[0].body.response.meetingRevision;
+  const competingMeetups = await Promise.all([
+    update(bob, {
+      ...edit,
+      operationKey: randomUUID(),
+      expectedRevision: latestRevision,
+      meeting: { ...meeting, meetingAt: '2099-06-17T12:00:00.000Z' },
+    }),
+    update(alice, {
+      ...edit,
+      operationKey: randomUUID(),
+      expectedRevision: latestRevision,
+      meeting: { ...meeting, meetingAt: '2099-06-18T12:00:00.000Z' },
+    }),
+  ]);
+  assert.deepEqual(
+    competingMeetups.map((result) => result.status).sort(),
+    [200, 409],
+  );
+  const latest = (await request(app).get(detailPath).set(auth(bob)).expect(200))
+    .body;
+  assert.equal(latest.response.meetingRevision, latestRevision + 1);
+  assert.deepEqual((await update(alice, edit).expect(200)).body, latest);
+  await migration.query(
+    'INSERT INTO public.blocks (blocker_id,blocked_id) VALUES ($1,$2)',
+    [alice.id, bob.id],
+  );
+  await update(bob, {
+    ...edit,
+    operationKey: randomUUID(),
+    expectedRevision: latest.response.meetingRevision,
+  }).expect(403);
+  await migration.query(
+    'DELETE FROM public.blocks WHERE blocker_id=$1 AND blocked_id=$2',
+    [alice.id, bob.id],
+  );
+  const rollback = {
+    ...edit,
+    operationKey: randomUUID(),
+    expectedRevision: latest.response.meetingRevision,
+  };
+  await update(bob, rollback, failedResponseApp).expect(500);
+  assert.deepEqual(
+    (await request(app).get(detailPath).set(auth(bob)).expect(200)).body,
+    latest,
+  );
+  assert.equal(
+    (
+      await migration.query(
+        'SELECT count(*)::int AS count FROM public.proposal_meeting_operations WHERE operation_key=$1',
+        [rollback.operationKey],
+      )
+    ).rows[0].count,
+    0,
+  );
+  assert.equal(
+    (
+      await migration.query(
+        'SELECT count(*)::int AS count FROM public.notifications WHERE domain_event_id=$1',
+        [rollback.operationKey],
+      )
+    ).rows[0].count,
+    0,
+  );
+
+  // Rehearse existing-client response operations against the pre-meetup table shape.
+  const compatibility = await migration.connect();
+  try {
+    await compatibility.query('BEGIN');
+    await compatibility.query(`CREATE TEMP TABLE synthetic_old_proposal_responses (
+      id uuid DEFAULT gen_random_uuid(), message_id uuid PRIMARY KEY, actor_id uuid,
+      decision text, responded_at timestamptz DEFAULT now()) ON COMMIT DROP`);
+    const oldSchema = {
+      query: (sql, values) =>
+        compatibility.query(
+          sql.replaceAll(
+            'public.message_proposal_responses',
+            'pg_temp.synthetic_old_proposal_responses',
+          ),
+          values,
+        ),
+    };
+    const repository = new ConversationsRepository(runtime);
+    const saved = await repository.insertProposalDecision(
+      oldSchema,
+      bob.id,
+      offerMessage.id,
+      'accepted',
+    );
+    assert.equal(saved.meeting, null);
+    assert.equal(saved.meetingRevision, 0);
+    const oldPage = await repository.acceptedProposals(oldSchema, alice.id, {
+      limit: 20,
+    });
+    assert.equal(oldPage.items[0].response.meeting, null);
+    assert.equal(oldPage.items[0].response.meetingRevision, 0);
+  } finally {
+    await compatibility.query('ROLLBACK');
+    compatibility.release();
+  }
+
   console.info(
     'Message proposal decisions: recipient authorization, exact retries, accept/refuse races, blocked contact, stale/unavailable items, atomic decision/notification rollback, private reads and accepted pages for both participants passed.',
   );

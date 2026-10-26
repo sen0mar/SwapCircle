@@ -1,0 +1,1 @@
+ALTER TABLE "message_proposal_responses" ADD COLUMN "meeting" jsonb;

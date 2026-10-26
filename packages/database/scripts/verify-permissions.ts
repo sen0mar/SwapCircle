@@ -29,6 +29,10 @@ const runtimeRules: Record<string, [string, string[]]> = {
     'runtime_message_proposal_responses',
     ['SELECT', 'INSERT'],
   ],
+  proposal_meeting_operations: [
+    'runtime_proposal_meeting_operations',
+    ['SELECT', 'INSERT'],
+  ],
   notifications: ['runtime_notifications', ['SELECT', 'INSERT']],
   profile_interests: [
     'runtime_profile_interests',
@@ -168,10 +172,14 @@ export async function verifyPermissions(pool: Pool) {
           item_reservations: 'released_at',
         } as Record<string, string>
       )[row.table_name] === row.column_name;
+    const meetupUpdate =
+      row.table_name === 'message_proposal_responses' &&
+      row.privilege === 'UPDATE' &&
+      ['meeting', 'meeting_revision'].includes(row.column_name);
     assert.equal(
       row.allowed,
       row.role === 'swapcircle_runtime' &&
-        (grants.includes(row.privilege) || extraUpdate),
+        (grants.includes(row.privilege) || extraUpdate || meetupUpdate),
       `${row.role} ${row.table_name}.${row.column_name} ${row.privilege}`,
     );
   }

@@ -310,12 +310,32 @@ try {
       await expect(a.getByRole('dialog')).toHaveCount(0);
       await keyboardOpen(a, a.getByRole('button', { name: 'Propose a trade' }));
       await activate(a, a.getByRole('button', { name: 'Propose a trade' }));
-      await a.getByRole('checkbox', { name: title, exact: true }).check();
+      await a.getByRole('radio', { name: 'Choose from my shelf' }).check();
+      await a.getByRole('radio', { name: new RegExp(title) }).check();
+      await a
+        .getByLabel('Message', { exact: true })
+        .fill('Would you trade for my item?');
       await audit(a, `proposal-${theme}-${width}`, true);
-      await activate(a, a.getByRole('button', { name: 'Review proposal' }));
       await activate(a, a.getByRole('button', { name: 'Send proposal' }));
-      await expect(a).toHaveURL(/\/swaps\/[0-9a-f-]+$/);
-      const id = new URL(a.url()).pathname.split('/').at(-1);
+      await expect(a).toHaveURL(/\/inbox\/[0-9a-f-]+$/);
+      // Continue formal trade coverage with a separate API-created fixture.
+      const formal = await api(
+        '/trades',
+        alice,
+        {
+          operationKey: randomUUID(),
+          participantIds: [alice.id, bob.id],
+          transfers: [
+            { listingId: own, ownerId: alice.id, recipientId: bob.id },
+            { listingId: offered, ownerId: bob.id, recipientId: alice.id },
+          ],
+          meetingMode: 'meet_to_swap',
+          expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        },
+        'POST',
+      );
+      const id = formal.id;
+      await a.goto(`${origin}/swaps/${id}`);
       completedId = id;
       await expect(a.getByRole('dialog')).toHaveCount(0);
       for (const page of [a, b]) {

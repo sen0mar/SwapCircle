@@ -25,7 +25,13 @@ import { ListingImage, useListingPhotos } from '../browse/listing-photos';
 
 type Swap = z.infer<typeof tradeSummarySchema>;
 
-function DateBadge({ meeting, id }: { meeting: Swap['meeting']; id?: string }) {
+function DateBadge({
+  meeting,
+  id,
+}: {
+  meeting: Pick<NonNullable<Swap['meeting']>, 'meetingAt' | 'timeZone'> | null;
+  id?: string;
+}) {
   if (!meeting)
     return (
       <span className="schedule-date schedule-date-unset" aria-hidden="true">
@@ -207,10 +213,10 @@ function OfferReminder({
     <Card className="schedule-card">
       <Link
         className="schedule-card-link"
-        to={`/inbox/${offer.message.conversation_id}`}
-        aria-label={`Open swap conversation: ${proposal?.listingTitle ?? 'Accepted offer'}`}
+        to={`/swaps/offers/${offer.message.id}`}
+        aria-label={`Open swap details: ${proposal?.listingTitle ?? 'Accepted offer'}`}
       >
-        <DateBadge meeting={null} />
+        <DateBadge meeting={offer.response.meeting} />
         <div className="schedule-card-copy">
           <div className="schedule-card-topline">
             <h3>With {otherName}</h3>
@@ -234,7 +240,7 @@ function OfferReminder({
           </div>
           <div className="schedule-card-meta">
             <span className="schedule-open">
-              Open conversation <ChevronRight size={16} aria-hidden="true" />
+              View swap <ChevronRight size={16} aria-hidden="true" />
             </span>
           </div>
         </div>

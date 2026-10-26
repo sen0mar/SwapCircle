@@ -4,6 +4,7 @@ import {
   messageProposalResponseSchema,
   acceptedProposalQuerySchema,
   messageIdParamsSchema,
+  proposalMeetingUpdateSchema,
 } from '@swapcircle/contracts';
 import type { VerifyToken } from '../../auth/verify.js';
 import { authenticate } from '../../middleware/authenticate.js';
@@ -56,12 +57,15 @@ export function createProposalMessageRouter(
     json({ limit: '16kb' }),
     async (request, response) => {
       const { id } = messageIdParamsSchema.parse(request.params);
-      const { action } = messageProposalResponseSchema.parse(request.body);
+      const { action, meeting } = messageProposalResponseSchema.parse(
+        request.body,
+      );
       response.json(
         await service.respondToProposal(
           response.locals.identity.userId,
           id,
           action,
+          meeting,
         ),
       );
     },
@@ -73,6 +77,38 @@ export function createProposalMessageRouter(
       const input = acceptedProposalQuerySchema.parse(request.query);
       response.json(
         await service.acceptedProposals(response.locals.identity.userId, input),
+      );
+    },
+  );
+
+  router.get(
+    '/conversations/messages/:id/proposal/detail',
+    authenticate(verifyToken),
+    async (request, response) => {
+      const { id } = messageIdParamsSchema.parse(request.params);
+      response.setHeader('Cache-Control', 'no-store');
+      response.json(
+        await service.acceptedProposalDetail(
+          response.locals.identity.userId,
+          id,
+        ),
+      );
+    },
+  );
+  router.put(
+    '/conversations/messages/:id/proposal/meeting',
+    authenticate(verifyToken),
+    json({ limit: '16kb' }),
+    async (request, response) => {
+      const { id } = messageIdParamsSchema.parse(request.params);
+      const input = proposalMeetingUpdateSchema.parse(request.body);
+      response.setHeader('Cache-Control', 'no-store');
+      response.json(
+        await service.acceptedProposalDetail(
+          response.locals.identity.userId,
+          id,
+          input,
+        ),
       );
     },
   );

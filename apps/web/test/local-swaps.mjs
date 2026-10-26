@@ -182,11 +182,49 @@ try {
     alicePage.getByRole('button', { name: 'Propose a trade' }),
   ).toBeVisible();
   await alicePage.getByRole('button', { name: 'Propose a trade' }).click();
-  await alicePage.getByRole('checkbox', { name: aliceItem.title }).check();
-  await alicePage.getByRole('button', { name: 'Review proposal' }).click();
+  await alicePage.getByRole('radio', { name: 'Choose from my shelf' }).check();
+  await alicePage
+    .getByRole('radio', { name: new RegExp(aliceItem.title) })
+    .check();
+  await alicePage
+    .getByLabel('Message', { exact: true })
+    .fill('Would you trade for my backpack?');
   await alicePage.getByRole('button', { name: 'Send proposal' }).click();
-  await expect(alicePage).toHaveURL(/\/swaps\/[0-9a-f-]+$/);
-  const tradeId = new URL(alicePage.url()).pathname.split('/').at(-1);
+  await expect(alicePage).toHaveURL(/\/inbox\/[0-9a-f-]+$/);
+  const conversation = new URL(alicePage.url()).pathname.split('/').at(-1);
+  const messages = await fixture.migration.query(
+    `SELECT m.id,m.proposal,r.decision FROM public.messages m LEFT JOIN public.message_proposal_responses r ON r.message_id=m.id WHERE m.conversation_id=$1 AND m.proposal IS NOT NULL`,
+    [conversation],
+  );
+  assert.equal(messages.rows.length, 1);
+  assert.equal(messages.rows[0].decision, null);
+  assert.equal(
+    messages.rows[0].proposal.message,
+    'Would you trade for my backpack?',
+  );
+  assert.deepEqual(messages.rows[0].proposal.offeredListing, {
+    id: aliceItem.id,
+    title: aliceItem.title,
+  });
+
+  // Exercise the existing formal-trade reminder lifecycle using an API-created fixture.
+  const formal = await api(
+    '/trades',
+    alice,
+    {
+      operationKey: randomUUID(),
+      participantIds: [alice.id, bob.id],
+      transfers: [
+        { listingId: aliceItem.id, ownerId: alice.id, recipientId: bob.id },
+        { listingId: bobItem.id, ownerId: bob.id, recipientId: alice.id },
+      ],
+      meetingMode: 'meet_to_swap',
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    },
+    'POST',
+  );
+  const tradeId = formal.id;
+  await alicePage.goto(`${origin}/swaps/${tradeId}`);
   await signIn(bobPage, bob, '/swaps');
   await expect(
     alicePage.getByRole('heading', { name: 'You give', exact: true }),

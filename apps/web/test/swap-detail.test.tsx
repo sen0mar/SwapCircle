@@ -55,8 +55,8 @@ beforeEach(() => {
 vi.mock('../src/features/trades/TradeCoffee', () => ({
   TradeCoffee: () => <div>Coffee options</div>,
 }));
-vi.mock('../src/features/browse/ProposalComposer', () => ({
-  ProposalComposer: () => null,
+vi.mock('../src/features/browse/ProposalTermsEditor', () => ({
+  ProposalTermsEditor: () => null,
 }));
 vi.mock('../src/features/trades/useTrades', () => ({
   useTrade: () => ({

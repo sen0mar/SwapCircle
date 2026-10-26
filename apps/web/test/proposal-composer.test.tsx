@@ -7,7 +7,7 @@ import { http, HttpResponse } from 'msw';
 import { expect, test, vi } from 'vitest';
 import type { Listing } from '@swapcircle/contracts';
 import { AuthProvider } from '../src/features/auth/AuthProvider';
-import { ProposalComposer } from '../src/features/browse/ProposalComposer';
+import { ProposalTermsEditor as ProposalComposer } from '../src/features/browse/ProposalTermsEditor';
 import { TradeDetailPage } from '../src/features/trades/TradeDetailPage';
 import type { TradeDetail } from '../src/features/trades/trades-api';
 import { server } from './setup';

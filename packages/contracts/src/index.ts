@@ -233,7 +233,13 @@ export const conversationReadSchema = z.object({
   direct_user_high: z.uuid(),
   created_at: z.string().datetime({ offset: true }),
 });
+export const offeredListingSchema = z.strictObject({
+  id: z.uuid(),
+  title: z.string().min(1).max(120),
+});
+
 export const messageProposalSchema = z.strictObject({
+  offeredListing: offeredListingSchema.optional(),
   listingId: z.uuid(),
   listingTitle: z.string().min(1).max(120),
   message: z.string().min(1).max(4500),
@@ -725,18 +731,24 @@ export type PasswordSignIn = z.infer<typeof passwordSignInSchema>;
 export const offeredItemConditionSchema = listingConditionSchema;
 
 // A first contact about a listing; formal trade terms are agreed separately.
-export const tradeMessageSubmissionSchema = z.strictObject({
-  listingId: z.uuid(),
-  body: z.string().trim().min(1).max(4500),
-  condition: offeredItemConditionSchema.optional(),
-  clientMessageId: z.uuid(),
-  photoBase64: z
-    .string()
-    .max(6990508)
-    .regex(/^[A-Za-z0-9+/]*={0,2}$/)
-    .refine((value) => value.length % 4 === 0)
-    .optional(),
-});
+export const tradeMessageSubmissionSchema = z
+  .strictObject({
+    offeredListingId: z.uuid().optional(),
+    listingId: z.uuid(),
+    body: z.string().trim().min(1).max(4500),
+    condition: offeredItemConditionSchema.optional(),
+    clientMessageId: z.uuid(),
+    photoBase64: z
+      .string()
+      .max(6990508)
+      .regex(/^[A-Za-z0-9+/]*={0,2}$/)
+      .refine((value) => value.length % 4 === 0)
+      .optional(),
+  })
+  .refine(
+    (value) => !(value.offeredListingId && value.photoBase64 !== undefined),
+    'Choose a shelf item or a photo.',
+  );
 export type TradeMessageSubmission = z.infer<
   typeof tradeMessageSubmissionSchema
 >;
@@ -744,17 +756,46 @@ export const messagePhotoSchema = z.object({
   dataUrl: z.string().startsWith('data:image/webp;base64,'),
 });
 
-export const messageProposalResponseSchema = z.strictObject({
-  action: z.enum(['accept', 'refuse']),
+export const proposalMeetingSchema = z.strictObject({
+  place: z.string().trim().min(1).max(500),
+  meetingAt: meetingInstantSchema,
+  timeZone: meetingTimeZoneSchema,
 });
+export type ProposalMeeting = z.infer<typeof proposalMeetingSchema>;
+
+export const messageProposalResponseSchema = z
+  .strictObject({
+    meeting: proposalMeetingSchema.optional(),
+    action: z.enum(['accept', 'refuse']),
+  })
+  .refine(
+    (value) => value.action === 'accept' || !value.meeting,
+    'Only acceptance can include a meetup.',
+  );
+export type MessageProposalResponse = z.infer<
+  typeof messageProposalResponseSchema
+>;
 export const messageProposalStateSchema = z.object({
   messageId: z.uuid(),
   conversationId: z.uuid(),
   recipientId: z.uuid(),
   status: z.enum(['pending', 'accepted', 'refused']),
   respondedAt: z.iso.datetime({ offset: true }).nullable(),
+  meeting: proposalMeetingSchema.nullable().default(null),
+  meetingRevision: z.number().int().nonnegative().default(0),
 });
 export type MessageProposalState = z.infer<typeof messageProposalStateSchema>;
+export const acceptedProposalDetailSchema = z.object({
+  message: messageReadSchema,
+  response: messageProposalStateSchema,
+});
+export const proposalMeetingUpdateSchema = z.strictObject({
+  operationKey: z.uuid(),
+  expectedRevision: z.number().int().nonnegative(),
+  meeting: proposalMeetingSchema,
+});
+export type ProposalMeetingUpdate = z.infer<typeof proposalMeetingUpdateSchema>;
+
 export const acceptedProposalQuerySchema = z
   .strictObject({
     limit: z.coerce.number().int().min(1).max(50).default(20),
