@@ -19,7 +19,7 @@ function OfferedListing({ id, title }: { id: string; title: string }) {
   const photo = photos.data?.[0];
 
   return (
-    <section className="proposal-offered-listing" aria-label="Offered item">
+    <section className="proposal-offered-listing">
       {photo && photo.url !== failedUrl && (
         <img
           src={photo.url}
@@ -113,10 +113,7 @@ export function ProposalMessageCard({
         </Link>
       </header>
       {message.has_photo && (
-        <section
-          className="proposal-message-photo"
-          aria-label="Offered item photo"
-        >
+        <section className="proposal-message-photo">
           <div className="proposal-photo-thumbnail">
             <MessagePhoto id={message.id} />
           </div>
@@ -184,10 +181,7 @@ export function ProposalMessageCard({
             ) : (
               <div className="proposal-response-saved">
                 {response.meeting && (
-                  <section
-                    className="proposal-meetup"
-                    aria-label="Meetup details"
-                  >
+                  <section className="proposal-meetup">
                     <h4>Meetup</h4>
                     <dl>
                       <div>
